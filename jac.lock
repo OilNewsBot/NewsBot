@@ -8,4 +8,4 @@ resolved = ["PyYAML==6.0.3", "Telethon==1.44.0", "aiosqlite==0.22.1", "annotated
 inputs = "sha256:44599409ec3f178150ff2124807a93f116db84941043d0b8ea1aa521d6eb4428"
 
 [npm]
-bun_lock = "sha256:e20e259a2fddcd532f8d2e0e003b7a9aa444b34de7694887ee105cbe7f51a1ec"
+bun_lock = "sha256:76cb9063d5cb0ebc4d8f4d54547260a23f1598d3c6168456b5ed6bafcbf7feef"
