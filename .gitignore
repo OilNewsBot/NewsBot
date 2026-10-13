@@ -1,0 +1,12 @@
+# Secrets
+.env
+*.session
+*.session-journal
+
+# jac-managed environment (packages, build output)
+.jac/
+
+# Runtime data (SQLite db)
+data/
+
+.DS_Store

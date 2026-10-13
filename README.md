@@ -11,11 +11,30 @@ Written in [Jac](https://jaclang.org) (ported from Python 2026-10-07; see
 
 ## Quick start
 
+**1. Install the `jac` binary, pinned to 0.37.25** (macOS / Linux):
+
 ```bash
-jac install                  # Python and npm packages into .jac/
+curl -fsSL https://raw.githubusercontent.com/jaseci-labs/jaseci/main/scripts/install.sh | bash -s -- --version 0.37.25
+jac --version                # must print: jac 0.37.25
+```
+
+This drops a self-contained binary at `~/.local/bin/jac` (add that directory
+to your `PATH` if the installer says so). It bundles its own Python and bun,
+so **your system Python version, conda, and venvs don't matter** — don't
+`pip install jaclang`/`jaseci`; that is a different, older distribution.
+
+**2. From the repo root, install the project's packages, then run:**
+
+```bash
+jac install                  # REQUIRED: Python + npm packages into .jac/
 cp .env.example .env         # fill in ANTHROPIC_API_KEY (models are pre-set)
+jac test                     # sanity check: all tests pass offline
 jac run                      # http://localhost:8000
 ```
+
+`jac install` must run once per clone (and again whenever `jac.toml`
+changes) before `jac check`, `jac test` or `jac run` will work. If something
+fails, see [Troubleshooting](#troubleshooting-install).
 
 With no platform credentials the adapters idle (footer shows why) — exercise
 the whole pipeline and UI with the fixture replay:
@@ -157,6 +176,25 @@ The app is three small Jac apps in one workspace (`jac.toml`):
 - **Checks.** `jac check` type-checks all three apps, `jac fmt --check` the
   formatting. `jac check` prints warnings for HTML tag names and unused state
   setters in `web/main.jac`; jac's own scaffolds produce the same ones.
+
+## Troubleshooting install
+
+- **`error[E1138]: Module 'aiosqlite' is not installed, but 'aiosqlite' is
+  declared in jac.toml`** (usually with ~100 `W1051 Expression type could not
+  be resolved (Unknown)` warnings) — the project packages aren't installed.
+  Run `jac install` in the repo root. Nothing is wrong with your Python.
+- **`jac --version` isn't 0.37.25, or `which jac` points somewhere other than
+  `~/.local/bin/jac`** (e.g. into a conda env or venv) — an old pip-installed
+  `jaclang` is shadowing the binary. Run `pip uninstall jaclang jaseci` in
+  that environment (or deactivate it), then re-check `which jac`.
+- **`jac: command not found` after installing** — `~/.local/bin` isn't on
+  your `PATH`: `echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc`,
+  then open a new terminal.
+- **`jac check some/file.jac` vs `jac check`** — checking one file on its own
+  reads its imports as interfaces only; run plain `jac check` in the repo
+  root to check the whole program.
+- **`jac.lock` shows as modified after `jac install`** — harmless if only the
+  `bun_lock` hash line changed.
 
 ## Operational behavior worth knowing
 
