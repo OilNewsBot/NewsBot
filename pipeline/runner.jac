@@ -1,4 +1,4 @@
-"""Pipeline orchestration (CLAUDE.md §6): persist -> classify -> dedup -> notify.
+"""Pipeline orchestration (docs/spec.md §6): persist -> classify -> dedup -> notify.
 
 Operational rules honored here (§12):
 - Persist raw before any LLM call; never lose a post to a downstream failure.

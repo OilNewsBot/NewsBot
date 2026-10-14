@@ -1,4 +1,4 @@
-"""newsstream web UI (CLAUDE.md §10): notification tray, event feed, suppressed
+"""newsstream web UI (docs/spec.md §10): notification tray, event feed, suppressed
 list and status footer.
 
 This is the browser half of the app, written in Jac and compiled to one

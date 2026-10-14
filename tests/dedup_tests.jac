@@ -1,4 +1,4 @@
-"""Dedup tests (CLAUDE.md §11): offline clustering logic + cassette-backed
+"""Dedup tests (docs/spec.md §11): offline clustering logic + cassette-backed
 sequence replays producing the expected NEW_EVENT / UPDATE / DUPLICATE labels."""
 
 import asyncio;

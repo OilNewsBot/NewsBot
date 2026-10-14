@@ -1,4 +1,4 @@
-"""Event deduplication / clustering (CLAUDE.md §8).
+"""Event deduplication / clustering (docs/spec.md §8).
 
 "Already surfaced" is a list of events, not posts. Candidates are open events
 touched within the stale window with the same category OR overlapping entities,

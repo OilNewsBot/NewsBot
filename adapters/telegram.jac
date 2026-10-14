@@ -1,4 +1,4 @@
-"""Telegram adapter (CLAUDE.md §4): free, push-based. First-choice source.
+"""Telegram adapter (docs/spec.md §4): free, push-based. First-choice source.
 
 Two modes, picked from available credentials:
 - telethon (MTProto): works for any public channel. Preferred.

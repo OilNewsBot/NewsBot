@@ -1,0 +1,5 @@
+# Keep agent edits and formatting checks consistent across Windows, WSL, and macOS.
+* text=auto eol=lf
+*.webp binary
+*.png binary
+*.jpg binary

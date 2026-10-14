@@ -1,4 +1,4 @@
-"""Adapter tests (CLAUDE.md §11): replies dropped, quote text carried,
+"""Adapter tests (docs/spec.md §11): replies dropped, quote text carried,
 handle change on stable ID handled, unresolvable ID marks account inactive."""
 
 import asyncio;

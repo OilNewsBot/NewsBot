@@ -1,6 +1,6 @@
 """Anthropic Messages API wrapper.
 
-Responsibilities (CLAUDE.md §7, §12):
+Responsibilities (docs/spec.md §7, §12):
 - strict JSON responses with one "Return only JSON." retry
 - per-call logging: model, input/output tokens, latency, post id
 - consecutive-error counter driving pipeline fail-open (3+ errors)

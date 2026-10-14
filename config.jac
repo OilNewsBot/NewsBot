@@ -1,7 +1,7 @@
 """Load .env + config.yaml into a typed Settings object.
 
 This module is the ONLY place model IDs and LLM prices are known
-(CLAUDE.md §3, §9). Everything else takes them from Settings.
+(docs/spec.md §3, §9). Everything else takes them from Settings.
 """
 
 import os;

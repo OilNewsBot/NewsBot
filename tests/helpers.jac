@@ -1,6 +1,6 @@
 """Shared test helpers.
 
-Two LLM strategies (CLAUDE.md §11):
+Two LLM strategies (docs/spec.md §11):
 - StubLLM: scripted responses for pipeline-logic tests; always runs offline.
 - real_llm: LLMClient backed by tests/cassettes/llm.json. With
   ANTHROPIC_API_KEY set, the first run records the cassette; afterwards the

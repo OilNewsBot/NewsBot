@@ -10,3 +10,7 @@
 data/
 
 .DS_Store
+
+# Python collaboration tooling
+__pycache__/
+*.pyc
