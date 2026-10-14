@@ -166,11 +166,13 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     app = FastAPI(title="newsstream", lifespan=lifespan);
     setattr(app.state, "pipeline", pipeline);
     setattr(app.state, "repo", repo);
-    setattr(app.state, "settings", settings);   
+    setattr(app.state, "settings", settings);
 
     @app.post("/register")
     async def register(data: dict[str, str]) -> dict[str, str | int] {
-        if not data["username"].strip() or not data["email"].strip() or len(data["password"]) < 12 {
+        if not data["username"].strip()
+            or not data["email"].strip()
+            or len(data["password"]) < 12 {
             raise HTTPException(
                 status_code=400,
                 detail="Username and email are required; password must be at least 12 characters"
@@ -183,18 +185,14 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         existing = await repo.get_user_by_email(email);
         if existing is not None {
             raise HTTPException(
-                status_code=409,
-                detail="An account with this email already exists"
+                status_code=409, detail="An account with this email already exists"
             );
         }
 
         password_hash = hash_password(data["password"]);
         user_id = await repo.create_user(username, email, password_hash);
 
-        return {
-            "message": "Registration successful",
-            "user_id": user_id
-        };
+        return {"message": "Registration successful", "user_id": user_id};
     }
 
     @app.post("/login")
@@ -204,28 +202,21 @@ def create_app(settings: Settings | None = None) -> FastAPI {
 
         if not email or not password {
             raise HTTPException(
-                status_code=400,
-                detail="Email and password are required"
+                status_code=400, detail="Email and password are required"
             );
         }
 
         user = await repo.get_user_by_email(email);
 
         if user is None {
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid email or password"
-            );
+            raise HTTPException(status_code=401, detail="Invalid email or password");
         }
 
         if not verify_password(password, user["password_hash"]) {
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid email or password"
-            );
+            raise HTTPException(status_code=401, detail="Invalid email or password");
         }
 
-            token = secrets.token_urlsafe(32);
+        token = secrets.token_urlsafe(32);
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest();
         expires_at = (datetime.now(UTC) + timedelta(days=7)).strftime(
             "%Y-%m-%d %H:%M:%S"
@@ -234,10 +225,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         await repo.create_session(token_hash, user["id"], expires_at);
 
         response = Response(
-            content=json.dumps({
-                "message": "Login successful",
-                "user_id": user["id"]
-            }),
+            content=json.dumps({"message": "Login successful", "user_id": user["id"]}),
             media_type="application/json"
         );
 
@@ -251,7 +239,6 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         );
 
         return response;
-
     }
 
     @app.get("/me")
@@ -259,20 +246,14 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         token = request.cookies.get("session");
 
         if not token {
-            raise HTTPException(
-                status_code=401,
-                detail="Not logged in"
-            );
+            raise HTTPException(status_code=401, detail="Not logged in");
         }
 
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest();
         user = await repo.get_session(token_hash);
 
         if user is None {
-            raise HTTPException(
-                status_code=401,
-                detail="Session expired or invalid"
-            );
+            raise HTTPException(status_code=401, detail="Session expired or invalid");
         }
 
         return {

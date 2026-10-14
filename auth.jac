@@ -5,12 +5,7 @@ import secrets;
 def hash_password(password: str) -> str {
     salt = secrets.token_bytes(16);
     hashed = hashlib.scrypt(
-        password.encode("utf-8"),
-        salt=salt,
-        n=16384,
-        r=8,
-        p=1,
-        dklen=32
+        password.encode("utf-8"), salt=salt, n=16384, r=8, p=1, dklen=32
     );
     return salt.hex() + ":" + hashed.hex();
 }
@@ -24,12 +19,7 @@ def verify_password(password: str, stored_hash: str) -> bool {
         expected = bytes.fromhex(hash_hex);
 
         actual = hashlib.scrypt(
-            password.encode("utf-8"),
-            salt=salt,
-            n=16384,
-            r=8,
-            p=1,
-            dklen=len(expected)
+            password.encode("utf-8"), salt=salt, n=16384, r=8, p=1, dklen=len(expected)
         );
 
         return hmac.compare_digest(actual, expected);
@@ -37,4 +27,3 @@ def verify_password(password: str, stored_hash: str) -> bool {
         return False;
     }
 }
-

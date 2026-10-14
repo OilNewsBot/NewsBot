@@ -25,8 +25,9 @@ def iso(dt: datetime) -> str {
 }
 
 obj Repo {
-    has db_path: Path | str;
-    has _db: aiosqlite.Connection | None = None;
+    has db_path: Path | str,
+        _db: aiosqlite.Connection | None = None;
+
     has db: aiosqlite.Connection {
         getter -> aiosqlite.Connection {
             assert self._db is not None , "Repo.connect() not called";
@@ -68,9 +69,7 @@ obj Repo {
 
     # -- users ----------------------------------------------------------------
 
-    async def create_user(
-        username: str, email: str, password_hash: str
-    ) -> int {
+    async def create_user(username: str, email: str, password_hash: str) -> int {
         cur = await self._run(
             """INSERT INTO users (username, email, password_hash)
                VALUES (?, ?, ?)""",
@@ -80,16 +79,11 @@ obj Repo {
         return cur.lastrowid or 0;
     }
 
-        async def get_user_by_email(email: str) -> Row | None {
-        return await self._one(
-            "SELECT * FROM users WHERE email = ?",
-            (email, )
-        );
+    async def get_user_by_email(email: str) -> Row | None {
+        return await self._one("SELECT * FROM users WHERE email = ?", (email, ));
     }
 
-    async def create_session(
-        token_hash: str, user_id: int, expires_at: str
-    ) {
+    async def create_session(token_hash: str, user_id: int, expires_at: str) {
         await self._run(
             """INSERT INTO sessions (token_hash, user_id, expires_at)
                VALUES (?, ?, ?)""",
@@ -108,16 +102,11 @@ obj Repo {
             (token_hash, )
         );
     }
-    
-    async def delete_session(token_hash: str) {
-        await self._run(
-            "DELETE FROM sessions WHERE token_hash = ?",
-            (token_hash, )
-        );
-        await self.db.commit();
-    }        
 
-    
+    async def delete_session(token_hash: str) {
+        await self._run("DELETE FROM sessions WHERE token_hash = ?", (token_hash, ));
+        await self.db.commit();
+    }
 
     # -- accounts -------------------------------------------------------------
 
