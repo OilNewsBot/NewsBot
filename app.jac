@@ -2,6 +2,10 @@
 
 import asyncio;
 import contextlib;
+import from auth { hash_password, verify_password }
+import hashlib;
+import secrets;
+import from datetime { timedelta }
 import json;
 import logging;
 import os;
@@ -116,6 +120,7 @@ async def _resolve_x_accounts(settings: Settings, repo: Repo, x_api: XApiAdapter
     }
 }
 
+
 def create_app(settings: Settings | None = None) -> FastAPI {
     settings = settings or load_settings();
     repo = Repo(settings.db_path);
@@ -162,6 +167,120 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     setattr(app.state, "pipeline", pipeline);
     setattr(app.state, "repo", repo);
     setattr(app.state, "settings", settings);
+
+    @app.post("/register")
+    async def register(data: dict[str, str]) -> dict[str, str | int] {
+        if not data["username"].strip()
+            or not data["email"].strip()
+            or len(data["password"]) < 12 {
+            raise HTTPException(
+                status_code=400,
+                detail="Username and email are required; password must be at least 12 characters"
+            );
+        }
+
+        email = data["email"].strip().lower();
+        username = data["username"].strip();
+
+        existing = await repo.get_user_by_email(email);
+        if existing is not None {
+            raise HTTPException(
+                status_code=409, detail="An account with this email already exists"
+            );
+        }
+
+        password_hash = hash_password(data["password"]);
+        user_id = await repo.create_user(username, email, password_hash);
+
+        return {"message": "Registration successful", "user_id": user_id};
+    }
+
+    @app.post("/login")
+    async def login(data: dict[str, str]) -> Response {
+        email = data.get("email", "").strip().lower();
+        password = data.get("password", "");
+
+        if not email or not password {
+            raise HTTPException(
+                status_code=400, detail="Email and password are required"
+            );
+        }
+
+        user = await repo.get_user_by_email(email);
+
+        if user is None {
+            raise HTTPException(status_code=401, detail="Invalid email or password");
+        }
+
+        if not verify_password(password, user["password_hash"]) {
+            raise HTTPException(status_code=401, detail="Invalid email or password");
+        }
+
+        token = secrets.token_urlsafe(32);
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest();
+        expires_at = (datetime.now(UTC) + timedelta(days=7)).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        );
+
+        await repo.create_session(token_hash, user["id"], expires_at);
+
+        response = Response(
+            content=json.dumps({"message": "Login successful", "user_id": user["id"]}),
+            media_type="application/json"
+        );
+
+        response.set_cookie(
+            key="session",
+            value=token,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=604800
+        );
+
+        return response;
+    }
+
+    @app.get("/me")
+    async def me(request: Request) -> dict[str, str | int] {
+        token = request.cookies.get("session");
+
+        if not token {
+            raise HTTPException(status_code=401, detail="Not logged in");
+        }
+
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest();
+        user = await repo.get_session(token_hash);
+
+        if user is None {
+            raise HTTPException(status_code=401, detail="Session expired or invalid");
+        }
+
+        return {
+            "user_id": user["user_id"],
+            "username": user["username"],
+            "email": user["email"]
+        };
+    }
+
+    @app.post("/logout")
+    async def logout(request: Request) -> Response {
+        token = request.cookies.get("session");
+
+        if token {
+            token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest();
+            await repo.delete_session(token_hash);
+        }
+
+        response = Response(
+            content=json.dumps({"message": "Logout successful"}),
+            media_type="application/json"
+        );
+
+        response.delete_cookie(key="session");
+
+        return response;
+    }
 
     @app.get("/")
     async def index -> Response {
