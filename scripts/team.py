@@ -153,11 +153,8 @@ def doctor(args):
     repo = repository()
     info = api(f"repos/{repo}")
     print(f"Repository: {repo}\nAccount: {api('user')['login']}\nPermissions: {json.dumps(info.get('permissions', {}))}")
-    from bootstrap import jac_binary
-    try:
-        print(f"Jac: {jac_binary()}")
-    except RuntimeError as error:
-        print(error)
+    runtime = subprocess.run([sys.executable, str(Path(__file__).with_name("bootstrap.py")), "--check"], capture_output=True, text=True)
+    print(runtime.stdout.strip() or runtime.stderr.strip())
     if not info.get("permissions", {}).get("push"):
         raise TeamError("Read-only access: ask the owner for collaborator access before starting a shared task.")
     print("GitHub collaboration is ready. Use bootstrap.py for app dependencies in each new worktree.")

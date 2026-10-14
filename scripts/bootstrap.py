@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Install the project's exact Jac binary, verify its checksum, and install packages."""
 import hashlib
+import argparse
 import os
 from pathlib import Path
 import platform
@@ -74,7 +75,13 @@ def install_binary():
 
 def main():
     try:
-        if forward_to_wsl("bootstrap.py"):
+        parser = argparse.ArgumentParser(description=__doc__)
+        parser.add_argument("--check", action="store_true", help="Report the installed runtime without installing packages")
+        args = parser.parse_args()
+        if forward_to_wsl("bootstrap.py", ["--check"] if args.check else []):
+            return 0
+        if args.check:
+            print(f"Jac {VERSION}: {jac_binary()}")
             return 0
         try:
             binary = jac_binary()
