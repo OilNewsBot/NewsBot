@@ -1,4 +1,4 @@
-"""X push adapter — default vendor: TwitterAPI.io (CLAUDE.md §4, preference #2).
+"""X push adapter — default vendor: TwitterAPI.io (docs/spec.md §4, preference #2).
 
 Chosen 2026-09-10: bills ~$0.15 per 1k delivered posts (no per-poll floor, no
 monthly minimum), so cost tracks actual account activity instead of poll rate.

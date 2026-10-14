@@ -4,7 +4,31 @@ Agentic financial news monitor for event-driven crude oil trading. Watches a
 curated list of OSINT accounts (Telegram + X), classifies each post's
 materiality with a rubric-scored LLM call, clusters posts into events, and
 surfaces new events / material updates in a local web UI within seconds.
-Spec: [CLAUDE.md](CLAUDE.md).
+Spec: [project specification](docs/spec.md).
+
+## Build with your agent
+
+Open this repository in **Codex or Claude Code** and describe what you want to
+build. Both read the shared [AGENTS.md](AGENTS.md). Your agent handles task
+coordination, isolated worktrees, checks, PRs, and automatic merging once the
+repository's required checks pass; routine changes need no human PR approval.
+
+Start with [one-time teammate setup](docs/getting-started.md). The repository owner
+must activate the [merge rules](docs/repository-admin.md) once. Agents use GitHub
+issues and PRs as shared context; no extra orchestration service is needed.
+
+**[Documentation index](docs/README.md)** · [Agent collaboration](docs/collaboration.md)
+· [Project map](docs/project.md) · [Shared interfaces](docs/contracts.md)
+
+```bash
+python3 scripts/team.py doctor       # GitHub access and runtime diagnostics
+python3 scripts/bootstrap.py         # verified Jac 0.37.25 + project packages
+python3 scripts/check.py             # the same offline checks used in CI
+```
+
+On Windows, use `python` for these commands. Setup/checks automatically run inside
+Ubuntu/WSL; the pinned release has no native Windows binary. The GitHub helper
+keeps using your Windows GitHub login.
 
 Written in [Jac](https://jaclang.org) (ported from Python 2026-10-07; see
 [Jac notes](#jac-notes)).
@@ -44,7 +68,7 @@ jac run                                # terminal 1
 jac run replay -- tests/fixtures/      # terminal 2, 10x speed
 ```
 
-## Data sources (decided 2026-09-10; CLAUDE.md §14)
+## Data sources (decided 2026-09-10; docs/spec.md §14)
 
 **Defaults: Telegram + TwitterAPI.io push. Fallback: official X API,
 budget-capped.** Running the fallback alongside push is safe — posts
@@ -173,8 +197,9 @@ The app is three small Jac apps in one workspace (`jac.toml`):
   static imports reach `httpx2` (it rejects that package's `typing.overload`
   methods, error E0076). Try a plain `import anthropic;` again after a jac
   upgrade.
-- **Checks.** `jac check` type-checks all three apps, `jac fmt --check` the
-  formatting. `jac check` prints warnings for HTML tag names and unused state
+- **Checks.** `python3 scripts/check.py` runs formatting (with explicit source
+  paths), `jac check`, offline tests, and the web build. Bare `jac fmt --check`
+  needs path arguments in this runtime. `jac check` prints warnings for HTML tag names and unused state
   setters in `web/main.jac`; jac's own scaffolds produce the same ones.
 
 ## Troubleshooting install
@@ -206,4 +231,4 @@ The app is three small Jac apps in one workspace (`jac.toml`):
   and an ID that stops resolving marks the account inactive with a UI banner.
 - Events go stale after 24 h without updates and stop being dedup candidates.
 - UPDATE notifications re-enter the tray as smaller cards (spec default; see
-  CLAUDE.md §14).
+  docs/spec.md §14).

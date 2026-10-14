@@ -1,4 +1,4 @@
-"""Rubric-scored materiality classification (CLAUDE.md §7).
+"""Rubric-scored materiality classification (docs/spec.md §7).
 
 Triage model classifies every post; a score within ±review_band of the
 threshold is re-run on the review model and the review result is final.

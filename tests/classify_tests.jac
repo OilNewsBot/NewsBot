@@ -1,4 +1,4 @@
-"""Classifier tests (CLAUDE.md §11): offline logic + cassette-backed fixture scoring."""
+"""Classifier tests (docs/spec.md §11): offline logic + cassette-backed fixture scoring."""
 
 import asyncio;
 import from jaclang.testing.test { parametrize }

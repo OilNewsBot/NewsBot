@@ -1,4 +1,4 @@
-"""Notification cards + in-process SSE bus (CLAUDE.md §6 step 7, §10)."""
+"""Notification cards + in-process SSE bus (docs/spec.md §6 step 7, §10)."""
 
 import asyncio;
 import contextlib;

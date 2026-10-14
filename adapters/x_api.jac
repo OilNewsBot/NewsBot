@@ -1,4 +1,4 @@
-"""Official X API adapter: pay-per-use polling (CLAUDE.md §4, preference #3).
+"""Official X API adapter: pay-per-use polling (docs/spec.md §4, preference #3).
 
 - GET /2/users/:id/tweets with since_id, exclude=replies, and
   expansions=referenced_tweets.id so quote tweets arrive with quoted text.

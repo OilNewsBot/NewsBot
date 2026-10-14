@@ -1,6 +1,6 @@
 # Fixtures
 
-Post sequences from the events of Aug 31 – Sep 8, 2026 (CLAUDE.md §11):
+Post sequences from the events of Aug 31 – Sep 8, 2026 (docs/spec.md §11):
 
 - `khasab_vlcc.json` — Saudi VLCC Sidr + Liberian-flagged Senegal Prosperity
   struck by projectiles ~17nm off Khasab exiting the Strait of Hormuz (Aug 31).

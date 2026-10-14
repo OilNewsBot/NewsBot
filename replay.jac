@@ -1,4 +1,4 @@
-"""Replay fixture posts through the live pipeline at 10x speed (CLAUDE.md §11).
+"""Replay fixture posts through the live pipeline at 10x speed (docs/spec.md §11).
 
     jac run replay -- tests/fixtures/ [--base-url http://localhost:8000]
                                       [--speed 10] [--preserve-timestamps]

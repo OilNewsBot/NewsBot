@@ -1,4 +1,4 @@
-"""SourceAdapter base + NormalizedPost (CLAUDE.md §4).
+"""SourceAdapter base + NormalizedPost (docs/spec.md §4).
 
 Rules every adapter must obey:
 - Track by numeric account ID; refresh the handle from the ID; an ID that stops
