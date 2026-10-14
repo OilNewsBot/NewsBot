@@ -4,6 +4,12 @@ An owner/admin performs this once. Teammates only need write access and their ow
 GitHub/agent login. The repository can remain on a personal GitHub account; this
 workflow does not require an organization, merge queue, or shared model API key.
 
+NewsBot is currently owned by Ary's personal account. Personal repositories have
+owner and collaborator roles, so **Ary must perform the settings step below**;
+collaborators cannot be promoted to a separate repository-admin role. Ary can
+simply ask his agent to pull main and run the command. Organization repositories
+can delegate this step to an administrator if the team moves to one later.
+
 ## Activate the setup
 
 1. Grant each teammate collaborator access and have them accept the invitation.
