@@ -66,6 +66,59 @@ obj Repo {
         return dict(row) if row else None;
     }
 
+    # -- users ----------------------------------------------------------------
+
+    async def create_user(
+        username: str, email: str, password_hash: str
+    ) -> int {
+        cur = await self._run(
+            """INSERT INTO users (username, email, password_hash)
+               VALUES (?, ?, ?)""",
+            (username, email, password_hash)
+        );
+        await self.db.commit();
+        return cur.lastrowid or 0;
+    }
+
+        async def get_user_by_email(email: str) -> Row | None {
+        return await self._one(
+            "SELECT * FROM users WHERE email = ?",
+            (email, )
+        );
+    }
+
+    async def create_session(
+        token_hash: str, user_id: int, expires_at: str
+    ) {
+        await self._run(
+            """INSERT INTO sessions (token_hash, user_id, expires_at)
+               VALUES (?, ?, ?)""",
+            (token_hash, user_id, expires_at)
+        );
+        await self.db.commit();
+    }
+
+    async def get_session(token_hash: str) -> Row | None {
+        return await self._one(
+            """SELECT sessions.user_id, users.username, users.email
+               FROM sessions
+               JOIN users ON users.id = sessions.user_id
+               WHERE sessions.token_hash = ?
+                 AND sessions.expires_at > CURRENT_TIMESTAMP""",
+            (token_hash, )
+        );
+    }
+    
+    async def delete_session(token_hash: str) {
+        await self._run(
+            "DELETE FROM sessions WHERE token_hash = ?",
+            (token_hash, )
+        );
+        await self.db.commit();
+    }        
+
+    
+
     # -- accounts -------------------------------------------------------------
 
     async def upsert_account(source: str, account_id: str, handle: str, tier: str) {
