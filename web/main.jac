@@ -9,6 +9,7 @@ self-contained page by `jac build web`. It talks to the FastAPI service
 
 import "./main.css";
 import from react { useEffect }
+import from .auth { AuthPanel }
 
 # ---------- shapes of the JSON the service sends ----------
 
@@ -527,6 +528,7 @@ def:pub app -> JsxElement {
         </div>
         <main>
             <h1>newsstream — crude oil</h1>
+            <AuthPanel />
             <div className="controls">
                 <label>
                     <input
