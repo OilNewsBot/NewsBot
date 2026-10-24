@@ -528,7 +528,7 @@ def:pub app -> JsxElement {
         </div>
         <main>
             <h1>newsstream — crude oil</h1>
-            <AuthPanel />
+            <AuthPanel/>
             <div className="controls">
                 <label>
                     <input
