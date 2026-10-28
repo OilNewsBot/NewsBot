@@ -47,6 +47,9 @@ accounts:
   - handle: financialjuice
     source: x
     tier: osint
+  - handle: AB4_Ali3
+    source: x
+    tier: osint
 
 # OPEN (CLAUDE.md §14): the user supplies the Telegram channel usernames that
 # mirror the seed accounts. Entries may be a bare username string (tier
