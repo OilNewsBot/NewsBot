@@ -5,12 +5,14 @@
 //! window stops the service it started. If a service is already listening on
 //! the configured port, the window reuses it and leaves it running on quit.
 //! Links to posts (x.com, t.me, ...) open in the default browser.
+//!
+//! Jac has no Windows build, so on Windows the service runs in Ubuntu on WSL
+//! (docs/getting-started.md) and the window connects to it over localhost.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::fs::{self, File};
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
-use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
@@ -33,7 +35,17 @@ fn repo_root() -> PathBuf {
     let root = std::env::var_os("NEWSBOT_ROOT")
         .map(PathBuf::from)
         .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."));
-    root.canonicalize().unwrap_or(root)
+    let root = root.canonicalize().unwrap_or(root);
+    // Windows canonical paths start with \\?\, which wslpath does not accept.
+    #[cfg(windows)]
+    let root = {
+        let text = root.to_string_lossy();
+        PathBuf::from(match text.strip_prefix(r"\\?\UNC\") {
+            Some(unc) => format!(r"\\{unc}"),
+            None => text.trim_start_matches(r"\\?\").to_string(),
+        })
+    };
+    root
 }
 
 /// `server.host` and `server.port` from config.yaml (defaults 127.0.0.1:8000).
@@ -74,12 +86,14 @@ fn listening(addr: &SocketAddr) -> bool {
 
 /// macOS apps opened from Finder get a minimal PATH, without Homebrew or
 /// ~/.local/bin, so find jac (and node/npm for its web build) explicitly.
+#[cfg(unix)]
 fn tool_path() -> String {
     let home = std::env::var("HOME").unwrap_or_default();
     let current = std::env::var("PATH").unwrap_or_default();
     format!("{home}/.local/bin:/opt/homebrew/bin:/usr/local/bin:{current}")
 }
 
+#[cfg(unix)]
 fn jac_executable() -> PathBuf {
     if let Some(jac) = std::env::var_os("JAC_EXECUTABLE") {
         return PathBuf::from(jac);
@@ -98,7 +112,9 @@ fn jac_executable() -> PathBuf {
 
 /// Start `jac run` in its own process group so stopping it also stops
 /// anything it spawned. Output goes to data/desktop-server.log (ignored by Git).
+#[cfg(unix)]
 fn start_service(root: &Path, log_path: &Path) -> std::io::Result<Child> {
+    use std::os::unix::process::CommandExt;
     fs::create_dir_all(log_path.parent().unwrap())?;
     let log = File::create(log_path)?;
     let jac = jac_executable();
@@ -114,14 +130,72 @@ fn start_service(root: &Path, log_path: &Path) -> std::io::Result<Child> {
         .spawn()
 }
 
-fn signal_group(child: &Child, signal: &str) {
+#[cfg(unix)]
+fn signal_group(child: &Child, _root: &Path, signal: &str) {
     let _ = Command::new("kill")
         .args([signal, &format!("-{}", child.id())])
         .status();
 }
 
-fn stop_service(mut child: Child) {
-    signal_group(&child, "-TERM");
+/// The Linux process group of the service in WSL, written by its start script.
+#[cfg(windows)]
+const PID_FILE: &str = "data/desktop-server.pid";
+
+/// `wsl -d <distro>` without a console window (this app has none to share).
+/// The distro name matches scripts/bootstrap.py.
+#[cfg(windows)]
+fn wsl() -> Command {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let distro = std::env::var("NEWSBOT_WSL_DISTRO").unwrap_or_else(|_| "Ubuntu".to_string());
+    let mut command = Command::new("wsl");
+    command.args(["-d", &distro]).creation_flags(CREATE_NO_WINDOW);
+    command
+}
+
+/// Start `jac run` in WSL as the leader of a new Linux session, recording its
+/// process group so stopping it also stops anything it spawned. A login shell
+/// picks up ~/.local/bin, where scripts/bootstrap.py installs jac.
+#[cfg(windows)]
+fn start_service(root: &Path, log_path: &Path) -> std::io::Result<Child> {
+    fs::create_dir_all(log_path.parent().unwrap())?;
+    let _ = fs::remove_file(root.join(PID_FILE));
+    let output = wsl().args(["--exec", "wslpath", "-a"]).arg(root).output()?;
+    if !output.status.success() {
+        let detail = String::from_utf8_lossy(&output.stderr).replace('\0', "");
+        return Err(std::io::Error::other(format!(
+            "WSL could not open {}: {}\nInstall Ubuntu in WSL (see docs/getting-started.md) \
+             or set NEWSBOT_WSL_DISTRO to its name.",
+            root.display(),
+            detail.trim()
+        )));
+    }
+    let linux_root = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let script = format!(
+        "echo $$ > {PID_FILE}; export PATH=\"$HOME/.local/bin:$PATH\"; \
+         export JAC_EXECUTABLE=\"$(command -v jac)\"; exec jac run"
+    );
+    let log = File::create(log_path)?;
+    wsl()
+        .args(["--cd", &linux_root, "--exec", "setsid", "--wait", "bash", "-lc", &script])
+        .stdin(Stdio::null())
+        .stdout(log.try_clone()?)
+        .stderr(log)
+        .spawn()
+}
+
+#[cfg(windows)]
+fn signal_group(_child: &Child, root: &Path, signal: &str) {
+    let group = fs::read_to_string(root.join(PID_FILE)).unwrap_or_default();
+    if let Ok(group) = group.trim().parse::<u32>() {
+        let _ = wsl()
+            .args(["--exec", "kill", signal, "--", &format!("-{group}")])
+            .status();
+    }
+}
+
+fn stop_service(mut child: Child, root: &Path) {
+    signal_group(&child, root, "-TERM");
     let deadline = Instant::now() + STOP_TIMEOUT;
     while Instant::now() < deadline {
         if let Ok(Some(_)) = child.try_wait() {
@@ -129,7 +203,8 @@ fn stop_service(mut child: Child) {
         }
         thread::sleep(Duration::from_millis(100));
     }
-    signal_group(&child, "-KILL");
+    signal_group(&child, root, "-KILL");
+    let _ = child.kill();
     let _ = child.wait();
 }
 
@@ -177,8 +252,24 @@ fn is_local(url: &Url, port: u16) -> bool {
     }
 }
 
+#[cfg(target_os = "macos")]
 fn open_in_browser(url: &Url) {
     let _ = Command::new("open").arg(url.as_str()).spawn();
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn open_in_browser(url: &Url) {
+    let _ = Command::new("xdg-open").arg(url.as_str()).spawn();
+}
+
+#[cfg(windows)]
+fn open_in_browser(url: &Url) {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let _ = Command::new("explorer")
+        .arg(url.as_str())
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn();
 }
 
 /// Wait for the service, then point the window at it (runs on its own thread).
@@ -210,7 +301,11 @@ fn connect(app: tauri::AppHandle, root: PathBuf, host: String, port: u16) {
                 show_error(
                     &window,
                     "Could not run jac",
-                    &format!("{e}\nRun python3 scripts/bootstrap.py in {}.", root.display()),
+                    &format!(
+                        "{e}\nRun python3 scripts/bootstrap.py in {} \
+                         (Windows: python, which installs jac in WSL).",
+                        root.display()
+                    ),
                 );
                 return;
             }
@@ -249,6 +344,7 @@ fn connect(app: tauri::AppHandle, root: PathBuf, host: String, port: u16) {
 fn main() {
     let root = repo_root();
     let (host, port) = server_address(&root);
+    let service_root = root.clone();
 
     let app = tauri::Builder::default()
         .manage(Service(Mutex::new(None)))
@@ -281,10 +377,10 @@ fn main() {
     let handle = app.handle().clone();
     ctrlc::set_handler(move || handle.exit(0)).expect("signal handler");
 
-    app.run(|app, event| {
+    app.run(move |app, event| {
         if let RunEvent::Exit = event {
             if let Some(child) = app.state::<Service>().0.lock().unwrap().take() {
-                stop_service(child);
+                stop_service(child, &service_root);
             }
         }
     });

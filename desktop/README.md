@@ -1,13 +1,18 @@
 # NewsBot desktop app (Tauri)
 
-This folder wraps NewsBot in a Mac desktop window. It does not change NewsBot
-itself. When you open the app, it:
+This folder wraps NewsBot in a desktop window for Mac, Windows, and Linux. It
+does not change NewsBot itself. When you open the app, it:
 
 1. Starts the normal NewsBot server (`jac run`) from this repository.
 2. Shows a "Starting NewsBot…" screen until the server answers.
 3. Shows the same page you would see at http://127.0.0.1:8000, in its own window.
-4. Stops the server when you quit the app (⌘Q). If a server was already
-   running before you opened the app, the app uses it and leaves it running.
+4. Stops the server when you quit the app (⌘Q on Mac, or close the window). If
+   a server was already running before you opened the app, the app uses it and
+   leaves it running.
+
+On Windows, Jac only runs inside Ubuntu in WSL (see
+[docs/getting-started.md](../docs/getting-started.md)), so the app starts the
+server there and shows it in a normal Windows window.
 
 Links to posts (x.com, t.me, …) open in your normal web browser.
 
@@ -51,6 +56,40 @@ cd desktop
 npm install
 ```
 
+## One-time setup (Windows)
+
+NewsBot itself must already work through WSL: Ubuntu installed in WSL2 and
+`python scripts/bootstrap.py` run once (see docs/getting-started.md). Then open
+**PowerShell** (not the Ubuntu window) and run:
+
+```powershell
+# 1. Check the tools you need. Each command should print a version number.
+node -v          # Node.js:  winget install OpenJS.NodeJS.LTS
+cargo -V         # Rust:     winget install Rustlang.Rustup
+wsl -l -v        # should list Ubuntu with VERSION 2
+
+# Rust on Windows also needs the "Desktop development with C++" tools from
+# Visual Studio Build Tools: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+# The WebView2 runtime is already part of Windows 10 (recent updates) and 11.
+
+# 2. Install the desktop app's tools (only needed once).
+cd path\to\NewsBot\desktop
+npm install
+```
+
+Clone NewsBot on the Windows side (for example `C:\Users\you\NewsBot`) and run
+these commands there. If your Ubuntu distribution has another name, set
+`NEWSBOT_WSL_DISTRO` to that name, just as for `bootstrap.py`. If your copy of
+NewsBot lives inside WSL instead, set `NEWSBOT_ROOT` to its Windows path, such
+as `\\wsl.localhost\Ubuntu\home\you\NewsBot`.
+
+## One-time setup (Linux)
+
+Install Node.js, Rust, and Tauri's system libraries
+(https://v2.tauri.app/start/prerequisites/#linux), run
+`python3 scripts/bootstrap.py` in the NewsBot folder, then `npm install` in
+`desktop/`.
+
 ## Run it while developing
 
 ```sh
@@ -58,9 +97,9 @@ cd ~/Documents/eecs449/NewsBot/desktop
 npm run dev
 ```
 
-The first run compiles Rust and takes about a minute. After that a NewsBot
-window opens. To stop, quit the window (⌘Q) or press Ctrl+C in the Terminal.
-Either way, the NewsBot server stops too.
+The first run compiles Rust and takes about a minute (longer on Windows). After
+that a NewsBot window opens. To stop, quit the window or press Ctrl+C in the
+terminal. Either way, the NewsBot server stops too.
 
 ## Build a real app you can double-click
 
@@ -69,10 +108,15 @@ cd ~/Documents/eecs449/NewsBot/desktop
 npm run build
 ```
 
-When it finishes you get:
+The build makes an app for the computer you run it on. Each person builds the
+app on their own computer. When it finishes, the files are in
+`src-tauri/target/release/bundle/`:
 
-- `src-tauri/target/release/bundle/macos/NewsBot.app`, the app itself
-- `src-tauri/target/release/bundle/dmg/NewsBot_0.1.0_aarch64.dmg`, an installer image
+- Mac: `macos/NewsBot.app` (the app itself) and `dmg/NewsBot_0.1.0_aarch64.dmg`
+- Windows: `nsis/NewsBot_0.1.0_x64-setup.exe` and `msi/NewsBot_0.1.0_x64_en-US.msi`
+- Linux: `deb/`, `rpm/`, and `appimage/` packages
+
+On Mac:
 
 To open the app folder in Finder:
 
@@ -100,11 +144,13 @@ or Claude calls can cost money, just like `jac run`.
 ## If something goes wrong
 
 The window shows the error and the last lines of the server log. The full log is
-at `~/Documents/eecs449/NewsBot/data/desktop-server.log`.
+at `data/desktop-server.log` in the NewsBot folder.
 
 | Message | Fix |
 | --- | --- |
 | "Could not run jac" | Run `python3 scripts/bootstrap.py` in the NewsBot folder |
+| "WSL could not open …" (Windows) | Install Ubuntu in WSL, or set `NEWSBOT_WSL_DISTRO` to your distribution's name |
+| "jac: command not found" in the log (Windows) | Run `python scripts/bootstrap.py` from PowerShell, which installs jac in WSL |
 | "NewsBot stopped while starting" | Read the log; try `jac run` in the NewsBot folder to see the same error |
 | "NewsBot folder not found" | Rebuild the app, or set `NEWSBOT_ROOT` as shown above |
 | Window shows some other website | Another program uses port 8000, and the app connected to it. Stop that program, or change `server.port` in `config.yaml` |
