@@ -2,6 +2,7 @@
 handle change on stable ID handled, unresolvable ID marks account inactive."""
 
 import asyncio;
+import time;
 import httpx;
 import from datetime { UTC, datetime, timedelta }
 import from types { SimpleNamespace }
@@ -338,6 +339,110 @@ test "sync activates inactive rule" {
         }
     }
     asyncio.run(body());
+}
+
+test "sync re-arms a credit paused rule" {
+    # Out of credits, the vendor keeps is_effect 1 but pauses the rule; an
+    # otherwise up-to-date rule must still be cycled so a top-up resumes it.
+    async def body {
+        settings = make_settings();
+        async with open_repo(settings) as repo {
+            handles = [
+                a.handle
+                for a in settings.accounts
+                if a.source == "x"
+            ];
+            calls: list[tuple[str, str]] = [];
+            existing: list[Json] = [
+                {
+                    "rule_id": "r1",
+                    "tag": "newsstream-0",
+                    "value": build_rule_values(handles)[0],
+                    "interval_seconds": settings.x_push_interval,
+                    "is_effect": 1,
+                    "run_status": "paused_insufficient_credits"
+                }
+            ];
+            rest = _rules_transport(calls, existing);
+            async with rest {
+                await XPushAdapter(settings, repo)._sync_rules(rest, handles);
+            }
+            assert calls
+                == [
+                    ("GET", "/oapi/tweet_filter/get_rules"),
+                    ("POST", "/oapi/tweet_filter/update_rule"),  # is_effect=0
+                    ("POST", "/oapi/tweet_filter/update_rule")  # is_effect=1
+                ];
+        }
+    }
+    asyncio.run(body());
+}
+
+test "http 402 marks x push credits exhausted" {
+    # Live 2026-10-30: billed endpoints answer 402 once credits run out, while
+    # the WebSocket stays open; status must not keep claiming "live".
+    async def body {
+        settings = make_settings();
+        async with open_repo(settings) as repo {
+            def handler(request: httpx.Request) -> httpx.Response {
+                return httpx.Response(402, json={"status": "error"});
+            }
+            async def sink(p: NormalizedPost) {}
+            adapter = XPushAdapter(settings, repo);
+            adapter._mark_live(1);
+            rest = httpx.AsyncClient(
+                transport=httpx.MockTransport(handler),
+                base_url="https://api.twitterapi.io"
+            );
+            async with rest {
+                pushed = await adapter._backfill(rest, ["UK_MTO"], {"uk_mto"}, sink);
+            }
+            assert pushed == 0;
+            assert adapter.status.state == "budget-paused";
+            assert "credits exhausted" in adapter.status.detail;
+            # stays paused until the vendor reports the rules running again,
+            # including across a reconnect that overwrote the state
+            adapter.status.state = "reconnecting";
+            adapter._mark_live(1);
+            assert adapter.status.state == "budget-paused";
+            assert "credits exhausted" in adapter.status.detail;
+        }
+    }
+    asyncio.run(body());
+}
+
+test "paused rule status marks and clears credit exhaustion" {
+    settings = make_settings();
+    adapter = XPushAdapter(settings);
+    adapter._mark_live(3);
+    paused: Json = {
+        "tag": "newsstream-0",
+        "is_effect": 1,
+        "run_status": "paused_insufficient_credits"
+    };
+    other_tag: Json = {
+        "tag": "someone-else-0",
+        "is_effect": 1,
+        "run_status": "paused_insufficient_credits"
+    };
+    running: Json = {"tag": "newsstream-0", "is_effect": 1, "run_status": "running"};
+
+    adapter._check_credits([other_tag, running], 3);  # not our rule: ignored
+    assert adapter.status.state == "live";
+
+    adapter._check_credits([paused], 3);
+    assert adapter.status.state == "budget-paused";
+    assert "paused_insufficient_credits" in adapter.status.detail;
+
+    # a recent 402 outweighs a running run_status
+    adapter._last_402 = time.monotonic();
+    adapter._check_credits([running], 3);
+    assert adapter.status.state == "budget-paused";
+
+    adapter._last_402 = float("-inf");
+    adapter._check_credits([running], 3);
+    assert adapter.status.state == "live";
+    assert adapter.status.detail == "twitterapi.io, 3 account(s)";
 }
 
 test "poll once queries search and advances since" {

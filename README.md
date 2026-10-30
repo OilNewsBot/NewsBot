@@ -94,8 +94,11 @@ deduplicate by id, so double delivery is skipped, not double-surfaced.
    `$/day ≈ 86400/interval × 0.00015` → **10 s (default) = $1.30/day, 30 s =
    $0.43/day, 60 s = $0.22/day**, plus real post volume (~pennies). Still
    ~100× cheaper than official polling at the same latency. Set up
-   auto-recharge on the vendor dashboard — exhausted credits silently stop
-   deliveries. Other observed
+   auto-recharge on the vendor dashboard — exhausted credits stop deliveries
+   (the vendor pauses the rule and answers HTTP 402) while the WebSocket stays
+   open; the footer then shows `x_push` as `budget-paused` within ~5 minutes.
+   After a top-up, restart the app so the rule sync re-arms the paused rule.
+   Other observed
    behaviors: first activation delivers a ~2 h backlog burst; the free tier
    REST limit is 1 request/5 s (handled); rules are deactivated on app
    shutdown so credits don't drain while you're not running, and re-armed at

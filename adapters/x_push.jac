@@ -32,6 +32,12 @@ Billing behavior observed live 2026-09-10 (trial account):
 - Free tier REST limit: 1 request / 5 s (handled by _call).
 - Rules are deactivated on shutdown (matching appears to bill even with no
   listener connected) and re-armed by the next startup's rule sync.
+
+Credit exhaustion observed live 2026-10-30: the vendor keeps the rule active
+(is_effect 1) but sets run_status "paused_insufficient_credits", billed REST
+endpoints answer HTTP 402, and the WebSocket stays open with nothing on it.
+The adapter reports budget-paused from either signal (rules are re-checked
+every CREDIT_CHECK_S while streaming) and the rule sync re-arms paused rules.
 """
 
 import asyncio;
@@ -57,7 +63,14 @@ glob REST_BASE: str = "https://api.twitterapi.io",
      # poll REST search this long before retrying the WS
      POLL_FALLBACK_S: float = 600,
      # since_time overlap between poll cycles; dedup absorbs repeats
-     POLL_OVERLAP_S: int = 30;
+     POLL_OVERLAP_S: int = 30,
+     # how often a live stream re-reads rule run_status (silent credit pause)
+     CREDIT_CHECK_S: float = 300;
+
+"""Vendor-paused rule (e.g. run_status "paused_insufficient_credits")."""
+def _is_paused(rule: Json) -> bool {
+    return str(rule.get("run_status") or "").startswith("paused");
+}
 
 """A websockets.exceptions.InvalidStatus handshake refusal with HTTP 403."""
 def _is_ws_rejection(e: Exception) -> bool {
@@ -183,12 +196,21 @@ obj XPushAdapter(SourceAdapter) {
     # consecutive handshake rejections
     has _ws_403_count: int postinit;
     has refetch_running: bool postinit;
+    # vendor credits exhausted (HTTP 402 or a paused rule)
+    has _credits_exhausted: bool postinit;
+    # monotonic time of the last HTTP 402
+    has _last_402: float postinit;
+    # status detail to restore while credits stay exhausted
+    has _credit_detail: str postinit;
 
     override def postinit {
         self.status = AdapterStatus(name="x_push");
         self._poll_continuous = False;
         self._ws_403_count = 0;
         self.refetch_running = False;
+        self._credits_exhausted = False;
+        self._last_402 = float("-inf");
+        self._credit_detail = "";
     }
 
     def _rest -> httpx.AsyncClient {
@@ -199,8 +221,9 @@ obj XPushAdapter(SourceAdapter) {
         );
     }
 
-    """REST call with 429 pacing: the free tier allows 1 request / 5 s."""
-    static async def _call(
+    """REST call with 429 pacing: the free tier allows 1 request / 5 s.
+    A 402 (Payment Required) marks the vendor credits exhausted."""
+    async def _call(
         rest: httpx.AsyncClient, method: str, path: str, **kw: any
     ) -> httpx.Response {
         r = await rest.request(method, path, **kw);
@@ -211,7 +234,84 @@ obj XPushAdapter(SourceAdapter) {
             await asyncio.sleep(5.5);
             r = await rest.request(method, path, **kw);
         }
+        if r.status_code == 402 {
+            self._last_402 = time.monotonic();
+            self._mark_credits_exhausted(f"HTTP 402 on {path}");
+        }
         return r;
+    }
+
+    def _mark_credits_exhausted(why: str) {
+        if not self._credits_exhausted {
+            log.error(
+                "x_push: twitterapi.io credits exhausted (%s); X deliveries stopped "
+                "until the account is topped up",
+                why
+            );
+        }
+        self._credits_exhausted = True;
+        self._credit_detail = f"twitterapi.io credits exhausted ({why}) - top up on the vendor dashboard";
+        self.status.state = "budget-paused";
+        self.status.detail = self._credit_detail;
+    }
+
+    """Connected: live, unless credits are still exhausted (a reconnect
+    overwrites the state, so restore budget-paused)."""
+    def _mark_live(n_accounts: int) {
+        if self._credits_exhausted {
+            self.status.state = "budget-paused";
+            self.status.detail = self._credit_detail;
+            return;
+        }
+        self.status.state = "live";
+        self.status.detail = f"twitterapi.io, {n_accounts} account(s)";
+    }
+
+    """Update credit state from a get_rules snapshot. A paused rule is
+    authoritative; clearing also waits out any recent 402 so a stale
+    run_status cannot hide one."""
+    def _check_credits(rules: list[Json], n_accounts: int) {
+        prefix = self.settings.x_push_rule_tag;
+        ours = [
+            r
+            for r in rules
+            if str(r.get("tag", "")).startswith(prefix)
+        ];
+        paused = [
+            r
+            for r in ours
+            if _is_paused(r)
+        ];
+        if paused {
+            self._mark_credits_exhausted(
+                f"rule {paused[0].get('tag')} {paused[0].get('run_status')}"
+            );
+        } elif self._credits_exhausted
+            and time.monotonic() - self._last_402 > CREDIT_CHECK_S {
+            log.info("x_push: twitterapi.io rules running again; credits restored");
+            self._credits_exhausted = False;
+            self._mark_live(n_accounts);
+        }
+    }
+
+    """While the WebSocket is open, periodically re-read rule run_status:
+    a credit pause leaves the socket connected but silent."""
+    async def _watch_credits(rest: httpx.AsyncClient, n_accounts: int) {
+        while True {
+            try {
+                r = await self._call(rest, "GET", "/oapi/tweet_filter/get_rules");
+                if r.status_code == 200 {
+                    self._check_credits(
+                        (r.json().get("rules") or []) as list[Json], n_accounts
+                    );
+                }
+            } except asyncio.CancelledError {
+                raise;
+            } except Exception as e {
+                log.warning("x_push credit check failed: %s", e);
+            }
+            await asyncio.sleep(CREDIT_CHECK_S);
+        }
     }
 
     async def resolve_account(handle: str) -> tuple[str, str] {
@@ -262,13 +362,23 @@ obj XPushAdapter(SourceAdapter) {
                 rule_id = body["rule_id"];
             } elif existing.get("value") == value
                 and float(existing.get("interval_seconds") or 0) == float(interval)
-                and existing.get("is_effect") == 1 {
+                and existing.get("is_effect") == 1
+                and not _is_paused(existing) {
                 # Nothing to change. Never touch an active up-to-date rule:
                 # the vendor rejects update_rule on active rules ("update rule
                 # failed"), which crash-looped every reconnect on 2026-09-10.
                 continue;
             } else {
                 rule_id = existing["rule_id"];
+                if _is_paused(existing) {
+                    # A vendor pause (e.g. out of credits) leaves is_effect 1;
+                    # cycle the rule so a top-up resumes delivery.
+                    log.warning(
+                        "x_push rule %s is %s; re-arming",
+                        tag,
+                        existing.get("run_status")
+                    );
+                }
                 if existing.get("is_effect") == 1 {
                     # Active rules reject updates, but accept deactivation;
                     # deactivate with the OLD content, then apply the change.
@@ -379,10 +489,7 @@ obj XPushAdapter(SourceAdapter) {
                             ping_interval=40,
                             ping_timeout=30
                         ) as ws {
-                            self.status.state = "live";
-                            self.status.detail = f"twitterapi.io, {len(
-                                handles
-                            )} account(s)";
+                            self._mark_live(len(handles));
                             self._poll_continuous = False;
                             self._ws_403_count = 0;
                             log.info("x_push live (%s)", s.x_push_url);
@@ -391,19 +498,30 @@ obj XPushAdapter(SourceAdapter) {
                             } except Exception as e {
                                 log.warning("x_push backfill failed: %s", e);
                             }
-                            async for raw in ws {
-                                posts: list[NormalizedPost] = [];
-                                try {
-                                    posts = parse_ws_message(json.loads(raw), allowed);
-                                } except (
-                                    json.JSONDecodeError,
-                                    KeyError,
-                                    TypeError
-                                ) as e {
-                                    log.warning("x_push unparseable message: %s", e);
-                                    continue;
+                            watch = asyncio.create_task(
+                                self._watch_credits(rest, len(handles))
+                            );
+                            try {
+                                async for raw in ws {
+                                    posts: list[NormalizedPost] = [];
+                                    try {
+                                        posts = parse_ws_message(
+                                            json.loads(raw), allowed
+                                        );
+                                    } except (
+                                        json.JSONDecodeError,
+                                        KeyError,
+                                        TypeError
+                                    ) as e {
+                                        log.warning(
+                                            "x_push unparseable message: %s", e
+                                        );
+                                        continue;
+                                    }
+                                    await self._emit(posts, sink);
                                 }
-                                await self._emit(posts, sink);
+                            } finally {
+                                watch.cancel();
                             }
                         }
                     }
