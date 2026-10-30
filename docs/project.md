@@ -17,6 +17,7 @@ this page maps the implementation as inspected for the collaboration setup.
 | Model boundary | `pipeline/llm.jac` wraps Anthropic, JSON parsing/retry, failure tracking, logging, and cassette record/replay |
 | Persistence | `db/schema.sql` and `db/repo.jac`, SQLite through aiosqlite |
 | Browser | `web/main.jac` and `web/main.css`, built by `jac build web` into `.jac/client/web/dist/index.html` |
+| Desktop | `desktop/` is a Tauri window that starts `jac run`, shows `/`, and stops the service on quit; see its README |
 | Replay | `replay.jac` sends fixture posts to a running service's `/ingest` endpoint |
 | Verification | Jac tests under `tests/`; Python collaboration tests under `scripts/tests/`; one combined CI entry point |
 

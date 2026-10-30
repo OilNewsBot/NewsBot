@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NewsBot</title>
+<style>
+  body { margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center;
+         font: 14px -apple-system, sans-serif; background: #0e1116; color: #d7dde8; }
+  main { max-width: 520px; padding: 24px; text-align: center; }
+  .spin { width: 28px; height: 28px; margin: 0 auto 16px; border: 3px solid #2a313c;
+          border-top-color: #d7dde8; border-radius: 50%; animation: s 1s linear infinite; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  pre { text-align: left; white-space: pre-wrap; background: #161b22; padding: 12px;
+        border-radius: 6px; font-size: 12px; }
+  .error .spin { display: none; }
+</style>
+</head>
+<body>
+<main id="box">
+  <div class="spin"></div>
+  <h2 id="title">Starting NewsBot…</h2>
+  <p id="detail">The first start builds the web page and can take a minute.</p>
+</main>
+<script>
+  // Called from the Rust side (main.rs) when the service fails to start.
+  window.showError = function (title, detail) {
+    document.getElementById("box").className = "error";
+    document.getElementById("title").textContent = title;
+    var d = document.getElementById("detail");
+    d.innerHTML = "";
+    var pre = document.createElement("pre");
+    pre.textContent = detail;
+    d.appendChild(pre);
+  };
+</script>
+</body>
+</html>

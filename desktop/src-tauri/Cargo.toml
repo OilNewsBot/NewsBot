@@ -1,0 +1,13 @@
+[package]
+name = "newsbot-desktop"
+version = "0.1.0"
+description = "Desktop window for the NewsBot / newsstream service"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "=2.7.3", features = [] }
+
+[dependencies]
+tauri = { version = "=2.12.3", features = [] }
+# Ctrl+C / kill in a terminal: quit normally so the service is stopped too.
+ctrlc = { version = "=3.5.2", features = ["termination"] }
