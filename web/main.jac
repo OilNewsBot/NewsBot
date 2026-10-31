@@ -448,10 +448,18 @@ def:pub app -> JsxElement {
     }
 
     async def boot {
-        # Seed the seen-set with history so old notifications don't flood the tray.
-        hist = await get_json("/notifications?since=0");
-        for n in (hist or []) {
-            handle(n as Notification, False);
+        # Seed the seen-set with all history so old notifications don't flood the
+        # tray. /notifications returns one page at a time (repository limit), so
+        # keep reading from the highest id until a page adds nothing.
+        while True {
+            before = _last_id;
+            hist = await get_json("/notifications?since=" + str(_last_id));
+            for n in (hist or []) {
+                handle(n as Notification, False);
+            }
+            if _last_id == before {
+                break;
+            }
         }
         connect();
         load_feed();
