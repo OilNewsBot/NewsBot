@@ -51,6 +51,11 @@ null on the relevant paths. Do not assume every notification is classified.
 | `GET /status` | Adapter states, latency/counts, estimated model spend, fail-open state, X budget/reads, UI threshold/settings, inactive accounts |
 | `POST /ingest` | A normalized-post JSON representation; parses ISO timestamps and queues it, returning `{"queued": true}` |
 | `POST /refetch?hours=12` | Starts source catch-up; clamps hours to 1–48; returns 409 when unconfigured or already running |
+| `GET /trading` | Same built UI as `/`; the page shows the trading view by path |
+| `GET /portfolio` | `portfolio` (row or null), `enabled`, `max_share`, `max_hold_minutes`, `aggressiveness` levels, `contracts` per ticker |
+| `PUT /portfolio` | JSON `portfolio_value`, `available_cash`, `aggressiveness`, `max_hold_minutes`; 422 when invalid; returns the saved row |
+| `GET /suggestions` | Object containing `suggestions`, newest first, each a `trade_suggestions` row plus `event_title` |
+| `GET /prices?ticker=WTI[&start=ISO&end=ISO]` | `ticker`, `symbol`, `last`, `bars` (`t` epoch seconds, `c` close), 1-minute; latest trading day or the given window; 502 when the feed fails |
 
 The browser deduplicates on `notification_id` and requests backfill on reconnect.
 SSE IDs are notification IDs, not post IDs or event IDs. When adding a field,

@@ -141,3 +141,40 @@ footer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel)
 .auth-success {
     color: #80e0a0;
 }
+/* ---- trading page (web/trading.jac) ---- */
+.titlebar { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.trading h1 { letter-spacing: .06em; text-transform: none; color: var(--text); font-size: 18px; }
+.trading h2 { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); margin: 0 0 10px; }
+.disclaimer { font-size: 12px; margin-top: -6px; }
+.small { font-size: 12px; }
+.warn-text { color: var(--amber); font-size: 13px; margin: 6px 0 0; }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+         padding: 12px 14px; margin-bottom: 14px; }
+.portfolio { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.portfolio label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--dim); }
+.portfolio input, .portfolio select { background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 8px; font-size: 13px; width: 150px; }
+.trading button { background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+.trading button:hover { border-color: var(--accent); }
+.chart-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; font-size: 13px; }
+.toggle { display: inline-flex; }
+.toggle button { border-radius: 0; }
+.toggle button:first-child { border-radius: 6px 0 0 6px; }
+.toggle button:last-child { border-radius: 0 6px 6px 0; border-left: none; }
+.toggle button.on { background: #26304a; color: #9fc3ff; border-color: var(--accent); }
+.chart { width: 100%; height: auto; display: block; }
+.chart .line { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.chart .grid { stroke: var(--border); stroke-width: 1; }
+.chart .axis { fill: var(--dim); font-size: 11px; }
+.chart .mark { stroke: var(--bg); stroke-width: 2; }
+.chart-empty { height: 180px; display: flex; align-items: center; justify-content: center; }
+.sugg { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; padding: 7px 8px;
+        border-top: 1px solid var(--border); font-size: 13px; cursor: pointer; border-radius: 4px; }
+.sugg:hover { background: var(--panel2); }
+.sugg.picked { background: #1d2740; }
+.sugg .tick { font-weight: 600; }
+.sugg .side { font-size: 11px; font-weight: 700; letter-spacing: .06em; }
+.sugg .side.long { color: var(--green); }
+.sugg .side.short { color: var(--red); }
+.sugg-event { flex-basis: 100%; font-size: 12px; }

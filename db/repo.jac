@@ -303,6 +303,77 @@ obj Repo {
         return out;
     }
 
+    # -- trading ----------------------------------------------------------------
+
+    async def get_portfolio -> Row | None {
+        return await self._one("SELECT * FROM portfolio WHERE id = 1");
+    }
+
+    async def set_portfolio(
+        portfolio_value: float,
+        available_cash: float,
+        aggressiveness: str,
+        max_hold_minutes: int
+    ) {
+        await self._run(
+            """INSERT INTO portfolio (id, portfolio_value, available_cash, aggressiveness, max_hold_minutes, updated_at)
+               VALUES (1, ?, ?, ?, ?, ?)
+               ON CONFLICT (id) DO UPDATE SET
+                 portfolio_value = excluded.portfolio_value,
+                 available_cash = excluded.available_cash,
+                 aggressiveness = excluded.aggressiveness,
+                 max_hold_minutes = excluded.max_hold_minutes,
+                 updated_at = excluded.updated_at""",
+            (
+                portfolio_value,
+                available_cash,
+                aggressiveness,
+                max_hold_minutes,
+                iso(utcnow())
+            )
+        );
+        await self.db.commit();
+    }
+
+    async def insert_suggestion(s: Row) -> int {
+        cols = [
+            "created_at",
+            "ticker",
+            "side",
+            "contract",
+            "contracts",
+            "notional_usd",
+            "hold_minutes",
+            "closeout_at",
+            "ref_price",
+            "structure",
+            "rule",
+            "rationale",
+            "model",
+            "event_id",
+            "notification_id",
+            "post_id"
+        ];
+        cur = await self._run(
+            f"INSERT INTO trade_suggestions ({', '.join(cols)}) VALUES ({', '.join(
+                '?' * len(cols)
+            )})",
+            [s.get(c) for c in cols]
+        );
+        await self.db.commit();
+        return cur.lastrowid or 0;
+    }
+
+    """Newest first, with the event title for display."""
+    async def suggestions(limit: int = 500) -> list[Row] {
+        return await self._all(
+            """SELECT t.*, e.title AS event_title
+               FROM trade_suggestions t LEFT JOIN events e ON e.id = t.event_id
+               ORDER BY t.created_at DESC, t.id DESC LIMIT ?""",
+            (limit, )
+        );
+    }
+
     # -- llm accounting -------------------------------------------------------
 
     async def insert_llm_call(

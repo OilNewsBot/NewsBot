@@ -19,7 +19,7 @@ def main():
     commands = [[sys.executable, "-m", "unittest", "discover", "-s", "scripts/tests", "-v"]]
     env = os.environ.copy()
     # Empty values also prevent python-dotenv from loading credentials from .env.
-    for name in ("ANTHROPIC_API_KEY", "TELEGRAM_API_ID", "TELEGRAM_API_HASH", "TELEGRAM_BOT_TOKEN", "X_BEARER_TOKEN", "X_PUSH_API_KEY", "TRIAGE_MODEL", "REVIEW_MODEL"):
+    for name in ("ANTHROPIC_API_KEY", "TELEGRAM_API_ID", "TELEGRAM_API_HASH", "TELEGRAM_BOT_TOKEN", "X_BEARER_TOKEN", "X_PUSH_API_KEY", "TRIAGE_MODEL", "REVIEW_MODEL", "TRADE_MODEL"):
         env[name] = ""
     env["JAC_TEST_JOBS"] = "0"
     env["NEWSSTREAM_CASSETTE_MODE"] = "replay"
