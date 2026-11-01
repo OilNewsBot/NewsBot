@@ -30,6 +30,7 @@ import from pipeline.llm { LLMClient }
 import from pipeline.notify { Bus }
 import from pipeline.prices { PriceFeed, PriceUnavailable }
 import from pipeline.runner { Pipeline }
+import from mobile.push { install_mobile }
 import from pipeline.trade { MAX_HOLD_MINUTES, MAX_PORTFOLIO_SHARE, Trader }
 
 glob log: logging.Logger = logging.getLogger("newsstream.app");
@@ -168,6 +169,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     }
 
     app = FastAPI(title="newsstream", lifespan=lifespan);
+    install_mobile(app, repo);
     setattr(app.state, "pipeline", pipeline);
     setattr(app.state, "repo", repo);
     setattr(app.state, "settings", settings);
