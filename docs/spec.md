@@ -488,3 +488,51 @@ deterministically after the first recording.
 - Measured p95 latency from `posted_at` to card render under 90 s on the
   Telegram path (dominated by platform delivery) and under `poll_interval + 5 s`
   on the X polling path.
+
+## 16. Trading page (added 2026-10-31)
+
+`/trading` ("Newsstream - Trading") turns new stories into **speculative,
+short-term momentum trade suggestions** on WTI crude (`WTI`) or RBOB gasoline
+(`RBOB`) futures. Suggestions only: the app never places orders and has no
+brokerage link.
+
+- **Portfolio** is typed in by hand (Robinhood has no official API for stock or
+  futures accounts): portfolio size, available cash, aggressiveness
+  (`low`/`medium`/`high`), and time horizon (maximum hold, up to 120 minutes).
+  Stored in the one-row `portfolio` table. With no portfolio saved, no
+  suggestion is attempted and no model call is made.
+- **Trigger:** after a `NEW_EVENT` card is published, in a background task, so
+  news delivery is never delayed. Never on `UPDATE`, `DUPLICATE`, `UNFILTERED`,
+  classifier-error cards, or a `NEW_EVENT` that only exists because dedup was
+  unavailable.
+- **Direction** comes from one model call (`TRADE_MODEL` slot, prompt
+  `pipeline/prompts/trade_suggest.md`), first matching rule wins:
+  refinery-capacity attack → long RBOB; attack on tankers/pipelines/storage →
+  long WTI; non-US product export ban (China, Russia) → long RBOB; significant
+  US–Iran peace progress → short WTI; significant Ukraine–Russia peace progress
+  → short RBOB; other news likely to stymie oil production (Gulf Coast weather
+  disasters, strikes on Middle East or Russian oil fields) → long WTI; unclear,
+  minor, or two-sided news → no trade.
+- **Holding time** follows how quickly the news could reverse (the model picks
+  a tier; minutes are configurable under `trading.hold_minutes`):
+  `transient` 15 (a struck tanker; hard cap under 20), `uncertain` 60 (default
+  middle ground, e.g. a struck pipeline/refinery), `moderate` 90 (peace talks),
+  `structural` 120 (e.g. a two-month export ban). Never more than 2 hours or
+  the user's time horizon.
+- **Size** is in whole contracts by notional value (contracts × price ×
+  contract size): at most ⅓ of the portfolio and at most available cash, times
+  the aggressiveness share (`low` 0.25, `medium` 0.5, `high` 1.0). If one
+  contract does not fit, there is no suggestion. Contracts are configurable
+  under `trading.contracts`; defaults are micro WTI (`MCL`, 100 bbl) and RBOB
+  (`RB`, 42,000 gal).
+- **Prices:** Yahoo Finance's public chart API (`CL=F`, `RB=F`), 1-minute
+  closes, no key, about 10 minutes delayed and unofficial. Sizing uses its
+  latest quote. 1-minute history reaches back about 30 days.
+- **Storage:** `trade_suggestions` keeps id, entry time, ticker, side,
+  contract and count, notional, hold minutes, closeout time, reference price,
+  tier, rule, rationale, model, and the event/notification/post it came from.
+- **Page:** portfolio form; a 1-minute chart (WTI by default, toggle to RBOB);
+  today's suggestions; past suggestions (closeout before the start of today,
+  local time). Clicking a suggestion charts its window (±30 minutes) with
+  circles: long entry green, short entry red, long closeout red, short
+  closeout green.

@@ -10,6 +10,7 @@ self-contained page by `jac build web`. It talks to the FastAPI service
 import "./main.css";
 import from react { useEffect }
 import from .auth { AuthPanel }
+import from .trading { TradingPage }
 
 # ---------- shapes of the JSON the service sends ----------
 
@@ -378,9 +379,19 @@ def banner_text(s: Status | None) -> str {
     return "";
 }
 
-# ---------- the page ----------
+# ---------- the pages ----------
 
+"""The service serves this one page at / and /trading; pick the view by path."""
 def:pub app -> JsxElement {
+    # the checker's window typings lack location
+    win: any = window;
+    if str(win.location.pathname).startswith("/trading") {
+        return <TradingPage/>;
+    }
+    return <NewsPage/>;
+}
+
+def NewsPage -> JsxElement {
     has tray: list[Notification] = [],  # newest first
         expanded: bool = False,
         events: list[FeedEvent] = [],
@@ -598,7 +609,10 @@ def:pub app -> JsxElement {
             }}
         </div>
         <main>
-            <h1>newsstream — crude oil</h1>
+            <div className="titlebar">
+                <h1>newsstream — crude oil</h1>
+                <a href="/trading">{"Trading →"}</a>
+            </div>
             <AuthPanel/>
             <div className="controls">
                 <label>
