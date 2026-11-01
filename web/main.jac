@@ -10,6 +10,7 @@ self-contained page by `jac build web`. It talks to the FastAPI service
 import "./main.css";
 import from react { useEffect }
 import from .auth { AuthPanel }
+import from .trading { TradingPage }
 
 # ---------- shapes of the JSON the service sends ----------
 
@@ -164,6 +165,42 @@ def chime {
         gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
         osc.start();
         osc.stop(ctx.currentTime + 0.5);
+    } except Exception {}
+}
+
+"""The browser's Notification API (the `Notification` obj above shadows the
+global name), or None where the page cannot show system notifications."""
+def notify_api -> any {
+    # the checker has no browser typings for globalThis
+    return globalThis.Notification or None;  # jac:ignore[E1053]
+}
+
+"""System notification for a new event, only when the NewsBot page is not in
+front; clicking it brings the page forward."""
+def screen_notify(n: Notification) {
+    api = notify_api();
+    if not api or api.permission != "granted" {
+        return;
+    }
+    # the checker's document/window typings lack these members
+    doc: any = document;
+    win: any = window;
+    if doc.visibilityState == "visible" and doc.hasFocus() {
+        return;
+    }
+    try {
+        note: any = new(
+            api,
+            "newsstream — " + (n.category or "new event"),
+            {
+                "body": n.one_line + "\n@" + n.handle,
+                "tag": "ns-" + str(n.notification_id)
+            }
+        );
+        note.onclick = lambda {
+            win.focus();
+            note.close();
+        };
     } except Exception {}
 }
 
@@ -342,9 +379,19 @@ def banner_text(s: Status | None) -> str {
     return "";
 }
 
-# ---------- the page ----------
+# ---------- the pages ----------
 
+"""The service serves this one page at / and /trading; pick the view by path."""
 def:pub app -> JsxElement {
+    # the checker's window typings lack location
+    win: any = window;
+    if str(win.location.pathname).startswith("/trading") {
+        return <TradingPage/>;
+    }
+    return <NewsPage/>;
+}
+
+def NewsPage -> JsxElement {
     has tray: list[Notification] = [],  # newest first
         expanded: bool = False,
         events: list[FeedEvent] = [],
@@ -352,6 +399,8 @@ def:pub app -> JsxElement {
         suppressed: list[SuppressedPost] = [],
         showSuppressed: bool = False,
         sound: bool = False,  # chime is off by default
+        screen: bool = False,  # system notifications, also off by default
+        screenHint: str = "",  # why the screen checkbox could not be turned on
         status: Status | None = None,
         unreachable: bool = False,
         refetch: str = "idle",  # idle | running | failed
@@ -418,6 +467,9 @@ def:pub app -> JsxElement {
             tray = [n] + tray;
             if n.kind == "NEW_EVENT" and sound {
                 chime();
+            }
+            if n.kind == "NEW_EVENT" and screen {
+                screen_notify(n);
             }
         }
         # one feed reload shortly after a burst of notifications
@@ -486,6 +538,24 @@ def:pub app -> JsxElement {
         localStorage.setItem("ns_sound", "1" if sound else "0");
     }
 
+    async def toggle_screen(e: ChangeEvent) {
+        want = e.target.checked;
+        screenHint = "";
+        api = notify_api();
+        if want and not api {
+            want = False;
+            screenHint = "not supported in this window";
+        } elif want and api.permission != "granted" {
+            # asking only on a click: browsers ignore prompts without a gesture
+            if await api.requestPermission() != "granted" {
+                want = False;
+                screenHint = "blocked — allow notifications for this site in the browser";
+            }
+        }
+        screen = want;
+        localStorage.setItem("ns_screen", "1" if want else "0");
+    }
+
     async def do_refetch {
         refetch = "running";
         ok = False;
@@ -504,6 +574,10 @@ def:pub app -> JsxElement {
     useEffect(
         lambda {
             sound = localStorage.getItem("ns_sound") == "1";
+            api = notify_api();
+            if localStorage.getItem("ns_screen") == "1" and api {
+                screen = api.permission == "granted";
+            }
             boot();
             status_timer = setInterval(lambda { load_status(); }, 10000);
             clock_timer = setInterval(lambda { clock = clock + 1; }, 30000);
@@ -535,7 +609,10 @@ def:pub app -> JsxElement {
             }}
         </div>
         <main>
-            <h1>newsstream — crude oil</h1>
+            <div className="titlebar">
+                <h1>newsstream — crude oil</h1>
+                <a href="/trading">{"Trading →"}</a>
+            </div>
             <AuthPanel/>
             <div className="controls">
                 <label>
@@ -549,6 +626,15 @@ def:pub app -> JsxElement {
                 <label>
                     <input type="checkbox" checked={sound} onChange={toggle_sound}/>
                     {" chime on new events"}
+                </label>
+                <label
+                    title="System notifications for new events while this page is in the background"
+                >
+                    <input type="checkbox" checked={screen} onChange={toggle_screen}/>
+                    {" screen notifications"}
+                    {if screenHint {
+                        <span className="dim">{" (" + screenHint + ")"}</span>
+                    }}
                 </label>
                 <button
                     title="Re-pull the last 12h from every account and run it through the pipeline — use after waking the machine"

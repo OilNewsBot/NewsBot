@@ -13,7 +13,10 @@ glob ROOT: Path = Path(__file__).resolve().parent;
 
 # Defaults if the env vars are unset. Verified against docs.claude.com 2026-09-10.
 glob DEFAULT_TRIAGE_MODEL: str = "claude-haiku-4-5",
-     DEFAULT_REVIEW_MODEL: str = "claude-opus-5";
+     DEFAULT_REVIEW_MODEL: str = "claude-opus-5",
+     # The trade suggestion runs after the card is up and should land seconds
+     # later, so it defaults to the fast slot too.
+     DEFAULT_TRADE_MODEL: str = "claude-haiku-4-5";
 
 # Default X push vendor: TwitterAPI.io (decided 2026-09-10; see README costs).
 glob DEFAULT_X_PUSH_URL: str = "wss://ws.twitterapi.io/twitter/tweet/websocket";
@@ -62,6 +65,23 @@ obj ChannelCfg {
         tier: str;
 }
 
+"""A futures contract used to size suggestions for one ticker."""
+obj ContractCfg {
+    has symbol: str,  # exchange symbol shown to the user, e.g. MCL
+        multiplier: float,  # units per contract (barrels or gallons)
+        unit: str;  # bbl | gal
+}
+
+"""Trading page settings (docs/spec.md §16). Hard limits (1/3 of portfolio,
+2-hour maximum hold) live in pipeline/trade.jac, not here."""
+obj TradingCfg {
+    has enabled: bool,
+        price_symbols: dict[str, str],  # ticker -> Yahoo Finance symbol
+        contracts: dict[str, ContractCfg],  # ticker -> contract used for sizing
+        hold_minutes: dict[str, int],  # structural tier -> holding time
+        aggressiveness: dict[str, float];  # level -> share of the size cap used
+}
+
 obj MarketCfg {
     has name: str,
         threshold: int,
@@ -93,6 +113,8 @@ obj Settings {
         host: str,
         port: int,
         db_path: Path,
+        trade_model: str,
+        trading: TradingCfg,
         model_prices: dict[str, tuple[float, float]] = {};
 
     def price_for(model: str) -> tuple[float, float] {
@@ -129,6 +151,38 @@ def _channels(raw: any) -> list[ChannelCfg] {
         }
     }
     return out;
+}
+
+def _trading(raw: any) -> TradingCfg {
+    raw = raw or {};
+    contracts: dict[str, ContractCfg] = {
+        "WTI": ContractCfg(symbol="MCL", multiplier=100.0, unit="bbl"),
+        "RBOB": ContractCfg(symbol="RB", multiplier=42000.0, unit="gal")
+    };
+    for (ticker, c) in (raw.get("contracts") or {}).items() {
+        contracts[str(ticker)] = ContractCfg(
+            symbol=str(c["symbol"]),
+            multiplier=float(c["multiplier"]),
+            unit=str(c["unit"])
+        );
+    }
+    symbols = {"WTI": "CL=F", "RBOB": "RB=F"};
+    symbols.update(
+        {str(k): str(v) for (k, v) in (raw.get("price_symbols") or {}).items()}
+    );
+    hold = {"transient": 15, "uncertain": 60, "moderate": 90, "structural": 120};
+    hold.update({str(k): int(v) for (k, v) in (raw.get("hold_minutes") or {}).items()});
+    aggr = {"low": 0.25, "medium": 0.5, "high": 1.0};
+    aggr.update(
+        {str(k): float(v) for (k, v) in (raw.get("aggressiveness") or {}).items()}
+    );
+    return TradingCfg(
+        enabled=bool(raw.get("enabled", True)),
+        price_symbols=symbols,
+        contracts=contracts,
+        hold_minutes=hold,
+        aggressiveness=aggr
+    );
 }
 
 def load_settings(
@@ -198,6 +252,8 @@ def load_settings(
         host=str(server.get("host", "127.0.0.1")),
         port=int(server.get("port", 8000)),
         db_path=resolved_db,
+        trade_model=os.environ.get("TRADE_MODEL") or DEFAULT_TRADE_MODEL,
+        trading=_trading(cfg.get("trading")),
         model_prices=prices
     );
 }

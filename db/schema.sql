@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 CREATE TABLE IF NOT EXISTS llm_calls (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    purpose       TEXT NOT NULL,              -- classify_triage | classify_review | dedup | summary_merge
+    purpose       TEXT NOT NULL,              -- classify_triage | classify_review | dedup | summary_merge | trade_suggest
     model         TEXT NOT NULL,
     post_id       INTEGER,
     input_tokens  INTEGER NOT NULL DEFAULT 0,
@@ -110,3 +110,37 @@ CREATE TABLE IF NOT EXISTS sessions (
     expires_at TEXT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- Trading page (docs/spec.md §16). One row: what the user typed in; the app
+-- has no brokerage link. Sizing reads it when a suggestion is made.
+CREATE TABLE IF NOT EXISTS portfolio (
+    id               INTEGER PRIMARY KEY CHECK (id = 1),
+    portfolio_value  REAL NOT NULL,           -- USD, total account value
+    available_cash   REAL NOT NULL,           -- USD
+    aggressiveness   TEXT NOT NULL DEFAULT 'medium',  -- low | medium | high
+    max_hold_minutes INTEGER NOT NULL DEFAULT 120,    -- user's time horizon, <= 120
+    updated_at       TEXT NOT NULL
+);
+
+-- Speculative suggestions made after NEW_EVENT cards. Suggestions only; the
+-- app never places orders.
+CREATE TABLE IF NOT EXISTS trade_suggestions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at      TEXT NOT NULL,            -- entry time, UTC ISO8601
+    ticker          TEXT NOT NULL,            -- WTI | RBOB
+    side            TEXT NOT NULL,            -- long | short
+    contract        TEXT NOT NULL,            -- exchange symbol, e.g. MCL
+    contracts       INTEGER NOT NULL,         -- position size
+    notional_usd    REAL NOT NULL,
+    hold_minutes    INTEGER NOT NULL,
+    closeout_at     TEXT NOT NULL,            -- created_at + hold_minutes
+    ref_price       REAL NOT NULL,            -- price used for sizing (delayed feed)
+    structure       TEXT NOT NULL,            -- transient | uncertain | moderate | structural
+    rule            TEXT NOT NULL,            -- which rule fired
+    rationale       TEXT NOT NULL,
+    model           TEXT NOT NULL,
+    event_id        INTEGER REFERENCES events (id),
+    notification_id INTEGER REFERENCES notifications (id),
+    post_id         INTEGER REFERENCES posts (id)
+);
+CREATE INDEX IF NOT EXISTS idx_trade_suggestions_created ON trade_suggestions (created_at);

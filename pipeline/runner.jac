@@ -27,6 +27,7 @@ import from pipeline.dedup {
 import from pipeline.llm { LLMClient, LLMUnavailable }
 import from pipeline.normalize { normalize }
 import from pipeline.notify { Bus, build_card, notify }
+import from pipeline.trade { Trader }
 
 glob log: logging.Logger = logging.getLogger("newsstream.pipeline");
 
@@ -71,14 +72,17 @@ obj Pipeline {
     has settings: Settings,
         repo: Repo,
         llm: LLMClient,
-        bus: Bus;
+        bus: Bus,
+        trader: Trader | None = None;
 
     has stats: Stats postinit,
-        queue: asyncio.Queue[NormalizedPost] postinit;
+        queue: asyncio.Queue[NormalizedPost] postinit,
+        _trade_tasks: set[asyncio.Task[Row | None]] postinit;
 
     def postinit {
         self.stats = Stats();
         self.queue = asyncio.Queue();
+        self._trade_tasks = set();
     }
 
     """Adapter-facing entry point: enqueue, never block ingest on the LLM."""
@@ -195,7 +199,7 @@ obj Pipeline {
                 final.category, title, title, final.entities
             );
             await self.repo.link_event_post(new_id, post_id, "origin");
-            await notify(
+            nid = await notify(
                 self.repo,
                 self.bus,
                 build_card(
@@ -208,6 +212,11 @@ obj Pipeline {
                     badges=badges
                 )
             );
+            # A NEW_EVENT that only exists because dedup was down may be a
+            # repeat of a known story: no trade on it.
+            if result.reasoning != "dedup_llm_unavailable" {
+                self._spawn_trade(post, post_id, final, new_id, nid);
+            }
             return "NEW_EVENT";
         }
 
@@ -266,6 +275,39 @@ obj Pipeline {
             time.monotonic() - t0
         );
         return outcome;
+    }
+
+    """Trade suggestion for a new event, after its card is out; runs beside the
+    queue so the next post is not held up by it."""
+    def _spawn_trade(
+        post: NormalizedPost,
+        post_id: int,
+        final: Classification,
+        event_id: int,
+        notification_id: int
+    ) {
+        if self.trader is None {
+            return;
+        }
+        task = asyncio.create_task(
+            self.trader.on_new_event(post, post_id, final, event_id, notification_id)
+        );
+        self._trade_tasks.add(task);
+        task.add_done_callback(self._trade_done);
+    }
+
+    def _trade_done(task: asyncio.Task[Row | None]) {
+        self._trade_tasks.discard(task);
+        if not task.cancelled() and task.exception() is not None {
+            log.error("trade suggestion failed", exc_info=task.exception());
+        }
+    }
+
+    """Wait for in-flight trade suggestions (tests, shutdown)."""
+    async def trades_idle {
+        if self._trade_tasks {
+            await asyncio.gather(*list(self._trade_tasks), return_exceptions=True);
+        }
     }
 
     """Mark events stale after stale_after_hours with no updates (§8)."""

@@ -28,8 +28,10 @@ import from config { ROOT, Settings, load_settings }
 import from db.repo { Repo, Row }
 import from pipeline.llm { LLMClient }
 import from pipeline.notify { Bus }
+import from pipeline.prices { PriceFeed, PriceUnavailable }
 import from pipeline.runner { Pipeline }
 import from mobile.push { install_mobile }
+import from pipeline.trade { MAX_HOLD_MINUTES, MAX_PORTFOLIO_SHARE, Trader }
 
 glob log: logging.Logger = logging.getLogger("newsstream.app");
 
@@ -127,7 +129,9 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     repo = Repo(settings.db_path);
     bus = Bus();
     llm = LLMClient(settings.anthropic_api_key, repo);
-    pipeline = Pipeline(settings, repo, llm, bus);
+    prices = PriceFeed(settings);
+    trader = Trader(settings, repo, llm, prices);
+    pipeline = Pipeline(settings, repo, llm, bus, trader=trader);
 
     telegram = TelegramAdapter(settings);
     x_api = XApiAdapter(settings, repo);
@@ -293,6 +297,12 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         return FileResponse(UI_INDEX, headers={"Cache-Control": "no-cache"});
     }
 
+    """The trading page is the same single-page UI; it picks the view by path."""
+    @app.get("/trading")
+    async def trading_page -> Response {
+        return await index();
+    }
+
     @app.get("/stream")
     async def stream(request: Request) -> StreamingResponse {
         async def gen -> AsyncIterator[str] {
@@ -357,6 +367,80 @@ def create_app(settings: Settings | None = None) -> FastAPI {
             "max_stacked": settings.ui_max_stacked,
             "inactive_accounts": inactive
         };
+    }
+
+    # ---------- trading page (docs/spec.md §16) ----------
+
+    @app.get("/portfolio")
+    async def get_portfolio -> Json {
+        trading = settings.trading;
+        return {
+            "portfolio": await repo.get_portfolio(),
+            "enabled": trading.enabled,
+            "max_share": MAX_PORTFOLIO_SHARE,
+            "max_hold_minutes": MAX_HOLD_MINUTES,
+            "aggressiveness": list(trading.aggressiveness),
+            "contracts": {t: vars(c) for (t, c) in trading.contracts.items()}
+        };
+    }
+
+    """Manual entry: the app has no brokerage link."""
+    @app.put("/portfolio")
+    async def put_portfolio(body: Json) -> Json {
+        value = 0.0;
+        cash = 0.0;
+        level = "";
+        max_hold = 0;
+        try {
+            value = float(body["portfolio_value"]);
+            cash = float(body["available_cash"]);
+            level = str(body.get("aggressiveness", "medium"));
+            max_hold = int(body.get("max_hold_minutes", MAX_HOLD_MINUTES));
+        } except (KeyError, TypeError, ValueError) as e {
+            raise HTTPException(422, f"bad portfolio: {e}") from e;
+        }
+        if value <= 0 or cash < 0 or cash > value {
+            raise HTTPException(
+                422, "portfolio value must be positive, and cash between 0 and it"
+            );
+        }
+        if level not in settings.trading.aggressiveness {
+            raise HTTPException(
+                422,
+                f"aggressiveness must be one of {list(settings.trading.aggressiveness)}"
+            );
+        }
+        if not 1 <= max_hold <= MAX_HOLD_MINUTES {
+            raise HTTPException(422, f"max hold must be 1-{MAX_HOLD_MINUTES} minutes");
+        }
+        await repo.set_portfolio(value, cash, level, max_hold);
+        return {"portfolio": await repo.get_portfolio()};
+    }
+
+    @app.get("/suggestions")
+    async def suggestions -> Json {
+        return {"suggestions": await repo.suggestions()};
+    }
+
+    """1-minute closes for WTI or RBOB: the latest trading day, or the window
+    between `start` and `end` (ISO 8601) to overlay an older suggestion."""
+    @app.get("/prices")
+    async def price_bars(ticker: str = "WTI", start: str = "", end: str = "") -> Json {
+        t0: datetime | None = None;
+        t1: datetime | None = None;
+        try {
+            if start and end {
+                t0 = datetime.fromisoformat(start);
+                t1 = datetime.fromisoformat(end);
+            }
+        } except ValueError as e {
+            raise HTTPException(422, f"bad time: {e}") from e;
+        }
+        try {
+            return await prices.bars(ticker.upper(), t0, t1);
+        } except PriceUnavailable as e {
+            raise HTTPException(502, str(e)) from e;
+        }
     }
 
     """Re-pull every account's recent posts (UI catch-up button)."""
