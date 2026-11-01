@@ -409,6 +409,10 @@ Single page, dark theme, written in Jac (`web/main.jac`, compiled to React by
   latency last hour, posts seen / surfaced today, LLM spend today (estimate from
   token counts).
 - **Sound**: optional single chime on `NEW_EVENT` only, off by default.
+- **Screen notifications**: optional system notification on `NEW_EVENT` only,
+  off by default and remembered per browser. Ticking it asks for browser
+  permission; if denied or unsupported it stays off with a short hint. Shown
+  only while the page is hidden or unfocused; clicking one focuses the page.
 - SSE reconnects automatically; on reconnect, fetch `/notifications?since=<id>`
   to backfill anything missed.
 
