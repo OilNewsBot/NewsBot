@@ -1,0 +1,15 @@
+node_modules/
+.expo/
+dist/
+ios/
+android/
+.env*
+!.env.example
+google-services.json
+*.p8
+*.p12
+*.mobileprovision
+*.jks
+*.keystore
+*-firebase-adminsdk-*.json
+credentials.json

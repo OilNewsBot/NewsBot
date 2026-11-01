@@ -29,6 +29,7 @@ import from db.repo { Repo, Row }
 import from pipeline.llm { LLMClient }
 import from pipeline.notify { Bus }
 import from pipeline.runner { Pipeline }
+import from mobile.push { install_mobile }
 
 glob log: logging.Logger = logging.getLogger("newsstream.app");
 
@@ -164,6 +165,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     }
 
     app = FastAPI(title="newsstream", lifespan=lifespan);
+    install_mobile(app, repo);
     setattr(app.state, "pipeline", pipeline);
     setattr(app.state, "repo", repo);
     setattr(app.state, "settings", settings);
