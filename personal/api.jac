@@ -305,6 +305,7 @@ def install_personal_routes(
         user_id = int(user["user_id"]);
         try {
             connection = await store.get_connection(user_id, connection_id);
+            revision = int(connection["revision"]);
             if connection["status"] == "needs_reconnect" {
                 raise HTTPException(
                     422, "Reconnect this service before adding a source"
@@ -317,7 +318,9 @@ def install_personal_routes(
             }
             secret = await store.connection_secret(connection_id);
             if connection["provider"] == "x"
-                and not await store.claim_request(connection_id) {
+                and not await store.claim_request(
+                    connection_id, connection_revision=revision
+                ) {
                 raise HTTPException(
                     429, "This connection's daily request limit is reached"
                 );
@@ -331,7 +334,8 @@ def install_personal_routes(
                 str(resolved["url"]),
                 alerts_enabled=bool(preferences.get("alerts_enabled", True)),
                 include_keywords=preferences.get("include_keywords", []),
-                exclude_keywords=preferences.get("exclude_keywords", [])
+                exclude_keywords=preferences.get("exclude_keywords", []),
+                connection_revision=revision
             );
         } except KeyError {
             raise HTTPException(404, "Connection not found");
@@ -344,7 +348,8 @@ def install_personal_routes(
                     connection_id,
                     error.status,
                     error.detail,
-                    iso(utcnow() + timedelta(seconds=delay))
+                    iso(utcnow() + timedelta(seconds=delay)),
+                    connection_revision=revision
                 );
             }
             code = 429

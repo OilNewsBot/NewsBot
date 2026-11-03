@@ -606,3 +606,74 @@ test "personal SSE does not emit a buffered page after mute and unmute" {
     }
     asyncio.run(run());
 }
+
+test "personal source resolution cannot apply an old credential result after rekey" {
+    async def run {
+        with patch.dict(
+            os.environ,
+            {
+                "NEWSBOT_CONNECTION_KEY": base64.urlsafe_b64encode(b"k" * 32).decode(),
+                "X_PUSH_API_KEY": ""
+            }
+        ) {
+            async with api_fixture() as (repo, store, _, users) {
+                uid = int(users["alice"]);
+                conn = await store.create_connection(
+                    uid, "x", "X", "original-race-key", 5
+                );
+                cid = int(conn["id"]);
+                async def rekey_during_resolve(
+                    provider: str, locator: str, secret: str
+                ) -> Row {
+                    if locator == "failure" {
+                        assert secret == "original-race-key";
+                        await store.reconnect_connection(
+                            uid, cid, "replacement-race-key"
+                        );
+                        raise ProviderError(
+                            "The old key expired", "needs_reconnect", 60
+                        );
+                    }
+                    assert secret == "replacement-race-key";
+                    await store.reconnect_connection(uid, cid, "latest-race-key");
+                    return {
+                        "remote_id": "resolved-with-old-key",
+                        "name": "Old result",
+                        "url": "https://x.com/example"
+                    };
+                }
+                app = FastAPI();
+                install_personal_routes(
+                    app, repo, store, resolver=rekey_during_resolve
+                );
+                client = httpx.AsyncClient(
+                    transport=httpx.ASGITransport(app=app), base_url="http://test"
+                );
+                async with client {
+                    response = await client.post(
+                        "/api/me/sources",
+                        headers=ALICE,
+                        json={"connection_id": cid, "locator": "failure"}
+                    );
+                    assert response.status_code == 422;
+                    current = await store.get_connection(uid, cid);
+                    assert current["status"] == "configured";
+                    assert current["last_error"] == "";
+                    assert current["retry_at"] == "";
+                    assert await store.connection_secret(cid) == "replacement-race-key";
+                    response = await client.post(
+                        "/api/me/sources",
+                        headers=ALICE,
+                        json={"connection_id": cid, "locator": "success"}
+                    );
+                    assert response.status_code == 422;
+                    assert await store.list_sources(uid) == [];
+                    assert await store.connection_secret(cid) == "latest-race-key";
+                    assert (await store.get_connection(uid, cid))["status"]
+                        == "configured";
+                }
+            }
+        }
+    }
+    asyncio.run(run());
+}
