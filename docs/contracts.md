@@ -62,6 +62,35 @@ SSE IDs are notification IDs, not post IDs or event IDs. When adding a field,
 prefer an additive change and update the frontend type in `web/main.jac` with
 the producer and tests. For breaking changes, sequence dependent PRs explicitly.
 
+## Personal source API
+
+Personal source records are isolated from the legacy shared oil feed. See
+[Personal sources](personal-sources.md) for setup, delivery semantics and limits.
+Every `/api/me/*` route derives ownership from the session cookie; no caller
+`user_id` is accepted. Mutations reject cross-origin browser requests.
+
+| Endpoint | Response |
+| --- | --- |
+| `GET /sources` | Same built UI, selecting the personal sources page |
+| `GET /api/me/connections` | `{connections: [...]}`; no credentials |
+| `POST /api/me/connections` | `{connection: ...}`; input provider (`rss` or `x`), label, optional api_key and daily_limit |
+| `PATCH /api/me/connections/{id}` | `{connection: ...}`; replace an X api_key |
+| `DELETE /api/me/connections/{id}` | Disconnect owned service and stop its sources |
+| `GET /api/me/sources` | `{sources: [...]}` with status and preferences |
+| `POST /api/me/sources` | `{source: ...}`; owned connection_id, locator and optional alert preferences |
+| `PATCH /api/me/sources/{id}` | `{source: ...}`; enabled, alerts_enabled, include_keywords, exclude_keywords |
+| `DELETE /api/me/sources/{id}` | Remove owned source from collection and delivery |
+| `GET /api/me/feed?after=0` | `{items: [...]}`; latest items descending |
+| `GET /api/me/notifications?since=0` | `{notifications: [...]}`; eligible alerts ascending |
+| `GET /api/me/notifications/head` | `{notification_id: N}` for silent initial baseline |
+| `GET /api/me/stream?since=N` | SSE notification events with stable personal notification IDs; supports Last-Event-ID replay |
+
+Personal item fields: `id`, `source_id`, `source_name`, `provider`, `title`,
+`text`, `url`, `posted_at`, `received_at`. Alerts add `notification_id` and
+`kind: SOURCE_POST`. These IDs belong to the personal notification table, not
+the legacy notification table. Empty/exhausted sessions receive 401; an already
+open personal SSE session ends on expiry/revocation with `session_expired`.
+
 ## Shared configuration and runtime
 
 `jac.toml`/`jac.lock`, `config.jac`, the database schema, shared test helpers,

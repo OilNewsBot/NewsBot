@@ -32,6 +32,9 @@ import from pipeline.prices { PriceFeed, PriceUnavailable }
 import from pipeline.runner { Pipeline }
 import from mobile.push { install_mobile }
 import from pipeline.trade { MAX_HOLD_MINUTES, MAX_PORTFOLIO_SHARE, Trader }
+import from personal.store { PersonalStore }
+import from personal.api { install_personal_routes }
+import from personal.worker { PersonalWorker }
 
 glob log: logging.Logger = logging.getLogger("newsstream.app");
 
@@ -127,6 +130,8 @@ async def _resolve_x_accounts(settings: Settings, repo: Repo, x_api: XApiAdapter
 def create_app(settings: Settings | None = None) -> FastAPI {
     settings = settings or load_settings();
     repo = Repo(settings.db_path);
+    personal = PersonalStore(settings.db_path);
+    personal_worker = PersonalWorker(personal);
     bus = Bus();
     llm = LLMClient(settings.anthropic_api_key, repo);
     prices = PriceFeed(settings);
@@ -141,9 +146,11 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     @contextlib.asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None] {
         await repo.connect();
+        await personal.connect();
         tasks: list[asyncio.Task[None]] = [
             asyncio.create_task(pipeline.run(), name="pipeline"),
-            asyncio.create_task(pipeline.stale_sweeper(), name="stale-sweeper")
+            asyncio.create_task(pipeline.stale_sweeper(), name="stale-sweeper"),
+            asyncio.create_task(personal_worker.run(), name="personal-sources")
         ];
         if settings.x_api_enabled and settings.x_bearer_token {
             await _resolve_x_accounts(settings, repo, x_api);
@@ -164,12 +171,15 @@ def create_app(settings: Settings | None = None) -> FastAPI {
                 t.cancel();
             }
             await asyncio.gather(*tasks, return_exceptions=True);
+            await personal.close();
             await repo.close();
         }
     }
 
     app = FastAPI(title="newsstream", lifespan=lifespan);
     install_mobile(app, repo);
+    install_personal_routes(app, repo, personal);
+    setattr(app.state, "personal", personal);
     setattr(app.state, "pipeline", pipeline);
     setattr(app.state, "repo", repo);
     setattr(app.state, "settings", settings);
@@ -202,7 +212,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     }
 
     @app.post("/login")
-    async def login(data: dict[str, str]) -> Response {
+    async def login(data: dict[str, str], request: Request) -> Response {
         email = data.get("email", "").strip().lower();
         password = data.get("password", "");
 
@@ -239,7 +249,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
             key="session",
             value=token,
             httponly=True,
-            secure=False,
+            secure=request.url.scheme == "https",
             samesite="lax",
             max_age=604800
         );
@@ -300,6 +310,11 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     """The trading page is the same single-page UI; it picks the view by path."""
     @app.get("/trading")
     async def trading_page -> Response {
+        return await index();
+    }
+
+    @app.get("/sources")
+    async def sources_page -> Response {
         return await index();
     }
 
