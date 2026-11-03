@@ -11,6 +11,7 @@ import "./main.css";
 import from react { useEffect }
 import from .auth { AuthPanel }
 import from .trading { TradingPage }
+import from .sources { SourcesPage }
 
 # ---------- shapes of the JSON the service sends ----------
 
@@ -385,6 +386,9 @@ def banner_text(s: Status | None) -> str {
 def:pub app -> JsxElement {
     # the checker's window typings lack location
     win: any = window;
+    if str(win.location.pathname).startswith("/sources") {
+        return <SourcesPage/>;
+    }
     if str(win.location.pathname).startswith("/trading") {
         return <TradingPage/>;
     }
@@ -611,6 +615,7 @@ def NewsPage -> JsxElement {
         <main>
             <div className="titlebar">
                 <h1>newsstream — crude oil</h1>
+                <a href="/sources">{"My Sources →"}</a>
                 <a href="/trading">{"Trading →"}</a>
             </div>
             <AuthPanel/>
