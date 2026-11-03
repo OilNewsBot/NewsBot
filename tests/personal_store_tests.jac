@@ -116,6 +116,7 @@ test "personal_filters_mute_pause_and_atomic_checkpoint" {
             await store.update_source(
                 uid, s["id"], {"enabled": True, "alerts_enabled": True}
             );
+            assert (await store.get_source(uid, s["id"]))["cursor"] == "";
             await store.persist_batch(s["id"], [item("while-paused")], "resumed");
             assert await store.notification_head(uid) == 1;
             try {
@@ -128,6 +129,28 @@ test "personal_filters_mute_pause_and_atomic_checkpoint" {
             assert all(i["external_id"] != "rollback" for i in await store.feed(uid));
             await store.persist_batch(s["id"], [item("final")], "done");
             assert len(await store.notifications_since(uid)) == 1;
+            await store.close();
+        }
+    }
+    asyncio.run(run());
+}
+
+test "personal_feed_orders_by_publication_not_provider_batch_order" {
+    async def run {
+        settings = make_settings();
+        async with open_repo(settings) as repo {
+            uid = await repo.create_user("reader", "order@example.test", "unused");
+            store = PersonalStore(settings.db_path);
+            await store.connect();
+            c = await store.create_connection(uid, "rss", "News");
+            s = await store.create_source(
+                uid, c["id"], "feed", "Feed", "https://example.com/feed"
+            );
+            newest = item("newest") | {"posted_at": "2026-11-02T12:00:00+00:00"};
+            older = item("older") | {"posted_at": "2026-11-01T12:00:00+00:00"};
+            await store.persist_batch(s["id"], [newest, older], "baseline");
+            feed = await store.feed(uid);
+            assert [post["external_id"] for post in feed] == ["newest", "older"];
             await store.close();
         }
     }

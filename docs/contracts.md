@@ -80,7 +80,7 @@ Every `/api/me/*` route derives ownership from the session cookie; no caller
 | `POST /api/me/sources` | `{source: ...}`; owned connection_id, locator and optional alert preferences |
 | `PATCH /api/me/sources/{id}` | `{source: ...}`; enabled, alerts_enabled, include_keywords, exclude_keywords |
 | `DELETE /api/me/sources/{id}` | Remove owned source from collection and delivery |
-| `GET /api/me/feed?after=0` | `{items: [...]}`; latest items descending |
+| `GET /api/me/feed?after=0` | `{items: [...]}`; publication time descending, item ID as tie breaker; optional after filters item IDs |
 | `GET /api/me/notifications?since=0` | `{notifications: [...]}`; eligible alerts ascending |
 | `GET /api/me/notifications/head` | `{notification_id: N}` for silent initial baseline |
 | `GET /api/me/stream?since=N` | SSE notification events with stable personal notification IDs; supports Last-Event-ID replay |

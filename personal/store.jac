@@ -635,7 +635,7 @@ obj PersonalStore {
 
     async def feed(user_id: int, after: int = 0, limit: int = 100) -> list[Row] {
         return await self._all(
-            "SELECT i.*,s.name AS source_name,c.provider FROM personal_items i JOIN personal_sources s ON s.id=i.source_id JOIN personal_connections c ON c.id=s.connection_id WHERE i.user_id=? AND s.deleted_at IS NULL AND c.deleted_at IS NULL AND i.id>? ORDER BY i.id DESC LIMIT ?",
+            "SELECT i.*,s.name AS source_name,c.provider FROM personal_items i JOIN personal_sources s ON s.id=i.source_id JOIN personal_connections c ON c.id=s.connection_id WHERE i.user_id=? AND s.deleted_at IS NULL AND c.deleted_at IS NULL AND i.id>? ORDER BY i.posted_at DESC,i.id DESC LIMIT ?",
             (user_id, max(0, after), min(200, max(1, limit)))
         );
     }
