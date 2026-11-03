@@ -388,6 +388,7 @@ obj WorkerStore {
         source_revision: int = 0,
         connection_revision: int = 0
     ) {}
+
     async def source_failure(
         source_id: int,
         status: str,
