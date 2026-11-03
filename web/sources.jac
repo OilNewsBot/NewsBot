@@ -194,7 +194,7 @@ def SourceCard(source: any, busy: bool, onUpdate: any, onRemove: any) -> JsxElem
             </div>
         }}
         <details className="ps-filters">
-            <summary>Keyword filters</summary>
+            <summary>Alert keyword filters</summary>
             <form onSubmit={save}>
                 <label>
                     Include any of these keywords
@@ -215,7 +215,7 @@ def SourceCard(source: any, busy: bool, onUpdate: any, onRemove: any) -> JsxElem
                     />
                 </label>
                 <p className="ps-help">
-                    Separate keywords with commas. Leave both empty for all new posts.
+                    Separate keywords with commas. Leave both empty to alert on every new post. Your feed keeps all collected posts.
                 </p>
                 <button type="submit" disabled={busy}>Save filters</button>
             </form>
@@ -918,7 +918,7 @@ def:pub SourcesPage -> JsxElement {
                                         />
                                     </label>
                                     <details className="ps-filters">
-                                        <summary>Optional keyword filters</summary>
+                                        <summary>Optional alert keywords</summary>
                                         <label>
                                             Include keywords
                                             <input
@@ -938,7 +938,7 @@ def:pub SourcesPage -> JsxElement {
                                             />
                                         </label>
                                         <p className="ps-help">
-                                            Separate keywords with commas.
+                                            Separate keywords with commas. These filter alerts; your feed keeps all collected posts.
                                         </p>
                                     </details>
                                     <label className="ps-toggle">
