@@ -232,6 +232,12 @@ def create_app(settings: Settings | None = None) -> FastAPI {
             raise HTTPException(status_code=401, detail="Invalid email or password");
         }
 
+        # Replacing the browser account also revokes its previous SSE session.
+        previous = request.cookies.get("session");
+        if previous {
+            await repo.delete_session(hashlib.sha256(previous.encode()).hexdigest());
+        }
+
         token = secrets.token_urlsafe(32);
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest();
         expires_at = (datetime.now(UTC) + timedelta(days=7)).strftime(

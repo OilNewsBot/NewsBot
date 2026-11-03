@@ -360,6 +360,11 @@ obj PersonalStore {
             exc = keywords(changes.get("exclude_keywords", source["exclude_keywords"]));
             enabled = bool(changes.get("enabled", source["enabled"]));
             resumed = enabled and not source["enabled"];
+            if resumed {
+                await self._run(
+                    "UPDATE personal_sources SET cursor='' WHERE id=?", (source_id, )
+                );
+            }
             alerts = bool(changes.get("alerts_enabled", source["alerts_enabled"]));
             floor = source["alert_after_id"];
             if resumed
