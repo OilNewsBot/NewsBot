@@ -288,7 +288,7 @@ def ConnectionCard(
                         autoComplete="off"
                         value={replacementKey}
                         required
-                        maxLength={4096}
+                        maxLength={1024}
                         onChange={lambda (e: any) { replacementKey = e.target.value; }}
                     />
                 </label>
@@ -836,7 +836,7 @@ def:pub SourcesPage -> JsxElement {
                                                 autoComplete="off"
                                                 value={apiKey}
                                                 required
-                                                maxLength={4096}
+                                                maxLength={1024}
                                                 onChange={lambda (e: any) { apiKey = e.target.value; }}
                                             />
                                         </label>
@@ -845,7 +845,7 @@ def:pub SourcesPage -> JsxElement {
                                             <input
                                                 type="number"
                                                 min="1"
-                                                max="10000"
+                                                max="2000"
                                                 value={dailyLimit}
                                                 required
                                                 onChange={lambda (e: any) { dailyLimit = e.target.value; }}
