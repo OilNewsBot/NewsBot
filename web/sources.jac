@@ -45,7 +45,7 @@ def provider_name(value: str) -> str {
 
 def status_name(value: any) -> str {
     s = str(value or "pending");
-    labels: any = {
+    labels: dict[str, str] = {
         "connected": "Connected",
         "live": "Live",
         "active": "Active",
@@ -59,7 +59,7 @@ def status_name(value: any) -> str {
         "paused": "Paused",
         "error": "Needs attention"
     };
-    return str(labels[s] or s.replace("_", " "));
+    return labels.get(s, s.replace("_", " "));
 }
 
 async def personal_request(path: str, method: str = "GET", body: any = None) -> any {
