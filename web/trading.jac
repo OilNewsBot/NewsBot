@@ -292,7 +292,10 @@ def SuggestionRow(
         </span>
         {if s.event_title {
             <div className="sugg-event dim">{s.event_title}</div>
-        }}
+        } elif s.rationale {
+            # hand-entered (demo) suggestions have no event; show why instead
+            <div className="sugg-event dim">{s.rationale}</div>
+        } }
     </div>
 }
 

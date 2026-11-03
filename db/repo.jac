@@ -10,7 +10,13 @@ import from adapters.base { NormalizedPost }
 type Row = dict[str, any];
 type Params = Sequence[any];
 
-glob SCHEMA: str = (Path(__file__).parent / "schema.sql").read_text();
+glob SCHEMA: str = (Path(__file__).parent / "schema.sql").read_text(),
+     # hand-entered demo suggestions (config.yaml demo.seed_suggestions)
+     DEMO_SEED: Path = Path(__file__).parent / "demo_seed.json";
+
+def load_demo_suggestions(path: Path = DEMO_SEED) -> list[Row] {
+    return json.loads(path.read_text()).get("trade_suggestions") or [];
+}
 
 def utcnow -> datetime {
     return datetime.now(UTC);
@@ -362,6 +368,24 @@ obj Repo {
         );
         await self.db.commit();
         return cur.lastrowid or 0;
+    }
+
+    """Add hand-entered demo suggestions once: a row matching created_at,
+    ticker, side and model is already there. Returns how many were added."""
+    async def seed_suggestions(rows: list[Row]) -> int {
+        added = 0;
+        for s in rows {
+            existing = await self._one(
+                """SELECT id FROM trade_suggestions
+                   WHERE created_at = ? AND ticker = ? AND side = ? AND model = ?""",
+                (s["created_at"], s["ticker"], s["side"], s["model"])
+            );
+            if existing is None {
+                await self.insert_suggestion(s);
+                added += 1;
+            }
+        }
+        return added;
     }
 
     """Newest first, with the event title for display."""

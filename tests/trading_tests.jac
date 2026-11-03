@@ -8,6 +8,7 @@ import httpx;
 import from datetime { UTC, datetime }
 import from adapters.base { Json }
 import from config { Settings }
+import from db.repo { load_demo_suggestions }
 import from pipeline.classify { Classification }
 import from pipeline.llm { LLMUnavailable }
 import from pipeline.notify { Bus }
@@ -318,6 +319,49 @@ test "new event triggers one suggestion and update does not" {
             await pipeline.trades_idle();
             assert len(await repo.suggestions()) == 1;
             assert [c["purpose"] for c in llm.calls].count("trade_suggest") == 1;
+        }
+    }
+    asyncio.run(body());
+}
+
+test "demo suggestions are consistent and seeded once" {
+    # db/demo_seed.json is hand-entered; keep it self-consistent with what the
+    # pipeline would store, and make startup seeding idempotent.
+    rows = load_demo_suggestions();
+    assert len(rows) >= 1;
+    settings = make_settings();
+    for s in rows {
+        contract = settings.trading.contracts[s["ticker"]];
+        assert s["contract"] == contract.symbol;
+        assert s["side"] in ("long", "short");
+        assert 0 < s["hold_minutes"] <= 120;
+        assert s["hold_minutes"] == settings.trading.hold_minutes[s["structure"]];
+        assert abs(
+            s["notional_usd"] - s["contracts"] * s["ref_price"] * contract.multiplier
+        )
+            < 0.01;
+        opened = datetime.fromisoformat(s["created_at"]);
+        closed = datetime.fromisoformat(s["closeout_at"]);
+        assert opened.tzinfo is not None;
+        assert (closed - opened).total_seconds() == s["hold_minutes"] * 60;
+        assert "demo" in s["model"];
+    }
+
+    async def body {
+        async with open_repo(settings) as repo {
+            assert await repo.seed_suggestions(rows) == len(rows);
+            assert await repo.seed_suggestions(rows) == 0;  # restart adds nothing
+            stored = await repo.suggestions();
+            assert len(stored) == len(rows);
+            nov2 = [
+                s
+                for s in stored
+                if s["created_at"] == "2026-11-02T12:30:00+00:00"
+            ][0];
+            assert (nov2["ticker"], nov2["side"], nov2["contracts"])
+                == ("WTI", "short", 17);
+            assert nov2["event_title"] is None;  # the UI shows the rationale
+            assert "Osint613" in nov2["rationale"];
         }
     }
     asyncio.run(body());

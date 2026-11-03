@@ -539,3 +539,8 @@ brokerage link.
   it with circles: long entry green, short entry red, long closeout red, short
   closeout green. A suggestion older than the selector's seven days gets its
   own day chip while picked.
+- **Demo suggestions:** hand-entered rows in `db/demo_seed.json` (model
+  `manual demo entry`, no linked event) are added to each machine's database
+  at startup while `config.yaml` has `demo.seed_suggestions: true`, at most
+  once per row (matched on entry time, ticker, side and model). A suggestion
+  without an event shows its rationale under the row instead of a title.
