@@ -18,6 +18,13 @@ import from tests.helpers { make_settings }
 glob ALICE: dict[str, str] = {"Cookie": "session=alice-session"},
      BOB: dict[str, str] = {"Cookie": "session=bob-session"};
 
+obj ApiEnvironment {
+    has repo: Repo,
+        personal: PersonalStore,
+        app: FastAPI,
+        users: Row;
+}
+
 async def offline_resolver(provider: str, locator: str, secret: str = "") -> Row {
     # Provider/network behavior is separately tested with offline transports.
     return {
@@ -28,12 +35,12 @@ async def offline_resolver(provider: str, locator: str, secret: str = "") -> Row
 }
 
 @contextlib.asynccontextmanager
-async def api_fixture -> AsyncIterator[tuple[Repo, PersonalStore, FastAPI, Row]] {
+async def api_fixture -> AsyncIterator[ApiEnvironment] {
     settings = make_settings();
     repo = Repo(settings.db_path);
     await repo.connect();
-    store = PersonalStore(settings.db_path);
-    await store.connect();
+    personal_store = PersonalStore(settings.db_path);
+    await personal_store.connect();
     try {
         alice = await repo.create_user("alice", "alice@example.org", "unused");
         bob = await repo.create_user("bob", "bob@example.org", "unused");
@@ -43,10 +50,10 @@ async def api_fixture -> AsyncIterator[tuple[Repo, PersonalStore, FastAPI, Row]]
             );
         }
         app = FastAPI();
-        install_personal_routes(app, repo, store, resolver=offline_resolver);
-        yield (repo, store, app, {"alice": alice, "bob": bob});
+        install_personal_routes(app, repo, personal_store, resolver=offline_resolver);
+        yield ApiEnvironment(repo, personal_store, app, {"alice": alice, "bob": bob});
     } finally {
-        await store.close();
+        await personal_store.close();
         await repo.close();
     }
 }
@@ -100,7 +107,8 @@ def stream_request(token: str) -> Request {
 
 test "personal routes require a valid account" {
     async def run {
-        async with api_fixture() as (_, _, app, _) {
+        async with api_fixture() as fixture {
+            app: FastAPI = fixture.app;
             client = httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app), base_url="http://test"
             );
@@ -150,7 +158,11 @@ test "personal routes require a valid account" {
 
 test "personal source reads and changes are isolated between accounts" {
     async def run {
-        async with api_fixture() as (repo, store, app, users) {
+        async with api_fixture() as fixture {
+            repo: Repo = fixture.repo;
+            personal_store: PersonalStore = fixture.personal;
+            app: FastAPI = fixture.app;
+            users: Row = fixture.users;
             client = httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app), base_url="http://test"
             );
@@ -192,8 +204,8 @@ test "personal source reads and changes are isolated between accounts" {
                     await client.delete(f"/api/me/sources/{sid}", headers=BOB)
                 ).status_code
                     == 404;
-                await store.persist_batch(sid, [], "initial", initial=True);
-                await store.persist_batch(
+                await personal_store.persist_batch(sid, [], "initial", initial=True);
+                await personal_store.persist_batch(
                     sid, [article("1", "Alice private earnings source")], "next"
                 );
                 afeed = (await client.get("/api/me/feed", headers=ALICE)).json()[
@@ -236,7 +248,8 @@ test "personal source reads and changes are isolated between accounts" {
 
 test "personal API rejects cross-origin and invalid mutations" {
     async def run {
-        async with api_fixture() as (_, _, app, _) {
+        async with api_fixture() as fixture {
+            app: FastAPI = fixture.app;
             client = httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app), base_url="http://test"
             );
@@ -365,7 +378,9 @@ test "personal X API keys stay private and source validation spends the connecti
                 "X_PUSH_API_KEY": ""
             }
         ) {
-            async with api_fixture() as (_, store, app, _) {
+            async with api_fixture() as fixture {
+                personal_store: PersonalStore = fixture.personal;
+                app: FastAPI = fixture.app;
                 client = httpx.AsyncClient(
                     transport=httpx.ASGITransport(app=app), base_url="http://test"
                 );
@@ -407,15 +422,16 @@ test "personal X API keys stay private and source validation spends the connecti
                         )
                     ).status_code
                         == 200;
-                    assert await store.connection_secret(cid)
+                    assert await personal_store.connection_secret(cid)
                         == "rotated-example-provider-key";
                     # Replacing a key does not reset today's budget.
-                    assert not await store.claim_request(cid);
+                    assert not await personal_store.claim_request(cid);
                 }
             }
         }
         with patch.dict(os.environ, {"NEWSBOT_CONNECTION_KEY": ""}) {
-            async with api_fixture() as (_, _, app, _) {
+            async with api_fixture() as fixture {
+                app: FastAPI = fixture.app;
                 client = httpx.AsyncClient(
                     transport=httpx.ASGITransport(app=app), base_url="http://test"
                 );
@@ -441,7 +457,11 @@ test "personal X API keys stay private and source validation spends the connecti
 
 test "personal SSE replays durably and revokes every tab" {
     async def run {
-        async with api_fixture() as (repo, store, app, users) {
+        async with api_fixture() as fixture {
+            repo: Repo = fixture.repo;
+            personal_store: PersonalStore = fixture.personal;
+            app: FastAPI = fixture.app;
+            users: Row = fixture.users;
             client = httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app), base_url="http://test"
             );
@@ -449,14 +469,14 @@ test "personal SSE replays durably and revokes every tab" {
                 source = await add_source(client, ALICE);
                 other = await add_source(client, BOB);
                 sid = int(source["id"]);
-                await store.persist_batch(sid, [], "baseline", initial=True);
-                await store.persist_batch(
+                await personal_store.persist_batch(sid, [], "baseline", initial=True);
+                await personal_store.persist_batch(
                     int(other["id"]), [], "baseline", initial=True
                 );
                 first = personal_events(
                     stream_request("alice-session"),
                     repo,
-                    store,
+                    personal_store,
                     int(users["alice"]),
                     0,
                     0.0
@@ -464,7 +484,7 @@ test "personal SSE replays durably and revokes every tab" {
                 second = personal_events(
                     stream_request("alice-session"),
                     repo,
-                    store,
+                    personal_store,
                     int(users["alice"]),
                     0,
                     0.0
@@ -472,39 +492,44 @@ test "personal SSE replays durably and revokes every tab" {
                 assert "connected" in await anext(first);
                 assert "connected" in await anext(second);
                 # Arrival between opening a stream and its first read is retained.
-                await store.persist_batch(sid, [article("1")], "one");
-                await store.persist_batch(
+                await personal_store.persist_batch(sid, [article("1")], "one");
+                await personal_store.persist_batch(
                     int(other["id"]), [article("bob1", "Bob private item")], "one"
                 );
                 message = await anext(first);
                 assert "event: notification" in message
                     and "Bob private" not in message;
                 assert "event: notification" in await anext(second);
-                alert_id = (await store.notifications_since(int(users["alice"])))[0][
-                    "notification_id"
-                ];
-                await store.persist_batch(sid, [article("1")], "one");
-                assert len(await store.notifications_since(int(users["alice"]))) == 1;
+                alert_id = (
+                    await personal_store.notifications_since(int(users["alice"]))
+                )[0]["notification_id"];
+                await personal_store.persist_batch(sid, [article("1")], "one");
+                assert len(
+                    await personal_store.notifications_since(int(users["alice"]))
+                )
+                    == 1;
                 # Saved replay survives the connection object being reopened.
-                await store.close();
-                await store.connect();
+                await personal_store.close();
+                await personal_store.connect();
                 replay = personal_events(
                     stream_request("alice-session"),
                     repo,
-                    store,
+                    personal_store,
                     int(users["alice"]),
                     int(alert_id),
                     0.0
                 );
                 assert "connected" in await anext(replay);
-                await store.persist_batch(sid, [article("2", "Next update")], "two");
+                await personal_store.persist_batch(
+                    sid, [article("2", "Next update")], "two"
+                );
                 assert "Next update" in await anext(replay);
-                await replay.aclose();
+                await (replay as any).aclose();
                 await repo.delete_session(hashlib.sha256(b"alice-session").hexdigest());
                 assert "event: session_expired" in await anext(first);
                 assert "event: session_expired" in await anext(second);
-                await first.aclose();
-                await second.aclose();
+                await (first as any).aclose();
+                await (second as any).aclose();
                 # A different user's login and saved alerts remain valid.
                 assert (
                     await client.get("/api/me/notifications", headers=BOB)
@@ -527,7 +552,10 @@ test "personal provider refusal persists a connection cooldown" {
                 "X_PUSH_API_KEY": ""
             }
         ) {
-            async with api_fixture() as (repo, store, _, users) {
+            async with api_fixture() as fixture {
+                repo: Repo = fixture.repo;
+                personal_store: PersonalStore = fixture.personal;
+                users: Row = fixture.users;
                 calls: list[str] = [];
                 async def limited(provider: str, locator: str, secret: str) -> Row {
                     calls.append(locator);
@@ -536,8 +564,8 @@ test "personal provider refusal persists a connection cooldown" {
                     );
                 }
                 app = FastAPI();
-                install_personal_routes(app, repo, store, resolver=limited);
-                conn = await store.create_connection(
+                install_personal_routes(app, repo, personal_store, resolver=limited);
+                conn = await personal_store.create_connection(
                     int(users["alice"]), "x", "X", "cooldown-test-key", 5
                 );
                 cid = int(conn["id"]);
@@ -553,7 +581,9 @@ test "personal provider refusal persists a connection cooldown" {
                     assert response.status_code == 429;
                     assert response.headers["Retry-After"] == "180";
                     assert response.headers["Cache-Control"] == "no-store";
-                    conn = await store.get_connection(int(users["alice"]), cid);
+                    conn = await personal_store.get_connection(
+                        int(users["alice"]), cid
+                    );
                     assert conn["status"] == "rate_limited" and conn["retry_at"];
                     response = await client.post(
                         "/api/me/sources",
@@ -571,15 +601,18 @@ test "personal provider refusal persists a connection cooldown" {
 
 test "personal SSE does not emit a buffered page after mute and unmute" {
     async def run {
-        async with api_fixture() as (repo, store, _, users) {
+        async with api_fixture() as fixture {
+            repo: Repo = fixture.repo;
+            personal_store: PersonalStore = fixture.personal;
+            users: Row = fixture.users;
             uid = int(users["alice"]);
-            conn = await store.create_connection(uid, "rss", "RSS");
-            source = await store.create_source(
+            conn = await personal_store.create_connection(uid, "rss", "RSS");
+            source = await personal_store.create_source(
                 uid, int(conn["id"]), "feed", "Feed", "https://example.org/feed"
             );
             sid = int(source["id"]);
-            await store.persist_batch(sid, [], "baseline", initial=True);
-            await store.persist_batch(
+            await personal_store.persist_batch(sid, [], "baseline", initial=True);
+            await personal_store.persist_batch(
                 sid,
                 [
                     article("1", "first"),
@@ -589,19 +622,19 @@ test "personal SSE does not emit a buffered page after mute and unmute" {
                 "three"
             );
             stream = personal_events(
-                stream_request("alice-session"), repo, store, uid, 0, 0.0
+                stream_request("alice-session"), repo, personal_store, uid, 0, 0.0
             );
             assert "connected" in await anext(stream);
             assert "first" in await anext(stream);
             # The stream already fetched rows 2 and 3. A mute/resume must invalidate them.
-            await store.update_source(uid, sid, {"alerts_enabled": False});
-            await store.update_source(uid, sid, {"alerts_enabled": True});
+            await personal_store.update_source(uid, sid, {"alerts_enabled": False});
+            await personal_store.update_source(uid, sid, {"alerts_enabled": True});
             assert "heartbeat" in await anext(stream);
-            await store.persist_batch(
+            await personal_store.persist_batch(
                 sid, [article("4", "fresh after resume")], "four"
             );
             assert "fresh after resume" in await anext(stream);
-            await stream.aclose();
+            await (stream as any).aclose();
         }
     }
     asyncio.run(run());
@@ -616,9 +649,12 @@ test "personal source resolution cannot apply an old credential result after rek
                 "X_PUSH_API_KEY": ""
             }
         ) {
-            async with api_fixture() as (repo, store, _, users) {
+            async with api_fixture() as fixture {
+                repo: Repo = fixture.repo;
+                personal_store: PersonalStore = fixture.personal;
+                users: Row = fixture.users;
                 uid = int(users["alice"]);
-                conn = await store.create_connection(
+                conn = await personal_store.create_connection(
                     uid, "x", "X", "original-race-key", 5
                 );
                 cid = int(conn["id"]);
@@ -627,7 +663,7 @@ test "personal source resolution cannot apply an old credential result after rek
                 ) -> Row {
                     if locator == "failure" {
                         assert secret == "original-race-key";
-                        await store.reconnect_connection(
+                        await personal_store.reconnect_connection(
                             uid, cid, "replacement-race-key"
                         );
                         raise ProviderError(
@@ -635,7 +671,9 @@ test "personal source resolution cannot apply an old credential result after rek
                         );
                     }
                     assert secret == "replacement-race-key";
-                    await store.reconnect_connection(uid, cid, "latest-race-key");
+                    await personal_store.reconnect_connection(
+                        uid, cid, "latest-race-key"
+                    );
                     return {
                         "remote_id": "resolved-with-old-key",
                         "name": "Old result",
@@ -644,7 +682,7 @@ test "personal source resolution cannot apply an old credential result after rek
                 }
                 app = FastAPI();
                 install_personal_routes(
-                    app, repo, store, resolver=rekey_during_resolve
+                    app, repo, personal_store, resolver=rekey_during_resolve
                 );
                 client = httpx.AsyncClient(
                     transport=httpx.ASGITransport(app=app), base_url="http://test"
@@ -656,20 +694,22 @@ test "personal source resolution cannot apply an old credential result after rek
                         json={"connection_id": cid, "locator": "failure"}
                     );
                     assert response.status_code == 422;
-                    current = await store.get_connection(uid, cid);
+                    current = await personal_store.get_connection(uid, cid);
                     assert current["status"] == "configured";
                     assert current["last_error"] == "";
                     assert current["retry_at"] == "";
-                    assert await store.connection_secret(cid) == "replacement-race-key";
+                    assert await personal_store.connection_secret(cid)
+                        == "replacement-race-key";
                     response = await client.post(
                         "/api/me/sources",
                         headers=ALICE,
                         json={"connection_id": cid, "locator": "success"}
                     );
                     assert response.status_code == 422;
-                    assert await store.list_sources(uid) == [];
-                    assert await store.connection_secret(cid) == "latest-race-key";
-                    assert (await store.get_connection(uid, cid))["status"]
+                    assert await personal_store.list_sources(uid) == [];
+                    assert await personal_store.connection_secret(cid)
+                        == "latest-race-key";
+                    assert (await personal_store.get_connection(uid, cid))["status"]
                         == "configured";
                 }
             }
