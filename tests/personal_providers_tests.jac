@@ -241,16 +241,17 @@ test "personal X stable IDs and bounded pagination preserve checkpoint" {
     );
     assert complete["high_water"] == "500" and complete["page"] == "";
     assert older[0]["url"] == "https://x.com/renamed/status/300";
-    (wrong_owner, unaffected) = x_page(
-        {"tweets": [tweet("600", "different-account")]}, source, complete
-    );
-    assert wrong_owner == [];
-    assert unaffected["high_water"] == "500";
     reply = tweet("700");
     reply["isReply"] = True;
     (replies, _) = x_page({"tweets": [reply]}, source, complete);
     assert replies == [];
-    for invalid in [{}, {"data": {}}, {"data": "invalid"}, {"tweets": "invalid"}] {
+    for invalid in [
+        {},
+        {"data": {}},
+        {"data": "invalid"},
+        {"tweets": "invalid"},
+        {"tweets": [tweet("600", "different-account")]}
+    ] {
         rejected = False;
         try {
             x_page(invalid, source, complete);
@@ -259,6 +260,8 @@ test "personal X stable IDs and bounded pagination preserve checkpoint" {
         }
         assert rejected;
     }
+    (empty, unchanged) = x_page({"tweets": []}, source, complete);
+    assert empty == [] and unchanged["high_water"] == "500";
 }
 
 test "personal X fetch spends one request and uses stable identity on each page" {
