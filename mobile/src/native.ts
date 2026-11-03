@@ -25,7 +25,7 @@ export const subscription = new Subscription({
     // Android 13's permission prompt requires a notification channel first.
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('newsbot', {
-        name: 'NewsBot', importance: Notifications.AndroidImportance.HIGH, sound: 'default',
+        name: 'NewsBot', importance: Notifications.AndroidImportance.HIGH,
       });
     }
     let permission = await Notifications.getPermissionsAsync();
@@ -47,7 +47,12 @@ export const subscription = new Subscription({
   },
   update: async value => {
     const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '');
-    if (!base?.startsWith('https://')) {
+    const localDevBackend =
+      __DEV__ &&
+      Platform.OS === 'android' &&
+      base === 'http://10.0.2.2:8000';
+
+    if (!base?.startsWith('https://') && !localDevBackend) {
       throw new Error('This build needs an HTTPS NewsBot API URL. See mobile/README.md.');
     }
     const controller = new AbortController();
