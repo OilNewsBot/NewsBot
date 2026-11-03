@@ -455,15 +455,22 @@ async def resolve_source(provider: str, locator: str, secret: str = "") -> Row {
 }
 
 def x_page(body: Row, source: Row, state: Row) -> tuple[list[Row], Row] {
-    tweets = body.get("tweets") or (body.get("data") or {}).get("tweets") or [];
+    data = body.get("data");
+    tweets = body.get("tweets");
+    if tweets is None and isinstance(data, dict) {
+        tweets = data.get("tweets");
+    }
     if not isinstance(tweets, list) {
         raise ProviderError("TwitterAPI.io returned an invalid timeline");
+    }
+    if len(tweets) > MAX_ITEMS {
+        raise ProviderError("TwitterAPI.io returned too many timeline entries");
     }
     floor = int(state.get("high_water") or 0);
     high = max(floor, int(state.get("scan_high") or 0));
     initial = not bool(source.get("initialized"));
     items: list[Row] = [];
-    reached = False;
+    has_newer = False;
     for tweet in tweets {
         if not isinstance(tweet, dict) or not str(tweet.get("id", "")).isdigit() {
             continue;
@@ -475,11 +482,12 @@ def x_page(body: Row, source: Row, state: Row) -> tuple[list[Row], Row] {
         }
         tid = int(tweet["id"]);
         high = max(high, tid);
-        if tid <= floor {
-            reached = True;
+        if tid > floor {
+            has_newer = True;
         }
         if tweet.get("isReply")
             or tweet.get("is_reply")
+            or str(tweet.get("type") or "").lower() == "reply"
             or tweet.get("retweeted_tweet") {
             continue;
         }
@@ -507,7 +515,9 @@ def x_page(body: Row, source: Row, state: Row) -> tuple[list[Row], Row] {
         );
     }
     page = str(body.get("next_cursor") or "");
-    if not initial and not reached and tweets and body.get("has_next_page") and page {
+    # A pinned old post must not stop catch-up before newer posts on following
+    # pages. One extra boundary page is preferable to silently missing items.
+    if not initial and has_newer and body.get("has_next_page") and page {
         if page == str(state.get("page") or "") {
             raise ProviderError(
                 "Provider pagination stopped advancing; collection will retry"

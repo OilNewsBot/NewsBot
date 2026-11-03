@@ -209,7 +209,7 @@ test "personal X stable IDs and bounded pagination preserve checkpoint" {
     source["initialized"] = True;
     (newer, next_state) = x_page(
         {
-            "tweets": [tweet("500"), tweet("400")],
+            "tweets": [tweet("100"), tweet("500"), tweet("400")],
             "has_next_page": True,
             "next_cursor": "page2"
         },
@@ -219,7 +219,7 @@ test "personal X stable IDs and bounded pagination preserve checkpoint" {
     assert len(newer) == 2;
     assert next_state["high_water"] == "200" and next_state["scan_high"] == "500";
     assert next_state["page"] == "page2";
-    (older, complete) = x_page(
+    (older, boundary) = x_page(
         {
             "tweets": [tweet("300"), tweet("200")],
             "has_next_page": True,
@@ -229,6 +229,16 @@ test "personal X stable IDs and bounded pagination preserve checkpoint" {
         next_state
     );
     assert len(older) == 1 and older[0]["external_id"] == "300";
+    assert boundary["high_water"] == "200" and boundary["page"] == "old";
+    (_, complete) = x_page(
+        {
+            "tweets": [tweet("200"), tweet("100")],
+            "has_next_page": True,
+            "next_cursor": "still-older"
+        },
+        source,
+        boundary
+    );
     assert complete["high_water"] == "500" and complete["page"] == "";
     assert older[0]["url"] == "https://x.com/renamed/status/300";
     (wrong_owner, unaffected) = x_page(
@@ -240,6 +250,15 @@ test "personal X stable IDs and bounded pagination preserve checkpoint" {
     reply["isReply"] = True;
     (replies, _) = x_page({"tweets": [reply]}, source, complete);
     assert replies == [];
+    for invalid in [{}, {"data": {}}, {"data": "invalid"}, {"tweets": "invalid"}] {
+        rejected = False;
+        try {
+            x_page(invalid, source, complete);
+        } except ProviderError {
+            rejected = True;
+        }
+        assert rejected;
+    }
 }
 
 test "personal X fetch spends one request and uses stable identity on each page" {
