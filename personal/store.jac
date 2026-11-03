@@ -34,7 +34,8 @@ def keywords(value: any) -> list[str] {
 
 obj PersonalStore {
     has db_path: Path | str,
-        _db: aiosqlite.Connection | None = None;
+        _db: aiosqlite.Connection | None = None,
+        _reader: aiosqlite.Connection | None = None;
 
     has _lock: asyncio.Lock postinit,
         vault: SecretBox postinit;
@@ -58,9 +59,17 @@ obj PersonalStore {
         await self.db.execute("PRAGMA foreign_keys = ON");
         await self.db.executescript(SCHEMA);
         await self.db.commit();
+        self._reader = await aiosqlite.connect(self.db_path);
+        self._reader.row_factory = aiosqlite.Row;
+        await self._reader.execute("PRAGMA busy_timeout = 5000");
+        await self._reader.execute("PRAGMA query_only = ON");
     }
 
     async def close {
+        if self._reader is not None {
+            await self._reader.close();
+            self._reader = None;
+        }
         if self._db is not None {
             await self._db.close();
             self._db = None;
@@ -72,7 +81,14 @@ obj PersonalStore {
     }
 
     async def _all(sql: str, args: tuple[any, ...] = ()) -> list[Row] {
-        return [dict(r) for r in await (await self._run(sql, args)).fetchall()];
+        assert self._reader is not None;
+        cursor = (await self._reader.execute(sql, args)) as aiosqlite.Cursor;
+        return [dict(r) for r in await cursor.fetchall()];
+    }
+
+    async def _read_one(sql: str, args: tuple[any, ...] = ()) -> Row | None {
+        rows = await self._all(sql, args);
+        return rows[0] if rows else None;
     }
 
     async def _one(sql: str, args: tuple[any, ...] = ()) -> Row | None {
@@ -89,6 +105,7 @@ obj PersonalStore {
                 "label",
                 "status",
                 "last_error",
+                "retry_at",
                 "daily_limit",
                 "created_at"
             ]
@@ -118,7 +135,7 @@ obj PersonalStore {
     }
 
     async def get_connection(user_id: int, connection_id: int) -> Row {
-        row = await self._one(
+        row = await self._read_one(
             "SELECT * FROM personal_connections WHERE user_id=? AND id=? AND deleted_at IS NULL",
             (user_id, connection_id)
         );
@@ -167,7 +184,7 @@ obj PersonalStore {
                 if provider == "x" {
                     encrypted = self.vault.seal(secret, f"{user_id}:{cid}:x");
                     await self._run(
-                        "UPDATE personal_connections SET secret=?,fingerprint=? WHERE id=?",
+                        "UPDATE personal_connections SET secret=?,fingerprint=?,status='configured' WHERE id=?",
                         (encrypted, credential_fingerprint(secret), cid)
                     );
                 }
@@ -184,7 +201,7 @@ obj PersonalStore {
     }
 
     async def connection_secret(connection_id: int) -> str {
-        row = await self._one(
+        row = await self._read_one(
             "SELECT * FROM personal_connections WHERE id=? AND deleted_at IS NULL",
             (connection_id, )
         );
@@ -214,7 +231,7 @@ obj PersonalStore {
             try {
                 encrypted = self.vault.seal(secret, f"{user_id}:{connection_id}:x");
                 await self._run(
-                    "UPDATE personal_connections SET secret=?,fingerprint=?,status='connected',last_error='' WHERE id=? AND user_id=? AND deleted_at IS NULL",
+                    "UPDATE personal_connections SET secret=?,fingerprint=?,status='configured',last_error='',retry_at='' WHERE id=? AND user_id=? AND deleted_at IS NULL",
                     (encrypted, credential_fingerprint(secret), connection_id, user_id)
                 );
                 await self._run(
@@ -258,7 +275,7 @@ obj PersonalStore {
     }
 
     async def get_source(user_id: int, source_id: int) -> Row {
-        row = await self._one(
+        row = await self._read_one(
             "SELECT s.*,c.provider FROM personal_sources s JOIN personal_connections c ON c.id=s.connection_id WHERE s.user_id=? AND s.id=? AND s.deleted_at IS NULL AND c.deleted_at IS NULL",
             (user_id, source_id)
         );
@@ -275,11 +292,11 @@ obj PersonalStore {
         name: str,
         url: str,
         alerts_enabled: bool = True,
-        include_keywords: list[str] = [],
-        exclude_keywords: list[str] = []
+        include_keywords: list[str] | None = None,
+        exclude_keywords: list[str] | None = None
     ) -> Row {
-        inc = keywords(include_keywords);
-        exc = keywords(exclude_keywords);
+        inc = keywords(include_keywords if include_keywords is not None else []);
+        exc = keywords(exclude_keywords if exclude_keywords is not None else []);
         if not remote_id
             or len(remote_id) > 2048
             or not name
@@ -337,11 +354,16 @@ obj PersonalStore {
             exc = keywords(changes.get("exclude_keywords", source["exclude_keywords"]));
             enabled = bool(changes.get("enabled", source["enabled"]));
             resumed = enabled and not source["enabled"];
+            alerts = bool(changes.get("alerts_enabled", source["alerts_enabled"]));
+            floor = source["alert_after_id"];
+            if resumed or alerts != bool(source["alerts_enabled"]) {
+                floor = await self.notification_head(user_id);
+            }
             await self._run(
-                "UPDATE personal_sources SET enabled=?,alerts_enabled=?,include_keywords=?,exclude_keywords=?,next_poll_at=?,initialized=?,status=? WHERE id=? AND user_id=?",
+                "UPDATE personal_sources SET enabled=?,alerts_enabled=?,include_keywords=?,exclude_keywords=?,next_poll_at=?,initialized=?,status=?,alert_after_id=? WHERE id=? AND user_id=?",
                 (
                     int(enabled),
-                    int(changes.get("alerts_enabled", source["alerts_enabled"])),
+                    int(alerts),
                     json.dumps(inc),
                     json.dumps(exc),
                     "" if resumed else source["next_poll_at"],
@@ -349,6 +371,7 @@ obj PersonalStore {
                     "pending"
                         if resumed
                         else (source["status"] if enabled else "paused"),
+                    floor,
                     source_id,
                     user_id
                 )
@@ -371,8 +394,8 @@ obj PersonalStore {
 
     async def active_sources -> list[Row] {
         rows = await self._all(
-            "SELECT s.*,c.provider,c.status AS connection_status,c.daily_limit FROM personal_sources s JOIN personal_connections c ON c.id=s.connection_id WHERE s.deleted_at IS NULL AND c.deleted_at IS NULL AND s.enabled=1 AND c.status NOT IN ('needs_reconnect','disconnected') AND s.next_poll_at<=? ORDER BY s.next_poll_at,s.id",
-            (iso(utcnow()), )
+            "SELECT s.*,c.provider,c.status AS connection_status,c.daily_limit FROM personal_sources s JOIN personal_connections c ON c.id=s.connection_id WHERE s.deleted_at IS NULL AND c.deleted_at IS NULL AND s.enabled=1 AND c.status NOT IN ('needs_reconnect','disconnected') AND s.next_poll_at<=? AND c.retry_at<=? ORDER BY s.next_poll_at,s.id",
+            (iso(utcnow()), iso(utcnow()))
         );
         return [self._source(r) for r in rows];
     }
@@ -385,6 +408,9 @@ obj PersonalStore {
                 (connection_id, )
             );
             if row is None or row["status"] in ["needs_reconnect", "disconnected"] {
+                return False;
+            }
+            if row["retry_at"] > iso(utcnow()) {
                 return False;
             }
             if row["provider"] == "rss" {
@@ -415,7 +441,7 @@ obj PersonalStore {
                 (iso(utcnow()), next_poll_at, source_id)
             );
             await self._run(
-                "UPDATE personal_connections SET status='connected',last_error='' WHERE id=(SELECT connection_id FROM personal_sources WHERE id=?) AND deleted_at IS NULL AND status NOT IN ('needs_reconnect','disconnected')",
+                "UPDATE personal_connections SET status='connected',last_error='',retry_at='' WHERE id=(SELECT connection_id FROM personal_sources WHERE id=?) AND deleted_at IS NULL AND status NOT IN ('needs_reconnect','disconnected')",
                 (source_id, )
             );
             await self.db.commit();
@@ -432,10 +458,22 @@ obj PersonalStore {
             );
             if status in ["needs_reconnect", "rate_limited", "budget_paused"] {
                 await self._run(
-                    "UPDATE personal_connections SET status=?,last_error=? WHERE id=(SELECT connection_id FROM personal_sources WHERE id=?) AND deleted_at IS NULL",
-                    (status, detail[:200], source_id)
+                    "UPDATE personal_connections SET status=?,last_error=?,retry_at=? WHERE id=(SELECT connection_id FROM personal_sources WHERE id=?) AND deleted_at IS NULL",
+                    (status, detail[:200], next_poll_at, source_id)
                 );
             }
+            await self.db.commit();
+        }
+    }
+
+    async def connection_failure(
+        connection_id: int, status: str, detail: str, next_poll_at: str = ""
+    ) {
+        async with self._lock {
+            await self._run(
+                "UPDATE personal_connections SET status=?,last_error=?,retry_at=? WHERE id=? AND deleted_at IS NULL",
+                (status, detail[:200], next_poll_at, connection_id)
+            );
             await self.db.commit();
         }
     }
@@ -524,13 +562,13 @@ obj PersonalStore {
         user_id: int, since: int = 0, limit: int = 100
     ) -> list[Row] {
         return await self._all(
-            "SELECT i.*,n.id AS notification_id,'SOURCE_POST' AS kind,s.name AS source_name,c.provider FROM personal_notifications n JOIN personal_items i ON i.id=n.item_id JOIN personal_sources s ON s.id=n.source_id JOIN personal_connections c ON c.id=s.connection_id WHERE n.user_id=? AND n.id>? AND s.deleted_at IS NULL AND c.deleted_at IS NULL AND s.enabled=1 AND s.alerts_enabled=1 AND c.status<>'disconnected' ORDER BY n.id ASC LIMIT ?",
+            "SELECT i.*,n.id AS notification_id,'SOURCE_POST' AS kind,s.name AS source_name,c.provider FROM personal_notifications n JOIN personal_items i ON i.id=n.item_id JOIN personal_sources s ON s.id=n.source_id JOIN personal_connections c ON c.id=s.connection_id WHERE n.user_id=? AND n.id>? AND n.id>s.alert_after_id AND s.deleted_at IS NULL AND c.deleted_at IS NULL AND s.enabled=1 AND s.alerts_enabled=1 AND c.status<>'disconnected' ORDER BY n.id ASC LIMIT ?",
             (user_id, max(0, since), min(200, max(1, limit)))
         );
     }
 
     async def notification_head(user_id: int) -> int {
-        row = await self._one(
+        row = await self._read_one(
             "SELECT COALESCE(MAX(id),0) AS n FROM personal_notifications WHERE user_id=?",
             (user_id, )
         );
