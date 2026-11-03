@@ -356,7 +356,10 @@ obj PersonalStore {
             resumed = enabled and not source["enabled"];
             alerts = bool(changes.get("alerts_enabled", source["alerts_enabled"]));
             floor = source["alert_after_id"];
-            if resumed or alerts != bool(source["alerts_enabled"]) {
+            if resumed
+                or alerts != bool(source["alerts_enabled"])
+                or inc != source["include_keywords"]
+                or exc != source["exclude_keywords"] {
                 floor = await self.notification_head(user_id);
             }
             await self._run(
