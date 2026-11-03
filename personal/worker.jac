@@ -16,13 +16,6 @@ def after_seconds(seconds: int) -> str {
     return (datetime.now(UTC) + timedelta(seconds=seconds)).isoformat();
 }
 
-def next_day -> str {
-    now = datetime.now(UTC);
-    return (
-        now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-    ).isoformat();
-}
-
 obj PersonalWorker {
     # Structural interface permits a fixture store/fetcher without live calls.
     has store: any,
@@ -33,16 +26,16 @@ obj PersonalWorker {
         source_id = int(source["id"]);
         connection_id = int(source["connection_id"]);
         provider = str(source["provider"]);
+        source_revision = int(source.get("revision", 0));
+        connection_revision = int(source.get("connection_revision", 0));
         try {
             secret = "";
             if provider == "x" {
-                if not await self.store.claim_request(connection_id) {
-                    await self.store.source_failure(
-                        source_id,
-                        "budget_paused",
-                        "Daily request limit reached; collection resumes tomorrow",
-                        next_day()
-                    );
+                if not await self.store.claim_request(
+                    connection_id, connection_revision=connection_revision
+                ) {
+                    # The Store knows whether this is quota, cooldown, deletion
+                    # or stale credentials. Do not overwrite its current state.
                     return;
                 }
                 secret = await self.store.connection_secret(connection_id);
@@ -55,21 +48,38 @@ obj PersonalWorker {
             # commits post, notification and cursor atomically. A disconnect
             # during an HTTP request therefore cannot resurrect collection.
             await self.store.persist_batch(
-                source_id, items, cursor, initial=not bool(source.get("initialized"))
+                source_id,
+                items,
+                cursor,
+                initial=not bool(source.get("initialized")),
+                source_revision=source_revision,
+                connection_revision=connection_revision
             );
             await self.store.source_success(
-                source_id, after_seconds(60 if provider == "x" else 300)
+                source_id,
+                after_seconds(60 if provider == "x" else 300),
+                source_revision=source_revision,
+                connection_revision=connection_revision
             );
         } except ProviderError as error {
             await self.store.source_failure(
-                source_id, error.status, error.detail, after_seconds(error.retry_after)
+                source_id,
+                error.status if provider == "x" else "error",
+                error.detail,
+                after_seconds(error.retry_after),
+                source_revision=source_revision,
+                connection_revision=connection_revision
             );
         } except (ValueError, RuntimeError) {
             await self.store.source_failure(
                 source_id,
-                "needs_reconnect",
-                "Connection unavailable; reconnect this service",
-                after_seconds(3600)
+                "needs_reconnect" if provider == "x" else "error",
+                "Connection unavailable; reconnect this service"
+                    if provider == "x"
+                    else "Feed unavailable; collection will retry",
+                after_seconds(3600),
+                source_revision=source_revision,
+                connection_revision=connection_revision
             );
         } except Exception {
             # Never log provider exception strings, headers, URLs, or secrets.
@@ -78,7 +88,9 @@ obj PersonalWorker {
                 source_id,
                 "error",
                 "Collection failed; it will retry",
-                after_seconds(300)
+                after_seconds(300),
+                source_revision=source_revision,
+                connection_revision=connection_revision
             );
         }
     }

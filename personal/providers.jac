@@ -135,6 +135,17 @@ def retry_delay(response: httpx.Response) -> int {
 
 def check_response(response: httpx.Response, provider: str) {
     code = response.status_code;
+    if provider == "rss" and code in (401, 402, 403, 429) {
+        # RSS connections group unrelated public sites and contain no shared
+        # credential to reconnect. Only this source should be delayed.
+        raise ProviderError(
+            "This feed is rate limited; collection will retry"
+                if code == 429
+                else "This feed requires access or is unavailable",
+            "error",
+            retry_delay(response) if code == 429 else 3600
+        );
+    }
     if code in (401, 403) {
         raise ProviderError(
             "Reconnect this service or check access permissions",
