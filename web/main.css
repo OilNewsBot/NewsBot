@@ -141,6 +141,12 @@ footer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel)
 .auth-success {
     color: #80e0a0;
 }
+
+/* Sign-in gate: the only view before login */
+.locked-note {
+    margin: 16px 0 0;
+    color: var(--dim);
+}
 /* ---- trading page (web/trading.jac) ---- */
 .titlebar { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .trading h1 { letter-spacing: .06em; text-transform: none; color: var(--text); font-size: 18px; }

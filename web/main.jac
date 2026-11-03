@@ -9,7 +9,7 @@ self-contained page by `jac build web`. It talks to the FastAPI service
 
 import "./main.css";
 import from react { useEffect }
-import from .auth { AuthPanel }
+import from .auth { AuthPanel, SESSION_EVENT }
 import from .trading { TradingPage }
 import from .sources { SourcesPage }
 
@@ -104,7 +104,8 @@ glob _seen: any = new(Set),  # notification ids already handled
      _acked: any = new(Set),  # notification ids the user dismissed
      _last_id: int = 0,  # highest id seen; the SSE backfill resumes from here
      _feed_timer: any = None,
-     _stream: any = None;
+     _stream: any = None,
+     _session_known: bool = False;  # a /me check has answered at least once
 
 glob REFETCH_LABEL: str = "⟳ refetch 12h";
 
@@ -382,8 +383,68 @@ def banner_text(s: Status | None) -> str {
 
 # ---------- the pages ----------
 
-"""The service serves this one page at / and /trading; pick the view by path."""
+"""Shown instead of every page until the visitor signs in."""
+def LockedPage -> JsxElement {
+    <main className="locked">
+        <div className="titlebar">
+            <h1>newsstream — crude oil</h1>
+        </div>
+        <p className="locked-note">
+            {"🔒 Sign in to see the feeds, trading view and your sources."}
+        </p>
+        <AuthPanel/>
+    </main>
+}
+
+"""The service serves this one page at /, /trading and /sources; pick the
+view by path. Every view stays locked behind sign-in: no page mounts (so
+nothing is fetched or streamed) until /me confirms a session."""
 def:pub app -> JsxElement {
+    has session: str = "checking";  # checking | in | out
+
+    async def check_session {
+        ok = False;
+        try {
+            resp = await fetch(
+                "/me", {"credentials": "same-origin", "cache": "no-store"}
+            );
+            ok = resp.ok;
+        } except Exception {
+            # Server unreachable: keep the current view rather than locking a
+            # signed-in page on a blip; the first check still has to decide.
+            if _session_known {
+                return;
+            }
+        }
+        _session_known = True;
+        session = "in" if ok else "out";
+    }
+
+    useEffect(
+        lambda {
+            check_session();
+            on_change = lambda { check_session(); };
+            # AuthPanel announces logins/logouts from any page; the interval
+            # locks the page again once a session expires.
+            window.addEventListener(SESSION_EVENT, on_change);
+            timer = setInterval(lambda { check_session(); }, 60000);
+            return lambda {
+                window.removeEventListener(SESSION_EVENT, on_change);
+                clearInterval(timer);
+            };
+        },
+        []
+    );
+
+    if session == "checking" {
+        return
+            <main className="locked">
+                <p className="dim">Checking sign-in…</p>
+            </main>;
+    }
+    if session == "out" {
+        return <LockedPage/>;
+    }
     # the checker's window typings lack location
     win: any = window;
     if str(win.location.pathname).startswith("/sources") {
