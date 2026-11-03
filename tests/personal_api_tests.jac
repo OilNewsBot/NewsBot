@@ -11,6 +11,7 @@ import from unittest.mock { patch }
 import from fastapi { FastAPI, Request }
 import from db.repo { Repo, Row }
 import from personal.store { PersonalStore }
+import from personal.providers { ProviderError }
 import from personal.api { install_personal_routes, personal_events }
 import from tests.helpers { make_settings }
 
@@ -512,6 +513,95 @@ test "personal SSE replays durably and revokes every tab" {
                 assert (await client.get("/api/me/feed", headers=ALICE)).status_code
                     == 401;
             }
+        }
+    }
+    asyncio.run(run());
+}
+
+test "personal provider refusal persists a connection cooldown" {
+    async def run {
+        with patch.dict(
+            os.environ,
+            {
+                "NEWSBOT_CONNECTION_KEY": base64.urlsafe_b64encode(b"k" * 32).decode(),
+                "X_PUSH_API_KEY": ""
+            }
+        ) {
+            async with api_fixture() as (repo, store, _, users) {
+                calls: list[str] = [];
+                async def limited(provider: str, locator: str, secret: str) -> Row {
+                    calls.append(locator);
+                    raise ProviderError(
+                        "The provider asked us to wait", "rate_limited", 180
+                    );
+                }
+                app = FastAPI();
+                install_personal_routes(app, repo, store, resolver=limited);
+                conn = await store.create_connection(
+                    int(users["alice"]), "x", "X", "cooldown-test-key", 5
+                );
+                cid = int(conn["id"]);
+                client = httpx.AsyncClient(
+                    transport=httpx.ASGITransport(app=app), base_url="http://test"
+                );
+                async with client {
+                    response = await client.post(
+                        "/api/me/sources",
+                        headers=ALICE,
+                        json={"connection_id": cid, "locator": "example"}
+                    );
+                    assert response.status_code == 429;
+                    assert response.headers["Retry-After"] == "180";
+                    assert response.headers["Cache-Control"] == "no-store";
+                    conn = await store.get_connection(int(users["alice"]), cid);
+                    assert conn["status"] == "rate_limited" and conn["retry_at"];
+                    response = await client.post(
+                        "/api/me/sources",
+                        headers=ALICE,
+                        json={"connection_id": cid, "locator": "another"}
+                    );
+                    assert response.status_code == 429 and calls == ["example"];
+                    assert "cooldown-test-key" not in response.text;
+                }
+            }
+        }
+    }
+    asyncio.run(run());
+}
+
+test "personal SSE does not emit a buffered page after mute and unmute" {
+    async def run {
+        async with api_fixture() as (repo, store, _, users) {
+            uid = int(users["alice"]);
+            conn = await store.create_connection(uid, "rss", "RSS");
+            source = await store.create_source(
+                uid, int(conn["id"]), "feed", "Feed", "https://example.org/feed"
+            );
+            sid = int(source["id"]);
+            await store.persist_batch(sid, [], "baseline", initial=True);
+            await store.persist_batch(
+                sid,
+                [
+                    article("1", "first"),
+                    article("2", "buffered second"),
+                    article("3", "buffered third")
+                ],
+                "three"
+            );
+            stream = personal_events(
+                stream_request("alice-session"), repo, store, uid, 0, 0.0
+            );
+            assert "connected" in await anext(stream);
+            assert "first" in await anext(stream);
+            # The stream already fetched rows 2 and 3. A mute/resume must invalidate them.
+            await store.update_source(uid, sid, {"alerts_enabled": False});
+            await store.update_source(uid, sid, {"alerts_enabled": True});
+            assert "heartbeat" in await anext(stream);
+            await store.persist_batch(
+                sid, [article("4", "fresh after resume")], "four"
+            );
+            assert "fresh after resume" in await anext(stream);
+            await stream.aclose();
         }
     }
     asyncio.run(run());
