@@ -163,10 +163,14 @@ footer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel)
 .toggle button:first-child { border-radius: 6px 0 0 6px; }
 .toggle button:last-child { border-radius: 0 6px 6px 0; border-left: none; }
 .toggle button.on { background: #26304a; color: #9fc3ff; border-color: var(--accent); }
+.days { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.days button { font-size: 12px; padding: 3px 9px; }
+.days button.on { background: #26304a; color: #9fc3ff; border-color: var(--accent); }
 .chart { width: 100%; height: auto; display: block; }
 .chart .line { fill: none; stroke: var(--accent); stroke-width: 1.5; }
 .chart .grid { stroke: var(--border); stroke-width: 1; }
 .chart .axis { fill: var(--dim); font-size: 11px; }
+.chart .hold { fill: var(--accent); opacity: 0.12; }
 .chart .mark { stroke: var(--bg); stroke-width: 2; }
 .chart-empty { height: 180px; display: flex; align-items: center; justify-content: center; }
 .sugg { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; padding: 7px 8px;

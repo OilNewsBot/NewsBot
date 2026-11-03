@@ -531,8 +531,11 @@ brokerage link.
 - **Storage:** `trade_suggestions` keeps id, entry time, ticker, side,
   contract and count, notional, hold minutes, closeout time, reference price,
   tier, rule, rationale, model, and the event/notification/post it came from.
-- **Page:** portfolio form; a 1-minute chart (WTI by default, toggle to RBOB);
-  today's suggestions; past suggestions (closeout before the start of today,
-  local time). Clicking a suggestion charts its window (±30 minutes) with
-  circles: long entry green, short entry red, long closeout red, short
-  closeout green.
+- **Page:** portfolio form; a 1-minute chart of one local calendar day (WTI by
+  default, toggle to RBOB; a day selector for today and the six days before
+  it; today refreshes every minute); today's suggestions; past suggestions
+  (closeout before the start of today, local time). Clicking a suggestion
+  switches the chart to its ticker and entry day, shades the hold, and marks
+  it with circles: long entry green, short entry red, long closeout red, short
+  closeout green. A suggestion older than the selector's seven days gets its
+  own day chip while picked.
