@@ -30,7 +30,7 @@ def main():
             raise RuntimeError("Recorded LLM fixtures must exist and be nonempty; do not silently skip behavior tests.")
         jac = jac_binary()
         # Explicit source paths avoid formatting installed packages under .jac/.
-        sources = sorted(p.name for p in ROOT.glob("*.jac") if p.is_file()) + ["adapters", "db", "pipeline", "tests", "web"]
+        sources = sorted(p.name for p in ROOT.glob("*.jac") if p.is_file()) + ["adapters", "db", "personal", "pipeline", "tests", "web"]
         commands += [[jac, "fmt", "--check", *sources], [jac, "check"], [jac, "test"], [jac, "build", "web"]]
     for command in commands:
         print("+ " + " ".join(command), flush=True)
