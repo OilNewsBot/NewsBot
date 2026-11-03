@@ -33,6 +33,8 @@ python-dotenv = "==1.2.3"
 httpx = "==0.28.1"
 websockets = "==17.1"
 telethon = "==1.44.0"
+cryptography = "==50.0.2"
+defusedxml = "==0.7.1"
 # Indirect dependencies that would otherwise resolve newer than uv.lock had them.
 httpx2 = "==2.12.0"
 httpcore2 = "==2.12.0"

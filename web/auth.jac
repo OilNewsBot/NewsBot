@@ -1,7 +1,8 @@
 """Registration and login UI for NewsBot."""
-import from react { useEffect }
+import from react { useEffect, useRef }
 
-def:pub AuthPanel -> JsxElement {
+def:pub AuthPanel(onSessionChange: any = None) -> JsxElement {
+    authEpoch: any = useRef(0);
     has mode: str = "login",
         username: str = "",
         email: str = "",
@@ -13,29 +14,56 @@ def:pub AuthPanel -> JsxElement {
         currentUsername: str = "",
         currentEmail: str = "";
     async def check_session {
+        epoch = authEpoch.current;
         try {
-            response = await fetch("/me", {"credentials": "same-origin"});
+            response = await fetch(
+                "/me", {"credentials": "same-origin", "cache": "no-store"}
+            );
+            if epoch != authEpoch.current {
+                return;
+            }
 
             if response.ok {
                 user: any = await response.json();
+                if epoch != authEpoch.current {
+                    return;
+                }
                 currentUsername = str(user["username"]);
                 currentEmail = str(user["email"]);
                 loggedIn = True;
+                if onSessionChange {
+                    onSessionChange(user);
+                }
             } else {
                 loggedIn = False;
+                if onSessionChange {
+                    onSessionChange(None);
+                }
             }
         } except Exception {
             loggedIn = False;
         }
     }
 
-    useEffect(lambda { check_session(); }, []);
+    useEffect(
+        lambda {
+            authEpoch.current += 1;
+            check_session();
+            return lambda { authEpoch.current += 1; };
+        },
+        []
+    );
 
     async def logout {
+        authEpoch.current += 1;
+        epoch = authEpoch.current;
         try {
             response = await fetch(
                 "/logout", {"method": "POST", "credentials": "same-origin"}
             );
+            if epoch != authEpoch.current {
+                return;
+            }
 
             if response.ok {
                 loggedIn = False;
@@ -45,6 +73,9 @@ def:pub AuthPanel -> JsxElement {
                 message = "You have been logged out.";
                 error = "";
                 mode = "login";
+                if onSessionChange {
+                    onSessionChange(None);
+                }
             } else {
                 error = "Could not log out. Please try again.";
             }
@@ -55,6 +86,8 @@ def:pub AuthPanel -> JsxElement {
 
     async def submit(e: any) {
         e.preventDefault();
+        authEpoch.current += 1;
+        epoch = authEpoch.current;
         loading = True;
         error = "";
         message = "";
@@ -78,6 +111,9 @@ def:pub AuthPanel -> JsxElement {
             );
 
             result = await response.json();
+            if epoch != authEpoch.current {
+                return;
+            }
 
             if not response.ok {
                 error = str(result["detail"])

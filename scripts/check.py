@@ -19,7 +19,7 @@ def main():
     commands = [[sys.executable, "-m", "unittest", "discover", "-s", "scripts/tests", "-v"]]
     env = os.environ.copy()
     # Empty values also prevent python-dotenv from loading credentials from .env.
-    for name in ("ANTHROPIC_API_KEY", "TELEGRAM_API_ID", "TELEGRAM_API_HASH", "TELEGRAM_BOT_TOKEN", "X_BEARER_TOKEN", "X_PUSH_API_KEY", "TRIAGE_MODEL", "REVIEW_MODEL", "TRADE_MODEL"):
+    for name in ("ANTHROPIC_API_KEY", "TELEGRAM_API_ID", "TELEGRAM_API_HASH", "TELEGRAM_BOT_TOKEN", "X_BEARER_TOKEN", "X_PUSH_API_KEY", "TRIAGE_MODEL", "REVIEW_MODEL", "TRADE_MODEL", "NEWSBOT_CONNECTION_KEY"):
         env[name] = ""
     env["JAC_TEST_JOBS"] = "0"
     env["NEWSSTREAM_CASSETTE_MODE"] = "replay"
@@ -30,7 +30,7 @@ def main():
             raise RuntimeError("Recorded LLM fixtures must exist and be nonempty; do not silently skip behavior tests.")
         jac = jac_binary()
         # Explicit source paths avoid formatting installed packages under .jac/.
-        sources = sorted(p.name for p in ROOT.glob("*.jac") if p.is_file()) + ["adapters", "db", "pipeline", "tests", "web"]
+        sources = sorted(p.name for p in ROOT.glob("*.jac") if p.is_file()) + ["adapters", "db", "personal", "pipeline", "tests", "web"]
         commands += [[jac, "fmt", "--check", *sources], [jac, "check"], [jac, "test"], [jac, "build", "web"]]
     for command in commands:
         print("+ " + " ".join(command), flush=True)
