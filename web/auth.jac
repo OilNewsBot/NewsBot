@@ -1,6 +1,15 @@
 """Registration and login UI for NewsBot."""
 import from react { useEffect, useRef }
 
+"""Window event fired after a login or logout, so the sign-in gate in
+main.jac can lock or unlock whichever page is showing."""
+glob:pub SESSION_EVENT: str = "ns-session";
+
+def announce_session_change {
+    # the checker has no browser typings for Event
+    window.dispatchEvent(new(Event, SESSION_EVENT));  # jac:ignore[E1053]
+}
+
 def:pub AuthPanel(onSessionChange: any = None) -> JsxElement {
     authEpoch: any = useRef(0);
     has mode: str = "login",
@@ -76,6 +85,7 @@ def:pub AuthPanel(onSessionChange: any = None) -> JsxElement {
                 if onSessionChange {
                     onSessionChange(None);
                 }
+                announce_session_change();
             } else {
                 error = "Could not log out. Please try again.";
             }
@@ -126,6 +136,7 @@ def:pub AuthPanel(onSessionChange: any = None) -> JsxElement {
             } else {
                 password = "";
                 await check_session();
+                announce_session_change();
             }
         } except Exception {
             error = "Could not connect to the server.";
