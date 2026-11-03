@@ -471,15 +471,18 @@ def x_page(body: Row, source: Row, state: Row) -> tuple[list[Row], Row] {
     initial = not bool(source.get("initialized"));
     items: list[Row] = [];
     has_newer = False;
+    own_entries = 0;
     for tweet in tweets {
         if not isinstance(tweet, dict) or not str(tweet.get("id", "")).isdigit() {
             continue;
         }
         author = tweet.get("author") or {};
         # Never accept a reused handle or another account returned unexpectedly.
-        if str(author.get("id") or "") != str(source["remote_id"]) {
+        if not isinstance(author, dict)
+            or str(author.get("id") or "") != str(source["remote_id"]) {
             continue;
         }
+        own_entries += 1;
         tid = int(tweet["id"]);
         high = max(high, tid);
         if tid > floor {
@@ -512,6 +515,11 @@ def x_page(body: Row, source: Row, state: Row) -> tuple[list[Row], Row] {
                 "url": url,
                 "posted_at": item_date(str(tweet.get("createdAt") or ""))
             }
+        );
+    }
+    if tweets and own_entries == 0 {
+        raise ProviderError(
+            "TwitterAPI.io returned no verifiable posts for this account"
         );
     }
     page = str(body.get("next_cursor") or "");
