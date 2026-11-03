@@ -7,6 +7,7 @@ import from unittest.mock { patch }
 import from personal.providers {
     MAX_BODY,
     ProviderError,
+    check_response,
     feed_url,
     fetch_feed,
     fetch_source,
@@ -342,15 +343,17 @@ obj WorkerStore {
         claims: list[int] = [],
         saves: list[Row] = [],
         errors: list[Row] = [],
-        allowed: bool = True;
+        allowed: bool = True,
+        revision: int = 0,
+        connection_revision: int = 0;
 
     async def active_sources -> list[Row] {
         return self.sources;
     }
 
-    async def claim_request(connection_id: int) -> bool {
+    async def claim_request(connection_id: int, connection_revision: int = 0) -> bool {
         self.claims.append(connection_id);
-        return self.allowed;
+        return self.allowed and connection_revision == self.connection_revision;
     }
 
     async def connection_secret(connection_id: int) -> str {
@@ -358,8 +361,17 @@ obj WorkerStore {
     }
 
     async def persist_batch(
-        source_id: int, items: list[Row], cursor: str, initial: bool = False
+        source_id: int,
+        items: list[Row],
+        cursor: str,
+        initial: bool = False,
+        source_revision: int = 0,
+        connection_revision: int = 0
     ) {
+        if source_revision != self.revision
+            or connection_revision != self.connection_revision {
+            return;
+        }
         self.saves.append(
             {
                 "source_id": source_id,
@@ -370,10 +382,24 @@ obj WorkerStore {
         );
     }
 
-    async def source_success(source_id: int, next_poll_at: str) {}
+    async def source_success(
+        source_id: int,
+        next_poll_at: str,
+        source_revision: int = 0,
+        connection_revision: int = 0
+    ) {}
     async def source_failure(
-        source_id: int, status: str, detail: str, next_poll_at: str
+        source_id: int,
+        status: str,
+        detail: str,
+        next_poll_at: str,
+        source_revision: int = 0,
+        connection_revision: int = 0
     ) {
+        if source_revision != self.revision
+            or connection_revision != self.connection_revision {
+            return;
+        }
         self.errors.append({"id": source_id, "status": status, "detail": detail});
     }
 }
@@ -401,7 +427,8 @@ test "personal worker accounts every X page and isolates provider failures" {
         assert store.saves[0]["source_id"] == 3;
         store.allowed = False;
         await worker.collect(store.sources[0]);
-        assert store.errors[-1]["status"] == "budget_paused";
+        assert len(store.errors) == 1;
+        assert store.errors[-1]["status"] == "rate_limited";
         assert len(store.saves) == 1;
         async def success(source: Row, secret: str) -> tuple[list[Row], str] {
             return ([{"external_id": "old"}], "checkpoint");
@@ -411,6 +438,67 @@ test "personal worker accounts every X page and isolates provider failures" {
         await worker.collect(store.sources[0]);
         assert store.saves[-1]["initial"];
         assert store.saves[-1]["cursor"] == "checkpoint";
+    }
+    asyncio.run(run());
+}
+
+test "personal collector preserves revisions across in-flight reconnects" {
+    async def run {
+        source: Row = {
+            "id": 1,
+            "connection_id": 10,
+            "provider": "x",
+            "initialized": True,
+            "revision": 4,
+            "connection_revision": 8
+        };
+        store = WorkerStore(revision=4, connection_revision=8);
+        async def delayed(source: Row, secret: str) -> tuple[list[Row], str] {
+            store.revision = 5;  # pause/resume while request is running
+            store.connection_revision = 9;  # user replaces the credential
+            return ([{"external_id": "stale"}], "old-cursor");
+        }
+        worker = PersonalWorker(store, fetcher=delayed);
+        await worker.collect(source);
+        assert store.saves == [];
+        assert store.errors == [];
+        store.revision = 4;
+        store.connection_revision = 8;
+        async def failed(source: Row, secret: str) -> tuple[list[Row], str] {
+            store.connection_revision = 9;
+            raise ProviderError("Old key refused", "needs_reconnect", 3600);
+        }
+        worker.fetcher = failed;
+        await worker.collect(source);
+        assert store.errors == [];
+    }
+    asyncio.run(run());
+}
+
+test "personal RSS access errors never request reconnect of unrelated feeds" {
+    for code in [401, 402, 403, 429] {
+        rejected = False;
+        try {
+            check_response(httpx.Response(code, headers={"retry-after": "180"}), "rss");
+        } except ProviderError as error {
+            rejected = True;
+            assert error.status == "error";
+            if code == 429 {
+                assert error.retry_after == 180;
+            }
+        }
+        assert rejected;
+    }
+    async def run {
+        store = WorkerStore();
+        async def denied(source: Row, secret: str) -> tuple[list[Row], str] {
+            raise ProviderError("Private feed", "needs_reconnect", 3600);
+        }
+        worker = PersonalWorker(store, fetcher=denied);
+        await worker.collect(
+            {"id": 1, "connection_id": 10, "provider": "rss", "initialized": True}
+        );
+        assert store.errors[0]["status"] == "error";
     }
     asyncio.run(run());
 }
