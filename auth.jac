@@ -1,6 +1,22 @@
 import hashlib;
 import hmac;
 import secrets;
+import from fastapi { HTTPException, Request }
+import from db.repo { Repo, Row }
+
+"""Resolve ownership from the authenticated cookie, never a request user_id."""
+async def require_user(request: Request, repo: Repo) -> Row {
+    token = request.cookies.get("session");
+    if not token {
+        raise HTTPException(401, "Sign in to manage your sources");
+    }
+    token_hash = hashlib.sha256(token.encode()).hexdigest();
+    user = await repo.get_session(token_hash);
+    if user is None {
+        raise HTTPException(401, "Session expired; sign in again");
+    }
+    return user | {"token_hash": token_hash};
+}
 
 def hash_password(password: str) -> str {
     salt = secrets.token_bytes(16);
