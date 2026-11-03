@@ -8,7 +8,7 @@ import asyncio;
 import json;
 import os;
 import aiosqlite;
-import from datetime { UTC, datetime }
+import from datetime { UTC, datetime, timedelta }
 import from pathlib { Path }
 import from db.repo { Row, iso, utcnow }
 import from personal.secrets { SecretBox, credential_fingerprint }
@@ -102,6 +102,7 @@ obj PersonalStore {
             for key in [
                 "id",
                 "provider",
+                "revision",
                 "label",
                 "status",
                 "last_error",
@@ -231,7 +232,7 @@ obj PersonalStore {
             try {
                 encrypted = self.vault.seal(secret, f"{user_id}:{connection_id}:x");
                 await self._run(
-                    "UPDATE personal_connections SET secret=?,fingerprint=?,status='configured',last_error='',retry_at='' WHERE id=? AND user_id=? AND deleted_at IS NULL",
+                    "UPDATE personal_connections SET secret=?,fingerprint=?,revision=revision+1,status='configured',last_error='',retry_at='' WHERE id=? AND user_id=? AND deleted_at IS NULL",
                     (encrypted, credential_fingerprint(secret), connection_id, user_id)
                 );
                 await self._run(
@@ -255,7 +256,7 @@ obj PersonalStore {
             await self.get_connection(user_id, connection_id);
             now = iso(utcnow());
             await self._run(
-                "UPDATE personal_connections SET status='disconnected',secret='',fingerprint=NULL,deleted_at=? WHERE user_id=? AND id=?",
+                "UPDATE personal_connections SET status='disconnected',revision=revision+1,secret='',fingerprint=NULL,deleted_at=? WHERE user_id=? AND id=?",
                 (now, user_id, connection_id)
             );
             await self._run(
@@ -293,7 +294,8 @@ obj PersonalStore {
         url: str,
         alerts_enabled: bool = True,
         include_keywords: list[str] | None = None,
-        exclude_keywords: list[str] | None = None
+        exclude_keywords: list[str] | None = None,
+        connection_revision: int | None = None
     ) -> Row {
         inc = keywords(include_keywords if include_keywords is not None else []);
         exc = keywords(exclude_keywords if exclude_keywords is not None else []);
@@ -305,7 +307,11 @@ obj PersonalStore {
             raise ValueError("Invalid source details");
         }
         async with self._lock {
-            await self.get_connection(user_id, connection_id);
+            conn = await self.get_connection(user_id, connection_id);
+            if connection_revision is not None
+                and conn["revision"] != connection_revision {
+                raise ValueError("Connection changed; try adding the source again");
+            }
             count = await self._one(
                 "SELECT COUNT(*) AS n FROM personal_sources WHERE user_id=? AND deleted_at IS NULL",
                 (user_id, )
@@ -363,7 +369,7 @@ obj PersonalStore {
                 floor = await self.notification_head(user_id);
             }
             await self._run(
-                "UPDATE personal_sources SET enabled=?,alerts_enabled=?,include_keywords=?,exclude_keywords=?,next_poll_at=?,initialized=?,status=?,alert_after_id=? WHERE id=? AND user_id=?",
+                "UPDATE personal_sources SET enabled=?,alerts_enabled=?,include_keywords=?,exclude_keywords=?,next_poll_at=?,initialized=?,status=?,alert_after_id=?,revision=revision+1 WHERE id=? AND user_id=?",
                 (
                     int(enabled),
                     int(alerts),
@@ -388,7 +394,7 @@ obj PersonalStore {
         async with self._lock {
             await self.get_source(user_id, source_id);
             await self._run(
-                "UPDATE personal_sources SET enabled=0,deleted_at=? WHERE id=? AND user_id=?",
+                "UPDATE personal_sources SET enabled=0,deleted_at=?,revision=revision+1 WHERE id=? AND user_id=?",
                 (iso(utcnow()), source_id, user_id)
             );
             await self.db.commit();
@@ -397,13 +403,15 @@ obj PersonalStore {
 
     async def active_sources -> list[Row] {
         rows = await self._all(
-            "SELECT s.*,c.provider,c.status AS connection_status,c.daily_limit FROM personal_sources s JOIN personal_connections c ON c.id=s.connection_id WHERE s.deleted_at IS NULL AND c.deleted_at IS NULL AND s.enabled=1 AND c.status NOT IN ('needs_reconnect','disconnected') AND s.next_poll_at<=? AND c.retry_at<=? ORDER BY s.next_poll_at,s.id",
+            "SELECT s.*,c.provider,c.revision AS connection_revision,c.status AS connection_status,c.daily_limit FROM personal_sources s JOIN personal_connections c ON c.id=s.connection_id WHERE s.deleted_at IS NULL AND c.deleted_at IS NULL AND s.enabled=1 AND c.status NOT IN ('needs_reconnect','disconnected') AND s.next_poll_at<=? AND c.retry_at<=? ORDER BY s.next_poll_at,s.id",
             (iso(utcnow()), iso(utcnow()))
         );
         return [self._source(r) for r in rows];
     }
 
-    async def claim_request(connection_id: int) -> bool {
+    async def claim_request(
+        connection_id: int, connection_revision: int | None = None
+    ) -> bool {
         today = datetime.now(UTC).date().isoformat();
         async with self._lock {
             row = await self._one(
@@ -411,6 +419,10 @@ obj PersonalStore {
                 (connection_id, )
             );
             if row is None or row["status"] in ["needs_reconnect", "disconnected"] {
+                return False;
+            }
+            if connection_revision is not None
+                and row["revision"] != connection_revision {
                 return False;
             }
             if row["retry_at"] > iso(utcnow()) {
@@ -422,8 +434,14 @@ obj PersonalStore {
             used = int(row["requests_today"]) if row["request_day"] == today else 0;
             if used >= int(row["daily_limit"]) {
                 await self._run(
-                    "UPDATE personal_connections SET status='budget_paused',last_error='Daily request limit reached' WHERE id=?",
-                    (connection_id, )
+                    "UPDATE personal_connections SET status='budget_paused',last_error='Daily request limit reached',retry_at=? WHERE id=?",
+                    (
+                        iso(
+                            utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+                                + timedelta(days=1)
+                        ),
+                        connection_id
+                    )
                 );
                 await self.db.commit();
                 return False;
@@ -437,31 +455,72 @@ obj PersonalStore {
         }
     }
 
-    async def source_success(source_id: int, next_poll_at: str) {
+    async def _collectible(
+        source_id: int, source_revision: int | None, connection_revision: int | None
+    ) -> Row | None {
+        row = await self._one(
+            "SELECT s.*,c.provider,c.revision AS connection_revision FROM personal_sources s JOIN personal_connections c ON c.id=s.connection_id WHERE s.id=? AND s.enabled=1 AND s.deleted_at IS NULL AND c.deleted_at IS NULL AND c.status NOT IN ('needs_reconnect','disconnected')",
+            (source_id, )
+        );
+        if row is None {
+            return None;
+        }
+        if source_revision is not None and row["revision"] != source_revision {
+            return None;
+        }
+        if connection_revision is not None
+            and row["connection_revision"] != connection_revision {
+            return None;
+        }
+        return row;
+    }
+
+    async def source_success(
+        source_id: int,
+        next_poll_at: str,
+        source_revision: int | None = None,
+        connection_revision: int | None = None
+    ) {
         async with self._lock {
+            if await self._collectible(source_id, source_revision, connection_revision)
+                is None {
+                return;
+            }
             await self._run(
                 "UPDATE personal_sources SET status='live',last_error='',last_success=?,next_poll_at=? WHERE id=? AND enabled=1 AND deleted_at IS NULL",
                 (iso(utcnow()), next_poll_at, source_id)
             );
             await self._run(
-                "UPDATE personal_connections SET status='connected',last_error='',retry_at='' WHERE id=(SELECT connection_id FROM personal_sources WHERE id=?) AND deleted_at IS NULL AND status NOT IN ('needs_reconnect','disconnected')",
-                (source_id, )
+                "UPDATE personal_connections SET status='connected',last_error='',retry_at='' WHERE id=(SELECT connection_id FROM personal_sources WHERE id=?) AND deleted_at IS NULL AND status NOT IN ('needs_reconnect','disconnected') AND retry_at<=?",
+                (source_id, iso(utcnow()))
             );
             await self.db.commit();
         }
     }
 
     async def source_failure(
-        source_id: int, status: str, detail: str, next_poll_at: str
+        source_id: int,
+        status: str,
+        detail: str,
+        next_poll_at: str,
+        source_revision: int | None = None,
+        connection_revision: int | None = None
     ) {
         async with self._lock {
+            source = await self._collectible(
+                source_id, source_revision, connection_revision
+            );
+            if source is None {
+                return;
+            }
             await self._run(
                 "UPDATE personal_sources SET status=?,last_error=?,next_poll_at=? WHERE id=? AND enabled=1 AND deleted_at IS NULL",
                 (status, detail[:200], next_poll_at, source_id)
             );
-            if status in ["needs_reconnect", "rate_limited", "budget_paused"] {
+            if source["provider"] == "x"
+                and status in ["needs_reconnect", "rate_limited", "budget_paused"] {
                 await self._run(
-                    "UPDATE personal_connections SET status=?,last_error=?,retry_at=? WHERE id=(SELECT connection_id FROM personal_sources WHERE id=?) AND deleted_at IS NULL",
+                    "UPDATE personal_connections SET status=?,last_error=?,retry_at=MAX(retry_at,?) WHERE id=(SELECT connection_id FROM personal_sources WHERE id=?) AND deleted_at IS NULL AND status<>'needs_reconnect'",
                     (status, detail[:200], next_poll_at, source_id)
                 );
             }
@@ -470,24 +529,39 @@ obj PersonalStore {
     }
 
     async def connection_failure(
-        connection_id: int, status: str, detail: str, next_poll_at: str = ""
+        connection_id: int,
+        status: str,
+        detail: str,
+        next_poll_at: str = "",
+        connection_revision: int | None = None
     ) {
         async with self._lock {
             await self._run(
-                "UPDATE personal_connections SET status=?,last_error=?,retry_at=? WHERE id=? AND deleted_at IS NULL",
-                (status, detail[:200], next_poll_at, connection_id)
+                "UPDATE personal_connections SET status=?,last_error=?,retry_at=MAX(retry_at,?) WHERE id=? AND deleted_at IS NULL AND (? IS NULL OR revision=?)",
+                (
+                    status,
+                    detail[:200],
+                    next_poll_at,
+                    connection_id,
+                    connection_revision,
+                    connection_revision
+                )
             );
             await self.db.commit();
         }
     }
 
     async def persist_batch(
-        source_id: int, items: list[Row], cursor: str, initial: bool = False
+        source_id: int,
+        items: list[Row],
+        cursor: str,
+        initial: bool = False,
+        source_revision: int | None = None,
+        connection_revision: int | None = None
     ) {
         async with self._lock {
-            source = await self._one(
-                "SELECT s.* FROM personal_sources s JOIN personal_connections c ON c.id=s.connection_id WHERE s.id=? AND s.enabled=1 AND s.deleted_at IS NULL AND c.deleted_at IS NULL AND c.status NOT IN ('needs_reconnect','disconnected')",
-                (source_id, )
+            source = await self._collectible(
+                source_id, source_revision, connection_revision
             );
             if source is None {
                 return;
