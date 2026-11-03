@@ -134,6 +134,76 @@ test "personal_filters_mute_pause_and_atomic_checkpoint" {
     asyncio.run(run());
 }
 
+test "personal_stale_collection_cannot_undo_pause_or_rekey" {
+    async def run {
+        settings = make_settings();
+        async with open_repo(settings) as repo {
+            uid = await repo.create_user("race", "race@example.test", "unused");
+            store = PersonalStore(settings.db_path);
+            await store.connect();
+            with patch.dict(os.environ, {"NEWSBOT_CONNECTION_KEY": TEST_KEY}) {
+                c = await store.create_connection(uid, "x", "X", "before");
+                s = await store.create_source(
+                    uid, c["id"], "42", "News", "https://x.com/news"
+                );
+                snap = (await store.active_sources())[0];
+                await store.update_source(uid, s["id"], {"enabled": False});
+                await store.update_source(uid, s["id"], {"enabled": True});
+                await store.persist_batch(
+                    s["id"],
+                    [item("stale")],
+                    "stale",
+                    source_revision=snap["revision"],
+                    connection_revision=snap["connection_revision"]
+                );
+                assert len(await store.feed(uid)) == 0;
+                assert not (await store.get_source(uid, s["id"]))["initialized"];
+                await store.reconnect_connection(uid, c["id"], "replacement");
+                await store.source_failure(
+                    s["id"],
+                    "needs_reconnect",
+                    "Old key rejected",
+                    "2099-01-01T00:00:00+00:00",
+                    source_revision=snap["revision"],
+                    connection_revision=snap["connection_revision"]
+                );
+                assert (await store.get_connection(uid, c["id"]))["status"]
+                    == "configured";
+                snap = (await store.active_sources())[0];
+                await store.connection_failure(
+                    c["id"], "rate_limited", "Back off", "2099-01-01T00:00:00+00:00"
+                );
+                await store.source_success(
+                    s["id"],
+                    "",
+                    source_revision=snap["revision"],
+                    connection_revision=snap["connection_revision"]
+                );
+                assert (await store.get_connection(uid, c["id"]))["status"]
+                    == "rate_limited";
+                assert not await store.claim_request(c["id"]);
+                assert len(await store.active_sources()) == 0;
+                # A source-local RSS failure must not stop unrelated feed hosts.
+                rss = await store.create_connection(uid, "rss", "RSS");
+                rs = await store.create_source(
+                    uid, rss["id"], "feed1", "F1", "https://example.com/feed1"
+                );
+                rs2 = await store.create_source(
+                    uid, rss["id"], "feed2", "F2", "https://example.com/feed2"
+                );
+                await store.source_failure(
+                    rs["id"], "rate_limited", "Feed paused", "2099-01-01T00:00:00+00:00"
+                );
+                assert (await store.get_connection(uid, rss["id"]))["status"]
+                    == "connected";
+                assert any(r["id"] == rs2["id"] for r in await store.active_sources());
+            }
+            await store.close();
+        }
+    }
+    asyncio.run(run());
+}
+
 test "personal_credentials_fail_closed_and_budget_persists" {
     async def run {
         settings = make_settings();
