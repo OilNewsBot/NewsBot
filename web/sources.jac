@@ -12,6 +12,8 @@ glob _ps_epoch: int = 0,
      _ps_cursor: int = 0,
      _ps_ready: bool = False,
      _ps_booting: bool = False,
+     _ps_refresh_revision: int = 0,
+     _ps_feed_timer: any = None,
      _ps_seen: any = new(Set),
      _ps_alerts: list[any] = [],
      _ps_screen: bool = False,
@@ -366,6 +368,11 @@ def:pub SourcesPage -> JsxElement {
 
     def clear_session {
         _ps_epoch += 1;
+        _ps_refresh_revision += 1;
+        if _ps_feed_timer {
+            clearTimeout(_ps_feed_timer);
+            _ps_feed_timer = None;
+        }
         _ps_user_id = 0;
         if _ps_stream {
             _ps_stream.close();
@@ -410,9 +417,14 @@ def:pub SourcesPage -> JsxElement {
     }
 
     async def refresh(epoch: int) {
+        if epoch != _ps_epoch or not _ps_user_id or busy {
+            return;
+        }
+        _ps_refresh_revision += 1;
+        revision = _ps_refresh_revision;
         for endpoint in ["connections", "sources", "feed"] {
             response = await personal_request("/api/me/" + endpoint);
-            if epoch != _ps_epoch {
+            if epoch != _ps_epoch or revision != _ps_refresh_revision {
                 return;
             }
             if response.status == 401 {
@@ -460,7 +472,16 @@ def:pub SourcesPage -> JsxElement {
         }
         _ps_alerts = ([item] + _ps_alerts)[:5];
         alerts = _ps_alerts;
-        refresh(epoch);
+        if _ps_feed_timer {
+            clearTimeout(_ps_feed_timer);
+        }
+        _ps_feed_timer = setTimeout(
+            lambda {
+                _ps_feed_timer = None;
+                refresh(epoch);
+            },
+            300
+        );
         api: any = globalThis.Notification;  # jac:ignore[E1053]
         doc: any = document;
         win: any = window;
@@ -580,6 +601,7 @@ def:pub SourcesPage -> JsxElement {
 
     async def mutate(path: str, method: str, body: any = None) -> bool {
         epoch = _ps_epoch;
+        _ps_refresh_revision += 1;
         busy = True;
         error = "";
         notice = "";
