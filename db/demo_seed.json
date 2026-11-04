@@ -1,0 +1,20 @@
+{
+  "_comment": "Hand-entered demo rows, inserted at startup when config.yaml demo.seed_suggestions is true (docs/spec.md §16). Each row is added once per database; a row matching created_at + ticker + side + model is left alone. ref_price is the Yahoo CL=F 1-minute close at entry; notional = contracts x ref_price x 100 bbl.",
+  "trade_suggestions": [
+    {
+      "created_at": "2026-11-02T12:30:00+00:00",
+      "ticker": "WTI",
+      "side": "short",
+      "contract": "MCL",
+      "contracts": 17,
+      "notional_usd": 169524.0,
+      "hold_minutes": 120,
+      "closeout_at": "2026-11-02T14:30:00+00:00",
+      "ref_price": 99.72,
+      "structure": "structural",
+      "rule": "4 US-Iran peace progress",
+      "rationale": "Osint613: major negotiating step between the US and Iran through Qatari mediators, building on the earlier MOU. Significant US-Iran peace progress -> short WTI; structural, so held the full 2 hours.",
+      "model": "manual demo entry"
+    }
+  ]
+}

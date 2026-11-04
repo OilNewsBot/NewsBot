@@ -25,7 +25,7 @@ import from adapters.telegram { TelegramAdapter }
 import from adapters.x_api { XApiAdapter }
 import from adapters.x_push { XPushAdapter }
 import from config { ROOT, Settings, load_settings }
-import from db.repo { Repo, Row }
+import from db.repo { Repo, Row, load_demo_suggestions }
 import from pipeline.llm { LLMClient }
 import from pipeline.notify { Bus }
 import from pipeline.prices { PriceFeed, PriceUnavailable }
@@ -146,6 +146,17 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     @contextlib.asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None] {
         await repo.connect();
+        if settings.demo_seed_suggestions {
+            try {
+                added = await repo.seed_suggestions(load_demo_suggestions());
+                if added {
+                    log.info("added %d demo trade suggestion(s)", added);
+                }
+            } except (OSError, ValueError, KeyError) as e {
+                # demo data must never keep the service from starting
+                log.warning("demo suggestions not added: %s", e);
+            }
+        }
         await personal.connect();
         tasks: list[asyncio.Task[None]] = [
             asyncio.create_task(pipeline.run(), name="pipeline"),

@@ -88,6 +88,12 @@ x_api:
 #   hold_minutes: {transient: 15, uncertain: 60, moderate: 90, structural: 120}
 #   aggressiveness: {low: 0.25, medium: 0.5, high: 1.0}
 
+# Demo data: hand-entered trade suggestions in db/demo_seed.json, added once to
+# each machine's database at startup so every teammate's past suggestions
+# match. Set false to stop adding them (rows already added stay).
+demo:
+  seed_suggestions: true
+
 ui:
   max_stacked: 5
   stale_after_hours: 24

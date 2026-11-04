@@ -115,7 +115,9 @@ obj Settings {
         db_path: Path,
         trade_model: str,
         trading: TradingCfg,
-        model_prices: dict[str, tuple[float, float]] = {};
+        model_prices: dict[str, tuple[float, float]] = {},
+        # insert db/demo_seed.json rows at startup (config.yaml demo:)
+        demo_seed_suggestions: bool = False;
 
     def price_for(model: str) -> tuple[float, float] {
         return self.model_prices.get(model, FALLBACK_PRICE);
@@ -254,6 +256,9 @@ def load_settings(
         db_path=resolved_db,
         trade_model=os.environ.get("TRADE_MODEL") or DEFAULT_TRADE_MODEL,
         trading=_trading(cfg.get("trading")),
-        model_prices=prices
+        model_prices=prices,
+        demo_seed_suggestions=bool(
+            (cfg.get("demo") or {}).get("seed_suggestions", False)
+        )
     );
 }
