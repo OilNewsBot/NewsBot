@@ -125,3 +125,243 @@
   .ps-auth .auth-panel:not(:has(form)) p { flex-basis: 100%; order: 3; }
   .ps-auth .auth-panel:not(:has(form)) button { margin-left: auto; }
 }
+
+/* NewsStream — My Sources page heading */
+
+.ps-intro {
+    align-items: flex-start;
+    margin-bottom: 32px;
+}
+
+.ps-intro .ps-eyebrow {
+    color: var(--dim);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin: 0 0 10px;
+}
+
+.ps-intro h1 {
+    color: var(--text);
+    font-size: clamp(28px, 3vw, 36px);
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 1.2;
+    text-transform: none;
+    margin: 0 0 12px;
+}
+
+.ps-intro p:not(.ps-eyebrow) {
+    color: var(--dim);
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* Move Live alerts below the account controls */
+.ps-live {
+    margin-top: 55px;
+}
+
+/* NewsStream — My Sources dashboard layout */
+
+.ps-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.ps-settings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    width: 100%;
+}
+
+.ps-feed-panel {
+    width: 100%;
+    min-width: 0;
+}
+
+@media (max-width: 760px) {
+    .ps-settings {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* NewsStream — source overview statistics */
+
+.ps-overview {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    margin: 36px 0 32px;
+}
+
+.ps-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 22px 24px;
+    background: #151b21;
+    border: 1px solid #222c34;
+    border-radius: 14px;
+    min-height: 138px;
+}
+
+.ps-stat-icon {
+    color: var(--dim);
+    font-size: 22px;
+    line-height: 1;
+}
+
+.ps-stat strong {
+    color: var(--text);
+    font-size: 38px;
+    font-weight: 600;
+    letter-spacing: -0.05em;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.ps-stat > span:last-child {
+    color: var(--dim);
+    font-size: 14px;
+    font-weight: 400;
+}
+
+@media (max-width: 600px) {
+    .ps-overview {
+        gap: 16px;
+        margin: 24px 0;
+    }
+
+    .ps-stat strong {
+        font-size: 30px;
+    }
+}
+
+/* Keep the entire source-management area in one column */
+.ps-grid .ps-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: none;
+}
+
+/* Full-width heading above the source controls */
+.ps-sources-heading {
+    width: 100%;
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--border);
+}
+
+.ps-sources-heading h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 650;
+    letter-spacing: -0.03em;
+    color: var(--text);
+}
+
+/* Unified Your Sources panel */
+
+.ps-grid .ps-settings {
+    background: #12191f;
+    border: 1px solid #2a343d;
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.ps-grid .ps-settings > .ps-sources-heading {
+    padding: 24px 28px;
+    border-bottom: 1px solid #2a343d;
+}
+
+.ps-grid .ps-settings > .ps-panel {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 20px 28px;
+    margin: 0;
+}
+
+.ps-grid .ps-settings > .ps-panel + .ps-panel {
+    border-top: 1px solid #2a343d;
+}
+
+.ps-grid .ps-sources-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.ps-sources-heading .ps-small-button {
+    background: transparent;
+    border: none;
+    color: #4dcf9b;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.ps-sources-heading .ps-small-button:hover {
+    background: rgba(77, 207, 155, 0.08);
+    color: #72e4b7;
+}
+
+/* My Sources — clean empty state */
+
+.ps-settings:has(.ps-empty-small):not(:has(.ps-add-source))
+    > .ps-panel {
+    border-top: none;
+}
+
+.ps-settings:has(.ps-empty-small):not(:has(.ps-add-source))
+    > .ps-panel:first-of-type {
+    padding-bottom: 0;
+}
+
+.ps-settings:has(.ps-empty-small):not(:has(.ps-add-source))
+    > .ps-panel:last-of-type {
+    padding-top: 0;
+}
+
+.ps-settings:has(.ps-empty-small):not(:has(.ps-add-source))
+    .ps-empty-small {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--dim);
+}
+
+/* My Sources — centered empty state */
+
+.ps-sources-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    min-height: 220px;
+    padding: 40px 24px;
+    text-align: center;
+}
+
+.ps-sources-empty-icon {
+    display: block;
+    color: #8a93a5;
+    font-size: 36px;
+    line-height: 1;
+}
+
+.ps-sources-empty p {
+    margin: 0;
+    color: #9ca3af;
+    font-size: 16px;
+    line-height: 1.5;
+}

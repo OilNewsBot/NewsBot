@@ -1,0 +1,192 @@
+
+/* Shared Newsstream navigation */
+
+.site-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 16px 24px;
+    background: #0b1013;
+    color: #f9fafb;
+    border-bottom: 1px solid #374151;
+}
+
+.site-nav-brand {
+    color: #ffffff;
+    font-size: 1.25rem;
+    font-weight: 800;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.site-nav-links {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.site-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    color: #cbd5e1;
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+}
+
+.site-nav-link:hover {
+    background: #374151;
+    color: #ffffff;
+}
+
+.site-nav-link.active {
+    background: rgba(77, 207, 155, 0.07);
+    color: #f5f7f8;
+    box-shadow: none;
+    border-left: 2px solid #4dcf9b;
+    border-radius: 6px;
+}
+
+.site-nav-icon {
+    font-size: 1.4rem;
+}
+
+.site-nav-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.site-nav-copy strong {
+    font-size: 0.9rem;
+}
+
+.site-nav-copy small {
+    font-size: 0.72rem;
+    opacity: 0.8;
+}
+
+/* Responsive layout for smaller screens */
+
+@media (max-width: 800px) {
+    .site-nav {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 14px;
+    }
+
+    .site-nav-links {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .site-nav-link {
+        flex-direction: column;
+        text-align: center;
+        padding: 10px 5px;
+    }
+
+    .site-nav-copy strong {
+        font-size: 0.8rem;
+    }
+
+    .site-nav-copy small {
+        font-size: 0.65rem;
+    }
+}
+
+@media (max-width: 420px) {
+    .site-nav-links {
+        grid-template-columns: 1fr;
+    }
+
+    .site-nav-link {
+        flex-direction: row;
+        text-align: left;
+    }
+}
+
+
+/* Responsive left sidebar navigation */
+
+@media (min-width: 801px) {
+    .site-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 260px;
+        height: 100vh;
+        z-index: 15;
+
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 28px;
+
+        padding: 28px 14px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        border-right: 1px solid #374151;
+        border-bottom: none;
+    }
+
+    .site-nav-brand {
+        padding: 8px 12px;
+        font-size: 1.25rem;
+    }
+
+    .site-nav-links {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .site-nav-link {
+        width: 100%;
+        min-width: 0;
+        padding: 14px 12px;
+    }
+
+    .site-nav-copy {
+        min-width: 0;
+    }
+
+    .site-nav-copy strong,
+    .site-nav-copy small {
+        white-space: normal;
+    }
+
+    /* Make room for the sidebar on every page */
+    body:has(.site-nav) {
+        padding-left: 260px;
+    }
+}
+
+/* Mobile and tablet navigation */
+
+@media (max-width: 800px) {
+    .site-nav {
+        position: relative;
+        width: 100%;
+        padding: 14px;
+    }
+
+    .site-nav-links {
+        width: 100%;
+    }
+
+    .site-nav-link {
+        min-width: 0;
+    }
+
+    body:has(.site-nav) {
+        padding-left: 0;
+    }
+}

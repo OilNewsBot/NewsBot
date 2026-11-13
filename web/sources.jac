@@ -3,6 +3,7 @@
 import "./sources.css";
 import from react { useEffect }
 import from .auth { AuthPanel }
+import from .navigation { Navigation }
 
 # These values belong to this mounted page, never to persistent browser storage.
 # Epoch checks discard responses begun by a previous account or unmounted page.
@@ -737,24 +738,12 @@ def:pub SourcesPage -> JsxElement {
     );
 
     <div className="ps-page">
-        <header className="ps-header">
-            <a href="/sources" className="ps-brand">
-                newsstream
-                <span> / personal</span>
-            </a>
-            <nav aria-label="Main navigation">
-                <a href="/">Oil feed</a>
-                <a href="/trading">Trading ↗</a>
-            </nav>
-        </header>
         <main className="ps-main">
             <div className="ps-intro">
                 <div>
-                    <p className="ps-eyebrow">Your watchlist</p>
+                    <p className="ps-eyebrow">YOUR WORKSPACE</p>
                     <h1>My Sources</h1>
-                    <p>
-                        Follow feeds and X accounts. Choose what reaches your news feed and alerts.
-                    </p>
+                    <p>Manage your news intelligence.</p>
                 </div>
                 {if user {
                     <span className="ps-live">
@@ -762,9 +751,6 @@ def:pub SourcesPage -> JsxElement {
                         {streamStatus}
                     </span>
                 }}
-            </div>
-            <div className="ps-auth">
-                <AuthPanel key={str(_ps_epoch)} onSessionChange={session_changed}/>
             </div>
             {if error {
                 <div className="ps-message ps-error" role="alert">{error}</div>
@@ -794,189 +780,253 @@ def:pub SourcesPage -> JsxElement {
                     </div>
                 </div>
             } else {
+                <div className="ps-overview">
+                    <div className="ps-stat">
+                        <span className="ps-stat-icon">
+                            <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                aria-hidden="true"
+                            >
+                                <path d="M4 11a9 9 0 0 1 9 9"/>
+                                <path d="M4 4a16 16 0 0 1 16 16"/>
+                                <circle
+                                    cx="5"
+                                    cy="19"
+                                    r="1"
+                                    fill="currentColor"
+                                    stroke="none"
+                                />
+                            </svg>
+                        </span>
+                        <strong>{len(connections)}</strong>
+                        <span>Connected services</span>
+                    </div>
+                    <div className="ps-stat">
+                        <span className="ps-stat-icon">
+                            <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"
+                                />
+                                <path d="M10 21h4"/>
+                            </svg>
+                        </span>
+                        <strong>{len(sources)}</strong>
+                        <span>Followed sources</span>
+                    </div>
+                </div>
                 <div className="ps-grid">
                     <aside className="ps-settings">
-                        <section className="ps-panel">
-                            <div className="ps-section-heading">
-                                <h2>Connections</h2>
-                                <button
-                                    type="button"
-                                    className="ps-small-button"
-                                    onClick={lambda {
-                                        connectionForm = not connectionForm;
-                                        apiKey = "";
-                                    }}
-                                >
-                                    {"Cancel" if connectionForm else "+ Add"}
-                                </button>
+                        <div className="ps-sources-heading">
+                            <h2>Your sources</h2>
+                            <button
+                                type="button"
+                                className="ps-small-button"
+                                onClick={lambda {
+                                    connectionForm = not connectionForm;
+                                    apiKey = "";
+                                }}
+                            >
+                                {"Cancel" if connectionForm else "+ Add source"}
+                            </button>
+                        </div>
+                        {if not len(connections)
+                            and not len(sources)
+                            and not connectionForm {
+                            <div className="ps-sources-empty">
+                                <span className="ps-sources-empty-icon">{"◉"}</span>
+                                <p>Connect your first feed to get started.</p>
                             </div>
-                            {for connection in connections {
-                                <ConnectionCard
-                                    key={connection.id}
-                                    connection={connection}
-                                    busy={busy}
-                                    onRemove={remove_connection}
-                                    onReconnect={reconnect_connection}
-                                />
-                            }}
-                            {if not len(connections) and not connectionForm {
-                                <p className="ps-empty-small">
-                                    Connect RSS or TwitterAPI.io to add your first source.
-                                </p>
-                            }}
-                            {if connectionForm {
-                                <form className="ps-form" onSubmit={add_connection}>
-                                    <label>
-                                        Service
-                                        <select
-                                            value={provider}
-                                            onChange={lambda (e: any) {
-                                                provider = e.target.value;
-                                                apiKey = "";
-                                            }}
-                                        >
-                                            <option value="rss">RSS / Atom</option>
-                                            <option value="x">
-                                                X through TwitterAPI.io
-                                            </option>
-                                        </select>
-                                    </label>
-                                    <label>
-                                        Connection name
-                                        <input
-                                            value={label}
-                                            maxLength={80}
-                                            placeholder="My news feeds"
-                                            onChange={lambda (e: any) { label = e.target.value; }}
-                                        />
-                                    </label>
-                                    {if provider == "x" {
+                        } else {
+                            <section className="ps-panel">
+                                <div className="ps-section-heading">
+                                    <h2>Connections</h2>
+                                </div>
+                                {for connection in connections {
+                                    <ConnectionCard
+                                        key={connection.id}
+                                        connection={connection}
+                                        busy={busy}
+                                        onRemove={remove_connection}
+                                        onReconnect={reconnect_connection}
+                                    />
+                                }}
+                                {if not len(connections) and not connectionForm {
+                                    <p className="ps-empty-small">
+                                        Connect RSS or TwitterAPI.io to add your first source.
+                                    </p>
+                                }}
+                                {if connectionForm {
+                                    <form className="ps-form" onSubmit={add_connection}>
                                         <label>
-                                            TwitterAPI.io API key
-                                            <input
-                                                type="password"
-                                                autoComplete="off"
-                                                value={apiKey}
-                                                required
-                                                maxLength={1024}
-                                                onChange={lambda (e: any) { apiKey = e.target.value; }}
-                                            />
-                                        </label>
-                                        <label>
-                                            Daily request limit
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max="2000"
-                                                value={dailyLimit}
-                                                required
-                                                onChange={lambda (e: any) { dailyLimit = e.target.value; }}
-                                            />
-                                        </label>
-                                        <p className="ps-help">
-                                            Uses your TwitterAPI.io credits. Accounts are checked periodically; the limit caps API requests, not dollars.
-                                        </p>
-                                    } else {
-                                        <p className="ps-help">
-                                            No API key needed. Add public RSS or Atom links after connecting.
-                                        </p>
-                                    } }
-                                    <button type="submit" disabled={busy}>
-                                        {"Connecting…" if busy else "Add connection"}
-                                    </button>
-                                </form>
-                            }}
-                        </section>
-                        <section className="ps-panel">
-                            <div className="ps-section-heading">
-                                <h2>Following</h2>
-                                <span className="ps-count">{len(sources)}</span>
-                            </div>
-                            {for source in sources {
-                                <SourceCard
-                                    key={str(_ps_user_id) + ":" + str(source.id)}
-                                    source={source}
-                                    busy={busy}
-                                    onUpdate={update_source}
-                                    onRemove={remove_source}
-                                />
-                            }}
-                            {if not len(sources) {
-                                <p className="ps-empty-small">
-                                    Your followed accounts and feeds will appear here.
-                                </p>
-                            }}
-                            {if len(connections) {
-                                <form
-                                    className="ps-form ps-add-source"
-                                    onSubmit={add_source}
-                                >
-                                    <h3>Add a source</h3>
-                                    <label>
-                                        Connection
-                                        <select
-                                            value={selectedConnection
-                                                or str(connections[0].id)}
-                                            onChange={lambda (e: any) { selectedConnection = e.target.value; }}
-                                        >
-                                            {for connection in connections {
-                                                <option
-                                                    key={connection.id}
-                                                    value={str(connection.id)}
-                                                >
-                                                    {connection.label}
+                                            Service
+                                            <select
+                                                value={provider}
+                                                onChange={lambda (e: any) {
+                                                    provider = e.target.value;
+                                                    apiKey = "";
+                                                }}
+                                            >
+                                                <option value="rss">RSS / Atom</option>
+                                                <option value="x">
+                                                    X through TwitterAPI.io
                                                 </option>
-                                            }}
-                                        </select>
-                                    </label>
-                                    <label>
-                                        Feed URL or X account
-                                        <input
-                                            value={locator}
-                                            required
-                                            maxLength={2048}
-                                            placeholder="https://example.com/feed or @account"
-                                            onChange={lambda (e: any) { locator = e.target.value; }}
-                                        />
-                                    </label>
-                                    <details className="ps-filters">
-                                        <summary>Optional alert keywords</summary>
-                                        <label>
-                                            Include keywords
-                                            <input
-                                                value={newInclude}
-                                                maxLength={1000}
-                                                placeholder="earnings, technology"
-                                                onChange={lambda (e: any) { newInclude = e.target.value; }}
-                                            />
+                                            </select>
                                         </label>
                                         <label>
-                                            Exclude keywords
+                                            Connection name
                                             <input
-                                                value={newExclude}
-                                                maxLength={1000}
-                                                placeholder="promotion"
-                                                onChange={lambda (e: any) { newExclude = e.target.value; }}
+                                                value={label}
+                                                maxLength={80}
+                                                placeholder="My news feeds"
+                                                onChange={lambda (e: any) { label = e.target.value; }}
                                             />
                                         </label>
-                                        <p className="ps-help">
-                                            Separate keywords with commas. These filter alerts; your feed keeps all collected posts.
-                                        </p>
-                                    </details>
-                                    <label className="ps-toggle">
-                                        <input
-                                            type="checkbox"
-                                            checked={newAlerts}
-                                            onChange={lambda (e: any) { newAlerts = e.target.checked; }}
-                                        />{" "}
-                                        Notify me about new posts
-                                    </label>
-                                    <button type="submit" disabled={busy}>
-                                        {"Adding…" if busy else "Follow source"}
-                                    </button>
-                                </form>
-                            }}
-                        </section>
+                                        {if provider == "x" {
+                                            <label>
+                                                TwitterAPI.io API key
+                                                <input
+                                                    type="password"
+                                                    autoComplete="off"
+                                                    value={apiKey}
+                                                    required
+                                                    maxLength={1024}
+                                                    onChange={lambda (e: any) { apiKey = e.target.value; }}
+                                                />
+                                            </label>
+                                            <label>
+                                                Daily request limit
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="2000"
+                                                    value={dailyLimit}
+                                                    required
+                                                    onChange={lambda (e: any) { dailyLimit = e.target.value; }}
+                                                />
+                                            </label>
+                                            <p className="ps-help">
+                                                Uses your TwitterAPI.io credits. Accounts are checked periodically; the limit caps API requests, not dollars.
+                                            </p>
+                                        } else {
+                                            <p className="ps-help">
+                                                No API key needed. Add public RSS or Atom links after connecting.
+                                            </p>
+                                        } }
+                                        <button type="submit" disabled={busy}>
+                                            {"Connecting…"
+                                                if busy
+                                                else "Add connection"}
+                                        </button>
+                                    </form>
+                                }}
+                            </section>
+                            <section className="ps-panel">
+                                <div className="ps-section-heading">
+                                    <h2>Following</h2>
+                                    <span className="ps-count">{len(sources)}</span>
+                                </div>
+                                {for source in sources {
+                                    <SourceCard
+                                        key={str(_ps_user_id) + ":" + str(source.id)}
+                                        source={source}
+                                        busy={busy}
+                                        onUpdate={update_source}
+                                        onRemove={remove_source}
+                                    />
+                                }}
+                                {if not len(sources) {
+                                    <p className="ps-empty-small">
+                                        Your followed accounts and feeds will appear here.
+                                    </p>
+                                }}
+                                {if len(connections) {
+                                    <form
+                                        className="ps-form ps-add-source"
+                                        onSubmit={add_source}
+                                    >
+                                        <h3>Add a source</h3>
+                                        <label>
+                                            Connection
+                                            <select
+                                                value={selectedConnection
+                                                    or str(connections[0].id)}
+                                                onChange={lambda (e: any) { selectedConnection = e.target.value; }}
+                                            >
+                                                {for connection in connections {
+                                                    <option
+                                                        key={connection.id}
+                                                        value={str(connection.id)}
+                                                    >
+                                                        {connection.label}
+                                                    </option>
+                                                }}
+                                            </select>
+                                        </label>
+                                        <label>
+                                            Feed URL or X account
+                                            <input
+                                                value={locator}
+                                                required
+                                                maxLength={2048}
+                                                placeholder="https://example.com/feed or @account"
+                                                onChange={lambda (e: any) { locator = e.target.value; }}
+                                            />
+                                        </label>
+                                        <details className="ps-filters">
+                                            <summary>Optional alert keywords</summary>
+                                            <label>
+                                                Include keywords
+                                                <input
+                                                    value={newInclude}
+                                                    maxLength={1000}
+                                                    placeholder="earnings, technology"
+                                                    onChange={lambda (e: any) { newInclude = e.target.value; }}
+                                                />
+                                            </label>
+                                            <label>
+                                                Exclude keywords
+                                                <input
+                                                    value={newExclude}
+                                                    maxLength={1000}
+                                                    placeholder="promotion"
+                                                    onChange={lambda (e: any) { newExclude = e.target.value; }}
+                                                />
+                                            </label>
+                                            <p className="ps-help">
+                                                Separate keywords with commas. These filter alerts; your feed keeps all collected posts.
+                                            </p>
+                                        </details>
+                                        <label className="ps-toggle">
+                                            <input
+                                                type="checkbox"
+                                                checked={newAlerts}
+                                                onChange={lambda (e: any) { newAlerts = e.target.checked; }}
+                                            />{" "}
+                                            Notify me about new posts
+                                        </label>
+                                        <button type="submit" disabled={busy}>
+                                            {"Adding…" if busy else "Follow source"}
+                                        </button>
+                                    </form>
+                                }}
+                            </section>
+                        } }
                     </aside>
                     <section className="ps-feed-panel">
                         <div className="ps-section-heading">

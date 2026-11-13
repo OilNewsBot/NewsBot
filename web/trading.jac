@@ -9,6 +9,7 @@ closeout red, short closeout green.
 """
 
 import from react { useEffect }
+import from .navigation { Navigation }
 
 """One stored suggestion, as listed by /suggestions."""
 obj Suggestion {
@@ -503,13 +504,81 @@ def:pub TradingPage -> JsxElement {
     }
 
     <main className="trading" data-tick={tick}>
+        <Navigation active="trading"/>
         <div className="titlebar">
-            <h1>Newsstream - Trading</h1>
-            <a href="/">{"← News"}</a>
+            <div>
+                <h1>Trading Insights</h1>
+                <p className="dim">
+                    {"Explore oil-market charts, review AI-generated trade ideas, and manage your simulated portfolio inputs."}
+                </p>
+            </div>
         </div>
         <p className="dim disclaimer">
             Speculative suggestions only, made by a model from breaking news. Nothing is traded for you. Each one is meant to be closed within 2 hours.
         </p>
+        <section className="panel">
+            <div className="chart-head">
+                <div className="toggle">
+                    {for t in ["WTI", "RBOB"] {
+                        <button
+                            key={t}
+                            className={"on" if ticker == t else ""}
+                            onClick={lambda { show_ticker(t); }}
+                        >
+                            {t}
+                        </button>
+                    }}
+                </div>
+                <div className="market-price">
+                    {if last is not None and day == 0 {
+                        <strong>{price_str(ticker, last)}</strong>
+                    }}
+                    <span className="dim">
+                        {ticker + " · 1-minute chart · ~10 min delayed"}
+                    </span>
+                </div>
+                {if picked or day != 0 {
+                    <button
+                        onClick={lambda {
+                            picked = None;
+                            show(ticker, 0);
+                        }}
+                    >
+                        {"Back to live"}
+                    </button>
+                }}
+            </div>
+            <div className="days" role="group" aria-label="Day">
+                {for d in day_choices {
+                    <button
+                        key={d}
+                        className={"on" if day == d else ""}
+                        onClick={lambda { show_day(d); }}
+                    >
+                        {day_label(d)}
+                    </button>
+                }}
+            </div>
+            <PriceChart
+                ticker={ticker}
+                bars={bars}
+                marks={marks}
+                hold={hold}
+                note={chartNote}
+            />
+            {if picked {
+                <p className="dim small">
+                    {"#"
+                        + str(picked.id)
+                        + " "
+                        + picked.side
+                        + " "
+                        + picked.ticker
+                        + ": "
+                        + picked.rationale}
+                </p>
+            }}
+        </section>
         <section className="panel">
             <h2>Portfolio</h2>
             <form className="portfolio" onSubmit={save_portfolio}>
@@ -573,69 +642,6 @@ def:pub TradingPage -> JsxElement {
             {if not hasPortfolio {
                 <p className="warn-text">
                     Enter your portfolio to start getting suggestions.
-                </p>
-            }}
-        </section>
-        <section className="panel">
-            <div className="chart-head">
-                <div className="toggle">
-                    {for t in ["WTI", "RBOB"] {
-                        <button
-                            key={t}
-                            className={"on" if ticker == t else ""}
-                            onClick={lambda { show_ticker(t); }}
-                        >
-                            {t}
-                        </button>
-                    }}
-                </div>
-                <span>
-                    {if last is not None and day == 0 {
-                        <strong>{price_str(ticker, last)}</strong>
-                    }}
-                    <span className="dim">
-                        {(" " + ticker + " 1-minute, ~10 min delayed (Yahoo Finance)")}
-                    </span>
-                </span>
-                {if picked or day != 0 {
-                    <button
-                        onClick={lambda {
-                            picked = None;
-                            show(ticker, 0);
-                        }}
-                    >
-                        {"Back to live"}
-                    </button>
-                }}
-            </div>
-            <div className="days" role="group" aria-label="Day">
-                {for d in day_choices {
-                    <button
-                        key={d}
-                        className={"on" if day == d else ""}
-                        onClick={lambda { show_day(d); }}
-                    >
-                        {day_label(d)}
-                    </button>
-                }}
-            </div>
-            <PriceChart
-                ticker={ticker}
-                bars={bars}
-                marks={marks}
-                hold={hold}
-                note={chartNote}
-            />
-            {if picked {
-                <p className="dim small">
-                    {"#"
-                        + str(picked.id)
-                        + " "
-                        + picked.side
-                        + " "
-                        + picked.ticker
-                        + ": "
-                        + picked.rationale}
                 </p>
             }}
         </section>

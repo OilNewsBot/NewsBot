@@ -12,6 +12,8 @@ import from react { useEffect }
 import from .auth { AuthPanel, SESSION_EVENT }
 import from .trading { TradingPage }
 import from .sources { SourcesPage }
+import "./navigation.css";
+import from .navigation { Navigation }
 
 # ---------- shapes of the JSON the service sends ----------
 
@@ -448,12 +450,27 @@ def:pub app -> JsxElement {
     # the checker's window typings lack location
     win: any = window;
     if str(win.location.pathname).startswith("/sources") {
-        return <SourcesPage/>;
+        return
+            <div className="app-layout">
+                <Navigation active="sources"/>
+                <AuthPanel/>
+                <SourcesPage/>
+            </div>;
     }
     if str(win.location.pathname).startswith("/trading") {
-        return <TradingPage/>;
+        return
+            <div className="app-layout">
+                <Navigation active="trading"/>
+                <AuthPanel/>
+                <TradingPage/>
+            </div>;
     }
-    return <NewsPage/>;
+    return
+        <div className="app-layout">
+            <Navigation active="news"/>
+            <AuthPanel/>
+            <NewsPage/>
+        </div>;
 }
 
 def NewsPage -> JsxElement {
@@ -673,42 +690,54 @@ def NewsPage -> JsxElement {
                 </div>
             }}
         </div>
+        <Navigation active="news"/>
         <main>
-            <div className="titlebar">
-                <h1>newsstream — crude oil</h1>
-                <a href="/sources">{"My Sources →"}</a>
-                <a href="/trading">{"Trading →"}</a>
+            <div className="titlebar news-header">
+                <div>
+                    <div className="news-eyebrow">MARKET INTELLIGENCE</div>
+                    <h1>News Feed</h1>
+                    <p className="dim">
+                        {"Breaking Oil-Market News & Real-Time Event Alerts"}
+                    </p>
+                </div>
             </div>
             <AuthPanel/>
-            <div className="controls">
+            <div className="news-toolbar">
+                <div className="news-toolbar-left">
+                    <span className="news-live-indicator"></span>
+                    <span className="news-live-label">Live monitoring</span>
+                </div>
+                <button
+                    className="news-refetch"
+                    title="Re-pull the last 12 hours and process new events"
+                    disabled={refetch != "idle"}
+                    onClick={lambda { do_refetch(); }}
+                >
+                    {refetch_label}
+                </button>
+            </div>
+            <div className="controls news-settings">
                 <label>
                     <input
                         type="checkbox"
                         checked={showSuppressed}
                         onChange={toggle_suppressed}
                     />
-                    {" show suppressed (threshold tuning)"}
+                    {"Show suppressed"}
                 </label>
                 <label>
                     <input type="checkbox" checked={sound} onChange={toggle_sound}/>
-                    {" chime on new events"}
+                    {"Sound alerts"}
                 </label>
                 <label
                     title="System notifications for new events while this page is in the background"
                 >
                     <input type="checkbox" checked={screen} onChange={toggle_screen}/>
-                    {" screen notifications"}
+                    {"Desktop notifications"}
                     {if screenHint {
                         <span className="dim">{" (" + screenHint + ")"}</span>
                     }}
                 </label>
-                <button
-                    title="Re-pull the last 12h from every account and run it through the pipeline — use after waking the machine"
-                    disabled={refetch != "idle"}
-                    onClick={lambda { do_refetch(); }}
-                >
-                    {refetch_label}
-                </button>
             </div>
             {if showSuppressed {
                 <div id="suppressed">
@@ -720,12 +749,18 @@ def NewsPage -> JsxElement {
                     }}
                 </div>
             }}
-            <div id="feed">
+            <div id="feed" className="news-feed-content">
                 {for ev in events {
                     <EventBlock key={ev.id} ev={ev}/>
                 }}
                 {if feedLoaded and len(events) == 0 {
-                    <div className="dim">No events yet.</div>
+                    <div className="news-empty">
+                        <div className="news-empty-icon">◇</div>
+                        <h2>No market events yet</h2>
+                        <p>
+                            {"New oil-market headlines and alerts will appear here as they're detected."}
+                        </p>
+                    </div>
                 }}
             </div>
         </main>
