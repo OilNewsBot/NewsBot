@@ -329,10 +329,10 @@ def SuppressedRow(p: SuppressedPost) -> JsxElement {
 
 def Footer(s: Status | None, unreachable: bool) -> JsxElement {
     if unreachable {
-        return <footer>server unreachable</footer>;
+        return <footer className="feed-status">Server unreachable</footer>;
     }
     if s is None {
-        return <footer>connecting…</footer>;
+        return <footer className="feed-status">Connecting…</footer>;
     }
     lat = s.latency;
     platform = "platform p50 "
@@ -350,19 +350,24 @@ def Footer(s: Status | None, unreachable: bool) -> JsxElement {
         + " today";
     reads = "X reads " + str(s.x_reads_today) + "/" + str(s.x_daily_read_budget);
 
-    <footer>
-        {for a in s.adapters {
-            <span key={a.name} title={a.detail}>
-                <span className={"dot " + a.state}></span>
-                {a.name}
-            </span>
-        }}
-        <span>{platform}</span>
-        <span>{pipeline}</span>
-        <span>{counts}</span>
-        <span>{"LLM ~$" + str(s.llm_spend_today)}</span>
-        <span>{reads}</span>
-        <span>{"threshold " + str(s.threshold)}</span>
+    <footer className="feed-status">
+        <details>
+            <summary>System status</summary>
+            <div className="feed-status-metrics">
+                {for a in s.adapters {
+                    <span key={a.name} title={a.detail}>
+                        <span className={"dot " + a.state}></span>
+                        {a.name}
+                    </span>
+                }}
+                <span>{platform}</span>
+                <span>{pipeline}</span>
+                <span>{counts}</span>
+                <span>{"LLM ~$" + str(s.llm_spend_today)}</span>
+                <span>{reads}</span>
+                <span>{"threshold " + str(s.threshold)}</span>
+            </div>
+        </details>
     </footer>
 }
 
@@ -690,8 +695,7 @@ def NewsPage -> JsxElement {
                 </div>
             }}
         </div>
-        <Navigation active="news"/>
-        <main>
+        <main className="news-main">
             <div className="titlebar news-header">
                 <div>
                     <div className="news-eyebrow">MARKET INTELLIGENCE</div>
@@ -701,7 +705,6 @@ def NewsPage -> JsxElement {
                     </p>
                 </div>
             </div>
-            <AuthPanel/>
             <div className="news-toolbar">
                 <div className="news-toolbar-left">
                     <span className="news-live-indicator"></span>
@@ -763,7 +766,7 @@ def NewsPage -> JsxElement {
                     </div>
                 }}
             </div>
+            <Footer s={status} unreachable={unreachable}/>
         </main>
-        <Footer s={status} unreachable={unreachable}/>
     </div>
 }

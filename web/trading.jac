@@ -9,7 +9,6 @@ closeout red, short closeout green.
 """
 
 import from react { useEffect }
-import from .navigation { Navigation }
 
 """One stored suggestion, as listed by /suggestions."""
 obj Suggestion {
@@ -504,7 +503,6 @@ def:pub TradingPage -> JsxElement {
     }
 
     <main className="trading" data-tick={tick}>
-        <Navigation active="trading"/>
         <div className="titlebar">
             <div>
                 <h1>Trading Insights</h1>
