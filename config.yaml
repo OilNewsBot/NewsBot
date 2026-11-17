@@ -11,6 +11,42 @@ markets:
       specificity: 1.5
       novelty_prior: 1.0
 
+  # Sample equity feeds shared by every account. NOT WIRED YET: config.jac reads
+  # only the first market above, and these accounts are not subscribed (the
+  # top-level `accounts:` list below is what the adapters watch). Prompts:
+  # pipeline/prompts/classify_<market>.md and dedup_<market>.md. Thresholds and
+  # weights start as copies of crude_oil's; flow_impact means price impact here.
+  tech:
+    threshold: 50
+    review_band: 8
+    rubric_weights: {event_not_commentary: 3.0, flow_impact: 3.0, primary_source: 1.5, specificity: 1.5, novelty_prior: 1.0}
+    accounts:
+      - {handle: markgurman, source: x, tier: osint}     # Bloomberg; Apple scoops
+      - {handle: theinformation, source: x, tier: osint} # AI, cloud and big-tech scoops
+      - {handle: dnystedt, source: x, tier: osint}       # TSMC/Taiwan supply chain, monthly sales
+      - {handle: jukan05, source: x, tier: osint}        # Korean/Asian semis and memory reports
+      - {handle: Techmeme, source: x, tier: osint}       # fast aggregator of tech headlines
+  healthcare:
+    threshold: 50
+    review_band: 8
+    rubric_weights: {event_not_commentary: 3.0, flow_impact: 3.0, primary_source: 1.5, specificity: 1.5, novelty_prior: 1.0}
+    accounts:
+      - {handle: US_FDA, source: x, tier: official}      # approvals, safety actions
+      - {handle: CMSGov, source: x, tier: official}      # Medicare/Medicaid payment rules
+      - {handle: statnews, source: x, tier: osint}       # STAT News
+      - {handle: endpts, source: x, tier: osint}         # Endpoints News; biotech deals and readouts
+      - {handle: adamfeuerstein, source: x, tier: osint} # STAT biotech reporter
+  industrials:
+    threshold: 50
+    review_band: 8
+    rubric_weights: {event_not_commentary: 3.0, flow_impact: 3.0, primary_source: 1.5, specificity: 1.5, novelty_prior: 1.0}
+    accounts:
+      - {handle: FAANews, source: x, tier: official}        # production caps, groundings, directives
+      - {handle: NTSB_Newsroom, source: x, tier: official}  # air, rail and pipeline accident investigations
+      - {handle: JonOstrower, source: x, tier: osint}       # The Air Current; Boeing/Airbus scoops
+      - {handle: BreakingDefense, source: x, tier: osint}   # defense programs, contracts, budget
+      - {handle: FreightWaves, source: x, tier: osint}      # trucking, rail, parcel and port news
+
 # Seed list (CLAUDE.md §5). Handles are resolved to stable numeric IDs at first
 # run and stored in the DB; the handle here is display/bootstrap only.
 accounts:
