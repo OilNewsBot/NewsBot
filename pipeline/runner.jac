@@ -211,13 +211,12 @@ obj Pipeline {
         if outcome in ("NEW_EVENT", "UPDATE") {
             self.stats.surface.append((time.time(), elapsed));
         }
-        final = classifications[-1] if classifications else None;
         log.info(
             "received %s:%s | classified score=%s cat=%s | dedup=%s | latency=%.1fs",
             post.source,
             post.source_post_id,
-            final.materiality_score if final else None,
-            final.category if final else None,
+            classifications[-1].materiality_score if classifications else None,
+            classifications[-1].category if classifications else None,
             outcome,
             elapsed
         );
