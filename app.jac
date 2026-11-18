@@ -167,6 +167,20 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     x_push = XPushAdapter(settings, repo);
     adapters: list[SourceAdapter] = [telegram, x_api, x_push];
 
+    async def adapter_sink(post: NormalizedPost) -> None {
+        await pipeline.sink(post);
+        if post.source == "x" {
+            try {
+                await catalog.record_public_x(post);
+            } except Exception {
+                log.exception(
+                    "Could not save public X post %s to its channel",
+                    post.source_post_id
+                );
+            }
+        }
+    }
+
     @contextlib.asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None] {
         await repo.connect();
@@ -195,7 +209,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         for adapter in adapters {
             tasks.append(
                 asyncio.create_task(
-                    _guarded(adapter, adapter.run(pipeline.sink)),
+                    _guarded(adapter, adapter.run(adapter_sink)),
                     name=adapter.status.name
                 )
             );
@@ -253,7 +267,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
             );
         }
 
-        password_hash = hash_password(data["password"]);
+        password_hash = await asyncio.to_thread(hash_password, data["password"]);
         user_id = await repo.create_user(username, email, password_hash);
         if not user_id {
             raise HTTPException(409, "Username or email is already registered");
@@ -279,7 +293,9 @@ def create_app(settings: Settings | None = None) -> FastAPI {
             raise HTTPException(status_code=401, detail="Invalid email or password");
         }
 
-        if not verify_password(password, user["password_hash"]) {
+        if not await asyncio.to_thread(
+            verify_password, password, user["password_hash"]
+        ) {
             raise HTTPException(status_code=401, detail="Invalid email or password");
         }
 
@@ -569,7 +585,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         if x_push.refetch_running {
             raise HTTPException(409, "refetch already running");
         }
-        asyncio.create_task(x_push.refetch(pipeline.sink, hours));
+        asyncio.create_task(x_push.refetch(adapter_sink, hours));
         return {"started": True, "hours": hours};
     }
 

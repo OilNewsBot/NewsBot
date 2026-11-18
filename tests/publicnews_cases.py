@@ -3,6 +3,8 @@ import json
 import sqlite3
 import tempfile
 from pathlib import Path
+from datetime import datetime, timezone
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import httpx
@@ -185,6 +187,25 @@ async def sector_regressions():
         assert channel["tags"] == ["general"] and channel["subscribed"] and not channel["notifications_enabled"]
         embed = (await catalog.detail("grid-x"))["channel"]
         assert embed["mode"] == "embed" and embed["source_url"] == x["source_url"] and not embed["headlines"]
+        # Upgrade a database which already contains the empty editorial profile.
+        stamp = datetime.now(timezone.utc)
+        x.update(platform_account_id="711", checked_at=stamp.isoformat(), headlines=[{
+            "title": "Grid update", "summary": "Saved excerpt", "url": "https://x.com/grid/status/123",
+            "published": stamp.isoformat()}])
+        await catalog.start()
+        saved = (await catalog.detail("grid-x"))["channel"]["headlines"]
+        assert len(saved) == 1 and saved[0]["text"] == "Saved excerpt"
+        post = SimpleNamespace(source="x", source_post_id="123", account_id="711", account_handle="renamed",
+                               posted_at=stamp, received_at=stamp, text="Full grid report", is_reply=False)
+        await catalog.record_public_x(post)
+        await catalog.record_public_x(post)
+        await catalog.start()
+        updated = (await catalog.detail("grid-x"))["channel"]["headlines"]
+        assert [(i["id"], i["text"], i["url"]) for i in updated] == [
+            (saved[0]["id"], "Full grid report", "https://x.com/renamed/status/123")]
+        post.account_id, post.source_post_id, post.account_handle = "712", "124", "grid"
+        await catalog.record_public_x(post)
+        assert len((await catalog.detail("grid-x"))["channel"]["headlines"]) == 1
         assert (await catalog.following(1))["items"][0]["topic"] == "Metals & mining"
         assert set(SECTORS) == {"energy", "tech", "industrials", "healthcare", "consumer-discretionary",
                                "materials", "utilities", "real-estate", "general"}

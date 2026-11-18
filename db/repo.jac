@@ -64,13 +64,15 @@ obj Repo {
     }
 
     async def _all(sql: str, args: Params = ()) -> list[Row] {
-        rows = await (await self._run(sql, args)).fetchall();
+        # Execute and exhaust the SELECT on the SQLite worker in one queue turn.
+        # A pending read cursor can prevent a later write from upgrading its WAL snapshot.
+        rows = await self.db.execute_fetchall(sql, args);
         return [dict(r) for r in rows];
     }
 
     async def _one(sql: str, args: Params = ()) -> Row | None {
-        row = await (await self._run(sql, args)).fetchone();
-        return dict(row) if row else None;
+        rows = await self.db.execute_fetchall(sql, args);
+        return dict(rows[0]) if rows else None;
     }
 
     # -- users ----------------------------------------------------------------
@@ -150,31 +152,27 @@ obj Repo {
 
     """Persist a NormalizedPost. Returns row id, or None if already seen."""
     async def insert_post(p: NormalizedPost) -> int | None {
-        try {
-            cur = await self._run(
-                """INSERT INTO posts (source, source_post_id, account_id, account_handle, tier,
-                                      url, text, quoted_text, is_reply, posted_at, received_at, media_urls)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    p.source,
-                    p.source_post_id,
-                    p.account_id,
-                    p.account_handle,
-                    p.tier,
-                    p.url,
-                    p.text,
-                    p.quoted_text,
-                    int(p.is_reply),
-                    iso(p.posted_at),
-                    iso(p.received_at),
-                    json.dumps(p.media_urls)
-                )
-            );
-        } except aiosqlite.IntegrityError {
-            return None;
-        }
+        cur = await self._run(
+            """INSERT INTO posts (source, source_post_id, account_id, account_handle, tier,
+                                  url, text, quoted_text, is_reply, posted_at, received_at, media_urls)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(source, source_post_id) DO NOTHING""",
+            (
+                p.source,
+                p.source_post_id,
+                p.account_id,
+                p.account_handle,
+                p.tier,
+                p.url,
+                p.text,
+                p.quoted_text,
+                int(p.is_reply),
+                iso(p.posted_at),
+                iso(p.received_at),
+                json.dumps(p.media_urls)
+            )
+        );
         await self.db.commit();
-        return cur.lastrowid;
+        return cur.lastrowid if cur.rowcount else None;
     }
 
     async def get_post(post_id: int) -> Row | None {
