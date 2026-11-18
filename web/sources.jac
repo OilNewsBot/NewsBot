@@ -486,7 +486,9 @@ def:pub SourcesPage -> JsxElement {
         api: any = globalThis.Notification;  # jac:ignore[E1053]
         doc: any = document;
         win: any = window;
-        if _ps_screen and api and api.permission == "granted" and doc.hidden {
+        # same rule as the news page: notify unless this page is in front and focused
+        in_front = doc.visibilityState == "visible" and doc.hasFocus();
+        if _ps_screen and api and api.permission == "granted" and not in_front {
             popup = new(
                 api,
                 str(item.source_name or "Newsstream"),
@@ -499,7 +501,8 @@ def:pub SourcesPage -> JsxElement {
                 win.focus();
                 popup.close();
             };
-            if len(_ps_open_notices) >= 20 {
+            # the desktop app's notifications cannot be closed from the page
+            if len(_ps_open_notices) >= 20 and _ps_open_notices[0].close {
                 _ps_open_notices[0].close();
             }
             _ps_open_notices = (_ps_open_notices + [popup])[-20:];

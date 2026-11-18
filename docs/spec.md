@@ -413,6 +413,8 @@ Single page, dark theme, written in Jac (`web/main.jac`, compiled to React by
   off by default and remembered per browser. Ticking it asks for browser
   permission; if denied or unsupported it stays off with a short hint. Shown
   only while the page is hidden or unfocused; clicking one focuses the page.
+  In the desktop app the same checkbox shows native system notifications
+  (Tauri notification plugin); there, clicking one may not focus the window.
 - SSE reconnects automatically; on reconnect, fetch `/notifications?since=<id>`
   to backfill anything missed.
 

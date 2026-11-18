@@ -659,6 +659,11 @@ def NewsPage -> JsxElement {
             api = notify_api();
             if localStorage.getItem("ns_screen") == "1" and api {
                 screen = api.permission == "granted";
+                if api.permission == "default" {
+                    # the desktop app's Notification API reports "default"
+                    # until its asynchronous permission check returns
+                    setTimeout(lambda { screen = api.permission == "granted"; }, 500);
+                }
             }
             boot();
             status_timer = setInterval(lambda { load_status(); }, 10000);
