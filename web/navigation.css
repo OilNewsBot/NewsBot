@@ -83,7 +83,7 @@
 }
 
 .alerts-button { width:100%; border:0; background:transparent; cursor:pointer; text-align:left; }
-.alert-count { border-radius:10px; padding:1px 6px; background:var(--accent-fill); color:var(--accent-ink); font-size:11px; }
+.alert-count { border-radius:10px; padding:1px 6px; background:var(--alert-color); color:var(--nav-bg); font-size:11px; }
 .alerts-popover { position:fixed; top:20%; left:calc(var(--sidebar-w) + 6px); width:min(330px, calc(100vw - 26px)); max-height:65vh; overflow:auto; padding:18px; border-radius:var(--round-card); border:1px solid var(--border); color:var(--text); background:var(--panel); box-shadow:0 8px 26px #0005; }
 .compact .alerts-popover { left:78px; }
 .compact .alerts-button { position:relative; }

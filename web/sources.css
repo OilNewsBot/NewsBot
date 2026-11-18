@@ -11,7 +11,9 @@
 .ps-intro h1 { margin: 0; color: #eef3fa; font-size: clamp(28px, 4vw, 38px); font-weight: 650; letter-spacing: -1.2px; text-transform: none; }
 .ps-intro p:last-child { color: var(--dim); margin: 10px 0 0; max-width: 550px; }
 .ps-live { flex-shrink: 0; display: flex; align-items: center; gap: 7px; color: var(--dim); font-size: 12px; padding: 7px 11px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--round-card); }
-.ps-live-dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; }
+.ps-live[data-state="live"] { color: var(--alert-color); }
+.ps-live[data-state="reconnecting"] { color: var(--amber); }
+.ps-live-dot { width: 6px; height: 6px; background: currentColor; border-radius: 50%; }
 .ps-auth .auth-panel { margin: 24px 0; background: var(--panel); border-color: var(--border); color: var(--text); max-width: 430px; padding: 20px; }
 .ps-auth .auth-panel h2 { font-size: 16px; margin-bottom: 10px; }
 .ps-auth .auth-panel p { color: var(--dim); margin: 6px 0; }
@@ -92,8 +94,8 @@
 .ps-feed-empty h3 { font-size: 16px; margin: 18px 0 8px; font-weight: 500; }
 .ps-feed-empty p { max-width: 340px; margin: auto; color: var(--dim); font-size: 12px; line-height: 1.7; }
 .ps-alerts { display: grid; gap: 8px; margin-bottom: 18px; }
-.ps-alert { display: flex; align-items: center; gap: 15px; justify-content: space-between; background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; padding: 13px 15px; }
-.ps-alert .ps-eyebrow { margin-bottom: 4px; color: #aac7ea; }
+.ps-alert { display: flex; align-items: center; gap: 15px; justify-content: space-between; background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--alert-color); border-radius: 8px; padding: 13px 15px; }
+.ps-alert .ps-eyebrow { margin-bottom: 4px; color: var(--alert-color); }
 .ps-alert strong { display: block; font-size: 13px; line-height: 1.5; font-weight: 500; }
 .ps-alert button { font-size: 22px; }
 .ps-message { padding: 12px 16px; border: 1px solid; border-radius: 8px; font-size: 12px; margin: 0 0 20px; }
