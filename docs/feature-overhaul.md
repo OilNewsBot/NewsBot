@@ -11,9 +11,17 @@ Work in small parts on `feature-overhaul`. Part 1 passed review checks. Part 2 i
 | 5 | Add forum threads and channel recommendations. | Each headline links to the original publisher and has a thread for replies. Each account can recommend a channel once. Category rankings show real vote counts. Discover lists new channels in publication order. |
 | 6 | Prepare the shared 48-hour demo. | Two devices on one hosted service can publish, discover, subscribe and reply. Seeded RSS channels retain their latest headlines across restarts and upstream outages. The core experience works without X, Telegram or LLM credentials. |
 
+## Run the public directory for demo days
+
+In the bootstrapped Ubuntu checkout, start the demo with `NEWSSTREAM_DEMO_RSS=1 jac run` and open `http://127.0.0.1:8000/`. Click a channel name or description to expand its latest stories. Each story includes a summary, publication date and link to the publisher.
+
+The service opens immediately with a saved edition and checks public RSS feeds on startup and hourly. Each channel shows the date of its last successful snapshot. If a publisher is unavailable, its stories and snapshot date stay available. The service stores successful refreshes in `directory-rss.json` beside its configured database and reuses that file after a restart.
+
+Visitors and operators can run this mode without X, Telegram, LLM or SSH keys. SSH is an operator option for managing a remote server. The default service address is local to the demo machine. Sharing a public URL across devices requires a hosted instance.
+
 ## Directory assets
 
-The publisher feed URLs, article links, publication times and snapshot timestamp are in `db/directory_seed.json`. Refresh that snapshot before the hosted demo. The sector photographs are illustrative and are stored locally.
+The bundled edition in `db/directory_seed.json` includes publisher URLs, dates and editorial summaries. New stories use short excerpts from the publisher feed. The sector photographs are illustrative and are stored locally.
 
 | Category | Photograph |
 | --- | --- |

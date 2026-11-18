@@ -1,9 +1,12 @@
 """Verify the signed-out directory without external feeds or a running worker."""
 
 import asyncio;
+import json;
 import httpx;
 import from datetime { datetime }
 import from app { create_app }
+import from db.directory { PublicDirectory }
+import from personal.providers { ProviderError }
 import from tests.helpers { make_settings }
 
 test "the public snapshot has dated headlines and unique channel addresses" {
@@ -26,6 +29,7 @@ test "the public snapshot has dated headlines and unique channel addresses" {
                 image = await client.get(category["image_url"]);
                 assert image.status_code == 200;
                 for channel in category["channels"] {
+                    assert channel["description"];
                     assert channel["slug"] not in slugs;
                     slugs.add(channel["slug"]);
                     stories = channel["headlines"];
@@ -37,12 +41,52 @@ test "the public snapshot has dated headlines and unique channel addresses" {
                     assert dates[0] <= captured;
                     for story in stories {
                         assert story["url"].startswith("https://") and story["title"];
+                        assert story["summary"] and story["summary"] != story["title"];
                     }
                 }
             }
             private = await client.get("/api/me/feed");
             assert private.status_code == 401;
         }
+    }
+    asyncio.run(run());
+}
+
+test "a public RSS refresh keeps offline channels and survives a restart" {
+    async def run {
+        cache = make_settings().db_path.parent / "directory-rss.json";
+        directory = PublicDirectory(cache);
+        directory.load();
+        energy = directory.catalog["categories"][0]["channels"];
+        first = energy[0];
+        other = energy[1]["headlines"];
+        first["headlines"] = [];
+        async def fixture(url: str) -> any {
+            if url != first["feed_url"] {
+                raise ProviderError("Offline fixture");
+            }
+            return (
+                b"<rss><channel><item><title>New plant</title><link>http://www.eia.gov/new</link><description>A &lt;b&gt;solar&lt;/b&gt; plant opened.</description><pubDate>Mon, 02 Nov 2020 12:00:00 GMT</pubDate></item></channel></rss>",
+                {},
+                url
+            );
+        }
+        await directory.refresh(fixture);
+        assert first["headlines"][0]["summary"] == "A solar plant opened.";
+        assert first["headlines"][0]["url"] == "https://www.eia.gov/new";
+        assert energy[1]["headlines"] == other;
+        assert "checked_at" not in energy[1];
+        # Model a refresh newer than the seed even when CI has an earlier clock.
+        saved = json.loads(cache.read_text());
+        saved[first["feed_url"]]["checked_at"] = "2099-01-01T00:00:00+00:00";
+        cache.write_text(json.dumps(saved));
+        restored = PublicDirectory(cache);
+        restored.load();
+        assert restored.catalog["categories"][0]["channels"][0]["headlines"]
+            == first["headlines"];
+        cache.write_text("{");
+        restored.load();
+        assert len(restored.catalog["categories"][0]["channels"][0]["headlines"]) == 3;
     }
     asyncio.run(run());
 }

@@ -53,11 +53,27 @@
 .directory-back { display: inline-block; margin-bottom: 22px; }
 .channel-card { padding: clamp(18px, 3vw, 28px); margin-bottom: 16px; }
 .channel-card h2 { font-size: 28px; line-height: 1.2; margin: 0 0 6px; }
-.channel-card h2 a { color: inherit; }
-.channel-card h2 a:hover, .directory-headlines a:hover { text-decoration: underline; }
+.directory-headlines a:hover { text-decoration: underline; }
 .channel-card p, .directory-deck { margin: 12px 0 16px; color: #d7e3df; }
-.channel-card details { border-top: 1px solid #31413c; }
-.channel-card summary { cursor: pointer; color: #a7e6c9; padding: 12px 0; }
+.channel-list { list-style: none; padding: 0; margin: 0; border-bottom: 1px solid #31413c; }
+.channel-disclosure { border-top: 1px solid #31413c; }
+.channel-disclosure > summary {
+    position: relative; list-style: none; cursor: pointer;
+    padding: 18px 42px 18px 8px; overflow-wrap: anywhere;
+}
+.channel-disclosure > summary::-webkit-details-marker { display: none; }
+.channel-disclosure > summary::after {
+    content: ""; position: absolute; right: 14px; top: 28px;
+    width: 8px; height: 8px; border: solid #99d5bb; border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+.channel-disclosure[open] > summary::after { transform: rotate(225deg); }
+.channel-disclosure > summary:hover, .channel-disclosure[open] > summary { background: #17221e; }
+.channel-name { display: block; font: 500 clamp(22px, 2.4vw, 32px)/1.15 Georgia, serif; }
+.channel-description { display: block; margin-top: 5px; color: #abbab5; }
+.channel-stories { padding: 6px clamp(10px, 2vw, 24px) 20px; }
+.channel-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.directory .directory-headlines p { color: #d7e3df; margin: 6px 0; overflow-wrap: anywhere; }
 .directory-headlines { list-style: none; padding: 0; margin: 8px 0 14px; }
 .directory-headlines li { padding: 12px 0; border-top: 1px solid #31413c; }
 .directory-headlines a { color: var(--text); font-weight: 550; overflow-wrap: anywhere; }

@@ -7,7 +7,8 @@ import "./directory.css";
 obj Headline {
     has title: str,
         url: str,
-        published: str;
+        published: str,
+        summary: str;
 }
 
 obj Channel {
@@ -15,7 +16,8 @@ obj Channel {
         name: str,
         publisher: str,
         description: str,
-        headlines: list[Headline];
+        headlines: list[Headline],
+        checked_at: str | None = None;
 }
 
 obj Category {
@@ -44,6 +46,9 @@ def Headlines(channel: Channel) -> JsxElement {
                 <a href={item.url} target="_blank" rel="noopener noreferrer">
                     {item.title}
                 </a>
+                {if item.summary {
+                    <p>{item.summary}</p>
+                }}
                 <span>
                     {channel.publisher}
                     {" · "}
@@ -115,31 +120,34 @@ def CategoryRow(category: Category) -> JsxElement {
     </li>
 }
 
-def ChannelCard(channel: Channel, curator: str) -> JsxElement {
-    <article className="channel-card">
-        <h2>
-            <a href={"/channels/" + channel.slug}>{channel.name}</a>
-        </h2>
-        <span className="directory-byline">{"Curated by " + curator}</span>
-        <p>{channel.description}</p>
-        <details>
+def ChannelRow(channel: Channel, captured: str) -> JsxElement {
+    <li>
+        <details className="channel-disclosure">
             <summary>
-                {"Latest headlines (" + str(len(channel.headlines)) + ")"}
+                <span className="channel-name">{channel.name}</span>
+                <span className="channel-description">{channel.description}</span>
             </summary>
-            <Headlines channel={channel}/>
+            <div className="channel-stories">
+                <p className="directory-byline">
+                    {"Latest news · " + display_date(channel.checked_at or captured)}
+                </p>
+                <Headlines channel={channel}/>
+                <div className="channel-actions">
+                    <a href={"/channels/" + channel.slug}>Open channel page</a>
+                    <ShareChannel slug={channel.slug}/>
+                </div>
+            </div>
         </details>
-        <ShareChannel slug={channel.slug}/>
-    </article>
+    </li>
 }
 
 def DirectoryContent(data: Directory, path: str) -> JsxElement {
-    captured = display_date(data.captured_at);
     if path == "/" {
         return
             <main className="directory">
                 <header className="directory-heading">
                     <h1>Forums</h1>
-                    <p>{"Browse channels by category · Snapshot " + captured}</p>
+                    <p>{str(len(data.categories)) + " categories"}</p>
                 </header>
                 <ul className="category-list" aria-label="Forum categories">
                     {for category in data.categories {
@@ -155,15 +163,17 @@ def DirectoryContent(data: Directory, path: str) -> JsxElement {
                     <a className="directory-back" href="/">← All forums</a>
                     <header className="directory-heading">
                         <h1>{category.name}</h1>
-                        <p>{"Featured channels · Snapshot " + captured}</p>
+                        <p>{"Curated by " + data.curator}</p>
                     </header>
-                    {for channel in category.channels {
-                        <ChannelCard
-                            key={channel.slug}
-                            channel={channel}
-                            curator={data.curator}
-                        />
-                    }}
+                    <ul className="channel-list" aria-label="Channels">
+                        {for channel in category.channels {
+                            <ChannelRow
+                                key={channel.slug}
+                                channel={channel}
+                                captured={data.captured_at}
+                            />
+                        }}
+                    </ul>
                 </main>;
         }
         for channel in category.channels {
@@ -190,7 +200,10 @@ def DirectoryContent(data: Directory, path: str) -> JsxElement {
                         <section className="channel-card">
                             <h2>Latest headlines</h2>
                             <span className="directory-byline">
-                                {"Snapshot " + captured}
+                                {"Snapshot "
+                                    + display_date(
+                                        channel.checked_at or data.captured_at
+                                    )}
                             </span>
                             <Headlines channel={channel}/>
                         </section>

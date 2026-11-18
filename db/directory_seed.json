@@ -17,17 +17,20 @@
             {
               "title": "How does EIA account for small differences between energy supply and demand data?",
               "url": "https://www.eia.gov/todayinenergy/detail.php?id=68464",
-              "published": "2026-11-17T14:00:00+00:00"
+              "published": "2026-11-17T14:00:00+00:00",
+              "summary": "EIA explains why more than 60 surveys can produce slightly different totals for energy supply and demand, even though the two should balance."
             },
             {
               "title": "Hydropower generation in the Southwest fell to record lows this summer",
               "url": "https://www.eia.gov/todayinenergy/detail.php?id=68445",
-              "published": "2026-11-13T14:00:00+00:00"
+              "published": "2026-11-13T14:00:00+00:00",
+              "summary": "Drought in the Colorado River Basin reduced Southwest hydropower generation. Output from April through August was 19% below the same period a year earlier."
             },
             {
               "title": "EIA forecasts Alaskan crude oil production to grow 13% in 2027",
               "url": "https://www.eia.gov/todayinenergy/detail.php?id=68444",
-              "published": "2026-11-12T14:00:00+00:00"
+              "published": "2026-11-12T14:00:00+00:00",
+              "summary": "Two North Slope projects are driving Alaska’s rebound. EIA expects output to reach 505,000 barrels a day in 2027, the highest level since 2014."
             }
           ]
         },
@@ -41,17 +44,20 @@
             {
               "title": "Addressing nuclear challenges, from radiation detection to power in space",
               "url": "https://news.mit.edu/2026/addressing-nuclear-challenges-jake-hecla-1112",
-              "published": "2026-11-12T22:10:00+00:00"
+              "published": "2026-11-12T22:10:00+00:00",
+              "summary": "MIT’s Jake Hecla is studying how to cool reactors for space missions and how to detect nuclear material."
             },
             {
               "title": "Energy, prosperity, emissions, and innovation: A decarbonization progress report",
               "url": "https://news.mit.edu/2026/energy-prosperity-emissions-innovation-decarbonization-progress-report-1112",
-              "published": "2026-11-12T21:30:00+00:00"
+              "published": "2026-11-12T21:30:00+00:00",
+              "summary": "At MIT’s energy conference, Breakthrough Energy’s Eric Toone assessed progress on cutting emissions and where further innovation is needed."
             },
             {
               "title": "Powering up for a pivotal moment",
               "url": "https://news.mit.edu/2026/powering-up-for-pivotal-moment-1102",
-              "published": "2026-11-02T19:55:00+00:00"
+              "published": "2026-11-02T19:55:00+00:00",
+              "summary": "MIT researchers discussed technologies moving into service today, alongside longer-term work in nuclear energy and quantum computing."
             }
           ]
         }
@@ -72,17 +78,20 @@
             {
               "title": "OpenAI’s GPT-6.2 Astra and GPT-6.2 Sol now available",
               "url": "https://github.blog/changelog/2026-11-17-openais-gpt-6-2-astra-and-gpt-6-2-sol-now-available",
-              "published": "2026-11-17T20:20:29+00:00"
+              "published": "2026-11-17T20:20:29+00:00",
+              "summary": "GitHub made both models generally available in Copilot for coding tasks and code review."
             },
             {
               "title": "GitHub Copilot Fusion updates: more availability, benchmarks, and models",
               "url": "https://github.blog/changelog/2026-11-17-github-copilot-fusion-updates-more-availability-benchmarks-and-models",
-              "published": "2026-11-17T18:04:48+00:00"
+              "published": "2026-11-17T18:04:48+00:00",
+              "summary": "GitHub expanded Fusion to more Copilot surfaces, added models and published two Terminal-Bench results for comparison."
             },
             {
               "title": "GitHub Copilot app, Microsoft Ignite releases",
               "url": "https://github.blog/changelog/2026-11-17-github-copilot-app-microsoft-ignite-releases",
-              "published": "2026-11-17T18:03:42+00:00"
+              "published": "2026-11-17T18:03:42+00:00",
+              "summary": "GitHub’s Ignite announcement adds support for Azure DevOps repositories and GitHub Enterprise Server in the Copilot app."
             }
           ]
         },
@@ -96,17 +105,20 @@
             {
               "title": "Quad9’s withdrawal from France: A canary in the coal mine",
               "url": "https://blog.cloudflare.com/quad9-withdrawal-from-france/",
-              "published": "2026-11-17T20:24:27+00:00"
+              "published": "2026-11-17T20:24:27+00:00",
+              "summary": "Cloudflare uses Quad9’s departure to examine how DNS blocking affects public resolvers and access to the internet."
             },
             {
               "title": "Kitesurf is now open source",
               "url": "https://blog.cloudflare.com/kitesurf-open-source/",
-              "published": "2026-11-13T20:20:21+00:00"
+              "published": "2026-11-13T20:20:21+00:00",
+              "summary": "Cloudflare released the code for its experimental browser engine for AI agents. Developers can run it locally or on Workers."
             },
             {
               "title": "Adapting to AI penetration testing orchestrators: The Modern Security Model",
               "url": "https://blog.cloudflare.com/adapting-to-ai-penetration-testing-orchestrators/",
-              "published": "2026-11-13T19:26:07+00:00"
+              "published": "2026-11-13T19:26:07+00:00",
+              "summary": "Cloudflare reports on automated testing against exposed services and describes defensive changes for infrastructure teams."
             }
           ]
         }
@@ -127,17 +139,20 @@
             {
               "title": "FDA Launches the Global Reliance Disclosure Program to Expand Patient Access to Medicines Worldwide",
               "url": "https://www.fda.gov/news-events/press-announcements/fda-launches-global-reliance-disclosure-program-expand-patient-access-medicines-worldwide",
-              "published": "2026-11-17T20:32:16+00:00"
+              "published": "2026-11-17T20:32:16+00:00",
+              "summary": "The FDA announced a program to help health authorities worldwide make use of its drug and biologic approval decisions."
             },
             {
               "title": "FDA Approves First Drug Shown to Help Patients with Infantile-Onset Niemann-Pick Disease Type C Live Longer",
               "url": "https://www.fda.gov/news-events/press-announcements/fda-approves-first-drug-shown-help-patients-infantile-onset-niemann-pick-disease-type-c-live-longer",
-              "published": "2026-11-17T19:15:22+00:00"
+              "published": "2026-11-17T19:15:22+00:00",
+              "summary": "The agency approved adrabetadex after evidence showed a survival benefit in patients with the infantile-onset form of the disease."
             },
             {
               "title": "FDA Approves First Factor Xla Inhibitor to Help Prevent Stroke in Certain Adults at High Risk",
               "url": "https://www.fda.gov/news-events/press-announcements/fda-approves-first-factor-xla-inhibitor-help-prevent-stroke-certain-adults-high-risk",
-              "published": "2026-11-09T22:15:46+00:00"
+              "published": "2026-11-09T22:15:46+00:00",
+              "summary": "The FDA approved asundexian alongside antiplatelet therapy for certain adults after an ischemic stroke or high-risk transient ischemic attack."
             }
           ]
         },
@@ -151,17 +166,20 @@
             {
               "title": "Waves that clear waste from the brain during sleep are impaired in older adults",
               "url": "https://news.mit.edu/2026/waste-clearing-waves-in-brain-during-sleep-are-impaired-in-older-adults-1113",
-              "published": "2026-11-13T10:00:00+00:00"
+              "published": "2026-11-13T10:00:00+00:00",
+              "summary": "Researchers found age-related changes in the fluid waves involved in clearing brain waste. They plan to study whether increasing fluid flow during sleep could help."
             },
             {
               "title": "MIT-led team receives funding to develop a wearable monitor for early disease detection",
               "url": "https://news.mit.edu/2026/mit-led-team-receives-funding-for-early-disease-detection-wearable-monitor-1104",
-              "published": "2026-11-04T05:00:00+00:00"
+              "published": "2026-11-04T05:00:00+00:00",
+              "summary": "ARPA-H awarded the team up to $38 million to develop a wearable patch that tracks biomarkers associated with heart failure and sepsis."
             },
             {
               "title": "Featured video: Changing the conversation about endometriosis",
               "url": "https://news.mit.edu/2026/featured-video-changing-conversation-about-endometriosis-1103",
-              "published": "2026-11-03T21:00:00+00:00"
+              "published": "2026-11-03T21:00:00+00:00",
+              "summary": "A documentary follows MIT researchers studying endometriosis and efforts to develop treatments for the condition."
             }
           ]
         }
@@ -182,17 +200,20 @@
             {
               "title": "MIT School of Engineering faculty and staff receive awards in summer 2026",
               "url": "https://news.mit.edu/2026/mit-engineering-faculty-staff-receive-awards-summer-2026-1116",
-              "published": "2026-11-16T20:45:00+00:00"
+              "published": "2026-11-16T20:45:00+00:00",
+              "summary": "MIT recognized engineering faculty and researchers for contributions to scholarship and service."
             },
             {
               "title": "Inspired by networks found in nature, engineers design stronger, more resilient “metamaterials”",
               "url": "https://news.mit.edu/2026/engineers-design-stronger-resilient-nature-inspired-metamaterials-1111",
-              "published": "2026-11-11T16:00:00+00:00"
+              "published": "2026-11-11T16:00:00+00:00",
+              "summary": "The team used patterns found in nature to design materials that absorb impacts, with potential uses in helmets and packaging."
             },
             {
               "title": "School of Engineering welcomes new faculty in 2026",
               "url": "https://news.mit.edu/2026/school-engineering-welcomes-new-faculty-1110",
-              "published": "2026-11-10T22:00:00+00:00"
+              "published": "2026-11-10T22:00:00+00:00",
+              "summary": "MIT introduced new engineering faculty and the research areas they bring to the school."
             }
           ]
         },
@@ -206,17 +227,20 @@
             {
               "title": "NASA to Conduct Low-Altitude Flights Over Texas Farmland",
               "url": "https://www.nasa.gov/general/nasa-to-conduct-low-altitude-flights-over-texas-farmland/",
-              "published": "2026-11-17T17:12:20+00:00"
+              "published": "2026-11-17T17:12:20+00:00",
+              "summary": "NASA described a research campaign using an A200 aircraft to fly low over farmland near Amarillo, Texas."
             },
             {
               "title": "Through NASA’s Lens: Capturing Space Shuttle Endeavour’s Move to LA",
               "url": "https://www.nasa.gov/centers-and-facilities/armstrong/through-nasas-lens-capturing-space-shuttle-endeavours-move-to-la/",
-              "published": "2026-11-12T13:00:00+00:00"
+              "published": "2026-11-12T13:00:00+00:00",
+              "summary": "NASA photographers recall documenting Endeavour’s 2012 journey to Los Angeles aboard a modified Boeing 747."
             },
             {
               "title": "MAX POWER: NASA’s Inaugural Aerospace Expo Ignites America’s Future",
               "url": "https://www.nasa.gov/general/max-power-nasas-inaugural-aerospace-expo-ignites-americas-future/",
-              "published": "2026-11-09T16:07:10+00:00"
+              "published": "2026-11-09T16:07:10+00:00",
+              "summary": "The multi-day expo at Kennedy Space Center drew thousands to see NASA’s work in aviation, space and technology."
             }
           ]
         }

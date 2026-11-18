@@ -44,8 +44,8 @@ null on the relevant paths. Do not assume every notification is classified.
 | Endpoint | Current response/behavior |
 | --- | --- |
 | `GET /` | Public forum home with a single list of categories, or 503 when the built UI is unavailable |
-| `GET /categories/{slug}`, `GET /channels/{slug}` | Shareable public category and channel views. Each channel has three dated, attributed links. |
-| `GET /api/directory` | Read-only editorial snapshot from `db/directory_seed.json` with capture time, curator, categories, channels, feed URLs and headlines. No credentials or personal sources are read. |
+| `GET /categories/{slug}`, `GET /channels/{slug}` | Shareable public views. Each channel row expands to show recent stories, summaries, dates and publisher links. |
+| `GET /api/directory` | Public editorial catalog seeded from `db/directory_seed.json`. Headlines include plain-text summaries. With `NEWSSTREAM_DEMO_RSS=1`, successful hourly refreshes add a per-channel `checked_at` timestamp and persist the latest stories across restarts. |
 | `GET /oil`, `GET /trading` | Redirect old workspace bookmarks to the public forum home. |
 | `GET /stream` | SSE `event: notification`, `id: <notification_id>`, `data: <card JSON>`; heartbeat comments |
 | `GET /notifications?since=N` | Array of stored cards after the notification ID, in ascending order (repository limit applies) |

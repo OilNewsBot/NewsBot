@@ -26,6 +26,7 @@ import from adapters.telegram { TelegramAdapter }
 import from adapters.x_api { XApiAdapter }
 import from adapters.x_push { XPushAdapter }
 import from config { ROOT, Settings, load_settings }
+import from db.directory { PublicDirectory }
 import from db.repo { Repo, Row, load_demo_suggestions }
 import from pipeline.llm { LLMClient }
 import from pipeline.notify { Bus }
@@ -131,6 +132,8 @@ async def _resolve_x_accounts(settings: Settings, repo: Repo, x_api: XApiAdapter
 def create_app(settings: Settings | None = None) -> FastAPI {
     settings = settings or load_settings();
     repo = Repo(settings.db_path);
+    directory = PublicDirectory(settings.db_path.parent / "directory-rss.json");
+    directory.load();
     personal = PersonalStore(settings.db_path);
     personal_worker = PersonalWorker(personal);
     bus = Bus();
@@ -164,6 +167,11 @@ def create_app(settings: Settings | None = None) -> FastAPI {
             asyncio.create_task(pipeline.stale_sweeper(), name="stale-sweeper"),
             asyncio.create_task(personal_worker.run(), name="personal-sources")
         ];
+        if os.environ.get("NEWSSTREAM_DEMO_RSS") == "1" {
+            tasks.append(
+                asyncio.create_task(directory.run(), name="public-directory-rss")
+            );
+        }
         if settings.x_api_enabled and settings.x_bearer_token {
             await _resolve_x_accounts(settings, repo, x_api);
         }
@@ -326,10 +334,8 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     }
 
     @app.get("/api/directory")
-    async def public_directory -> Response {
-        return FileResponse(
-            ROOT / "db" / "directory_seed.json", media_type="application/json"
-        );
+    async def public_directory -> Row {
+        return directory.catalog;
     }
 
     @app.get("/directory-images/{sector}.jpg")
