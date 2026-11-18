@@ -695,7 +695,6 @@ def NewsPage -> JsxElement {
                 </div>
             }}
         </div>
-        <Navigation active="news"/>
         <main>
             <div className="titlebar news-header">
                 <div>
