@@ -21,7 +21,8 @@ obj Channel {
 obj Category {
     has slug: str,
         name: str,
-        channels: list[Channel];
+        channels: list[Channel],
+        image_url: str | None = None;
 }
 
 obj Directory {
@@ -86,19 +87,32 @@ def ShareChannel(slug: str) -> JsxElement {
     </div>
 }
 
-def CategoryTile(category: Category) -> JsxElement {
-    lead = category.channels[0];
-    <a className="sector-tile" href={"/categories/" + category.slug}>
-        <div className="sector-photo">
-            <img src={"/directory-images/" + category.slug + ".jpg"} alt=""/>
-            <h2>{category.name}</h2>
-            <span aria-hidden="true">↗</span>
-        </div>
-        <div className="sector-preview">
-            <span className="directory-label">{"Featured · " + lead.name}</span>
-            <p>{lead.headlines[0].title}</p>
-        </div>
-    </a>
+def CategoryRow(category: Category) -> JsxElement {
+    count = len(category.channels);
+    <li>
+        <a className="category-row" href={"/categories/" + category.slug}>
+            {if category.image_url {
+                <img
+                    className="category-thumb"
+                    src={category.image_url}
+                    alt=""
+                    loading="lazy"
+                />
+            }}
+            <div className="category-summary">
+                <h2>{category.name}</h2>
+                {if count {
+                    <p>
+                        {", ".join([channel.name for channel in category.channels[:2]])}
+                    </p>
+                }}
+            </div>
+            <span className="category-count">
+                {str(count) + (" channel" if count == 1 else " channels")}
+            </span>
+            <span className="category-arrow" aria-hidden="true">→</span>
+        </a>
+    </li>
 }
 
 def ChannelCard(channel: Channel, curator: str) -> JsxElement {
@@ -124,21 +138,21 @@ def DirectoryContent(data: Directory, path: str) -> JsxElement {
         return
             <main className="directory">
                 <header className="directory-heading">
-                    <h1>Channel directory</h1>
-                    <p>{"Editorial picks by sector · Snapshot " + captured}</p>
+                    <h1>Forums</h1>
+                    <p>{"Browse channels by category · Snapshot " + captured}</p>
                 </header>
-                <div className="sector-grid">
+                <ul className="category-list" aria-label="Forum categories">
                     {for category in data.categories {
-                        <CategoryTile key={category.slug} category={category}/>
+                        <CategoryRow key={category.slug} category={category}/>
                     }}
-                </div>
+                </ul>
             </main>;
     }
     for category in data.categories {
         if path == "/categories/" + category.slug {
             return
                 <main className="directory directory-reading">
-                    <a className="directory-back" href="/">← Channel directory</a>
+                    <a className="directory-back" href="/">← All forums</a>
                     <header className="directory-heading">
                         <h1>{category.name}</h1>
                         <p>{"Featured channels · Snapshot " + captured}</p>
@@ -149,11 +163,6 @@ def DirectoryContent(data: Directory, path: str) -> JsxElement {
                             channel={channel}
                             curator={data.curator}
                         />
-                    }}
-                    {if category.slug == "energy" {
-                        <a className="directory-monitor" href="/oil">
-                            Open Crude Oil Monitor →
-                        </a>
                     }}
                 </main>;
         }

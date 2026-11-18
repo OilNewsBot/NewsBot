@@ -1,10 +1,10 @@
 # Current NewsBot / Newsstream project
 
-Newsstream monitors configured Telegram and X sources, classifies relevance to
-crude-oil markets, groups related posts into events, and displays new events and
-material updates in a local browser UI. The project uses **Jac 0.37.25**. The
-existing [specification](spec.md) describes intended behavior and the roadmap;
-this page maps the implementation as inspected for the collaboration setup.
+Newsstream opens on a public directory of news forums. Readers browse channels
+by category, expand recent headlines and share channel links. My Sources is the
+signed-in personal workspace. The service also contains the earlier oil-market
+pipeline. The project uses **Jac 0.37.25**. The [forum roadmap](feature-overhaul.md)
+tracks the launch work.
 
 ## Code map
 
@@ -15,7 +15,7 @@ this page maps the implementation as inspected for the collaboration setup.
 | Ingestion | `adapters/base.jac` defines normalized posts; Telegram, TwitterAPI.io push, and official X polling have separate adapters |
 | Processing | `pipeline/runner.jac` persists, classifies, deduplicates/clusters, and notifies; the other pipeline modules implement those steps |
 | Model boundary | `pipeline/llm.jac` wraps Anthropic, JSON parsing/retry, failure tracking, logging, and cassette record/replay |
-| Trading | `pipeline/trade.jac` suggests a WTI/RBOB trade after each `NEW_EVENT` (background task); `pipeline/prices.jac` reads Yahoo Finance 1-minute prices; `web/trading.jac` is the `/trading` page (spec §16) |
+| Trading | `pipeline/trade.jac` suggests a WTI/RBOB trade after each `NEW_EVENT` (background task); `pipeline/prices.jac` reads Yahoo Finance 1-minute prices; the former trading UI is retired (historical spec §16) |
 | Persistence | `db/schema.sql` and `db/repo.jac`, SQLite through aiosqlite |
 | Browser | `web/main.jac` and `web/main.css`, built by `jac build web` into `.jac/client/web/dist/index.html` |
 | Desktop | `desktop/` is a Tauri window that starts `jac run`, shows `/`, and stops the service on quit; see its README |

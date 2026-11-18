@@ -10,7 +10,6 @@ self-contained page by `jac build web`. It talks to the FastAPI service
 import "./main.css";
 import from react { useEffect }
 import from .auth { AuthPanel, SESSION_EVENT }
-import from .trading { TradingPage }
 import from .sources { SourcesPage }
 import from .directory { DirectoryPage }
 import "./navigation.css";
@@ -391,24 +390,24 @@ def banner_text(s: Status | None) -> str {
 
 # ---------- the pages ----------
 
-"""Sign-in gate for the oil monitor, trading and personal sources."""
+"""Sign-in gate for personal sources."""
 def LockedPage -> JsxElement {
     <main className="locked">
         <div className="titlebar">
-            <h1>Newsstream</h1>
+            <h1>My Sources</h1>
         </div>
         <p className="locked-note">
-            {"🔒 Sign in to see the feeds, trading view and your sources."}
+            {"Sign in to manage your sources and read your personal feed."}
         </p>
         <AuthPanel/>
-        <a href="/">Browse public channels</a>
+        <a href="/">Browse forums</a>
     </main>
 }
 
 def:pub app -> JsxElement {
     win: any = window;
     path = str(win.location.pathname);
-    if path in ["/oil", "/trading", "/sources"] {
+    if path == "/sources" {
         return <Workspace/>;
     }
     return <DirectoryPage path={path}/>;
@@ -461,29 +460,11 @@ def Workspace -> JsxElement {
     if session == "out" {
         return <LockedPage/>;
     }
-    # the checker's window typings lack location
-    win: any = window;
-    if str(win.location.pathname).startswith("/sources") {
-        return
-            <div className="app-layout">
-                <Navigation active="sources"/>
-                <AuthPanel/>
-                <SourcesPage/>
-            </div>;
-    }
-    if str(win.location.pathname).startswith("/trading") {
-        return
-            <div className="app-layout">
-                <Navigation active="trading"/>
-                <AuthPanel/>
-                <TradingPage/>
-            </div>;
-    }
     return
         <div className="app-layout">
-            <Navigation active="news"/>
+            <Navigation active="sources"/>
             <AuthPanel/>
-            <NewsPage/>
+            <SourcesPage/>
         </div>;
 }
 

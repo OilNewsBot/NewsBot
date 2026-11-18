@@ -43,10 +43,10 @@ null on the relevant paths. Do not assume every notification is classified.
 
 | Endpoint | Current response/behavior |
 | --- | --- |
-| `GET /` | Public channel directory, or 503 when the built UI is unavailable |
+| `GET /` | Public forum home with a single list of categories, or 503 when the built UI is unavailable |
 | `GET /categories/{slug}`, `GET /channels/{slug}` | Shareable public category and channel views. Each channel has three dated, attributed links. |
 | `GET /api/directory` | Read-only editorial snapshot from `db/directory_seed.json` with capture time, curator, categories, channels, feed URLs and headlines. No credentials or personal sources are read. |
-| `GET /oil` | The existing oil monitor UI checks the visitor's session before mounting. |
+| `GET /oil`, `GET /trading` | Redirect old workspace bookmarks to the public forum home. |
 | `GET /stream` | SSE `event: notification`, `id: <notification_id>`, `data: <card JSON>`; heartbeat comments |
 | `GET /notifications?since=N` | Array of stored cards after the notification ID, in ascending order (repository limit applies) |
 | `GET /feed` | Object containing `events` |
@@ -54,7 +54,6 @@ null on the relevant paths. Do not assume every notification is classified.
 | `GET /status` | Adapter states, latency/counts, estimated model spend, fail-open state, X budget/reads, UI threshold/settings, inactive accounts |
 | `POST /ingest` | A normalized-post JSON representation; parses ISO timestamps and queues it, returning `{"queued": true}` |
 | `POST /refetch?hours=12` | Starts source catch-up; clamps hours to 1–48; returns 409 when unconfigured or already running |
-| `GET /trading` | Same built UI as `/`; the page shows the trading view by path |
 | `GET /portfolio` | `portfolio` (row or null), `enabled`, `max_share`, `max_hold_minutes`, `aggressiveness` levels, `contracts` per ticker |
 | `PUT /portfolio` | JSON `portfolio_value`, `available_cash`, `aggressiveness`, `max_hold_minutes`; 422 when invalid; returns the saved row |
 | `GET /suggestions` | Object containing `suggestions`, newest first, each a `trade_suggestions` row plus `event_title` |

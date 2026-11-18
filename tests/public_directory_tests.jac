@@ -23,9 +23,7 @@ test "the public snapshot has dated headlines and unique channel addresses" {
             slugs: set[str] = set();
             for category in categories {
                 assert len(category["channels"]) == 2;
-                image = await client.get(
-                    "/directory-images/" + category["slug"] + ".jpg"
-                );
+                image = await client.get(category["image_url"]);
                 assert image.status_code == 200;
                 for channel in category["channels"] {
                     assert channel["slug"] not in slugs;
@@ -44,6 +42,24 @@ test "the public snapshot has dated headlines and unique channel addresses" {
             }
             private = await client.get("/api/me/feed");
             assert private.status_code == 401;
+        }
+    }
+    asyncio.run(run());
+}
+
+
+test "retired oil and trading bookmarks lead to the public forum home" {
+    async def run {
+        client = httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=create_app(make_settings())),
+            base_url="http://test"
+        );
+        async with client {
+            for path in ["/oil", "/trading"] {
+                response = await client.get(path);
+                assert response.status_code == 307;
+                assert response.headers["location"] == "/";
+            }
         }
     }
     asyncio.run(run());

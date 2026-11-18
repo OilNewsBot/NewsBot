@@ -4,6 +4,7 @@
   "categories": [
     {
       "slug": "energy",
+      "image_url": "/directory-images/energy.jpg",
       "name": "Energy",
       "channels": [
         {
@@ -58,6 +59,7 @@
     },
     {
       "slug": "tech",
+      "image_url": "/directory-images/tech.jpg",
       "name": "Tech",
       "channels": [
         {
@@ -112,6 +114,7 @@
     },
     {
       "slug": "healthcare",
+      "image_url": "/directory-images/healthcare.jpg",
       "name": "Healthcare",
       "channels": [
         {
@@ -166,6 +169,7 @@
     },
     {
       "slug": "industrials",
+      "image_url": "/directory-images/industrials.jpg",
       "name": "Industrials",
       "channels": [
         {

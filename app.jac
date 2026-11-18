@@ -17,6 +17,7 @@ import from fastapi { FastAPI, HTTPException, Request }
 import from fastapi.responses {
     FileResponse,
     HTMLResponse,
+    RedirectResponse,
     Response,
     StreamingResponse
 }
@@ -348,6 +349,10 @@ def create_app(settings: Settings | None = None) -> FastAPI {
 
     @app.get("/oil")
     @app.get("/trading")
+    async def retired_workspace -> Response {
+        return RedirectResponse("/");
+    }
+
     @app.get("/sources")
     async def workspace_page -> Response {
         return await index();

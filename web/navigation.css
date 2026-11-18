@@ -80,7 +80,7 @@
 
     .site-nav-links {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 6px;
     }
 
@@ -100,10 +100,6 @@
 }
 
 @media (max-width: 420px) {
-    .site-nav-links {
-        grid-template-columns: 1fr;
-    }
-
     .site-nav-link {
         flex-direction: row;
         text-align: left;
