@@ -27,7 +27,7 @@ folder and open http://127.0.0.1:8000.
 | `ui/index.html` | The "Starting NewsBot…" screen and its error message |
 | `src-tauri/src/main.rs` | Starts/stops the server and opens the window |
 | `src-tauri/tauri.conf.json` | App name, bundle ID, and icons |
-| `src-tauri/Cargo.toml` | Rust dependencies (Tauri) |
+| `src-tauri/Cargo.toml` | Rust dependencies (Tauri and its notification plugin) |
 | `src-tauri/icons/` | App icons, generated from `app-icon.svg` |
 
 ## One-time setup (Mac)
@@ -133,6 +133,32 @@ The app is not signed with an Apple developer certificate. On another Mac,
 right-click the app and choose **Open** the first time. That Mac also needs the
 NewsBot folder, Jac, and the one-time setup above. This is a convenience
 wrapper for team members, not an installer for people without the code.
+
+## Desktop notifications
+
+The page's **Desktop notifications** checkbox (news page and My Sources) works
+in the app too. Tick it and new events appear as normal system notifications
+whenever the NewsBot window is not the one you are using. The app has no
+separate setting; the page checkbox is the switch.
+
+- Notifications only arrive while the app is open, because quitting stops the
+  server.
+- On Mac, the first notification may ask you to allow notifications. If
+  nothing shows up, open **System Settings → Notifications** and turn them on.
+  Look for **NewsBot** for the built app, or **Terminal** for `npm run dev`:
+  development runs send notifications under Terminal's name.
+- On Mac, banners are hidden while the screen is mirrored or shared (an
+  external display set to mirror, AirPlay, or a screen share in a call). They
+  still go to Notification Center. To show them anyway, turn on **System
+  Settings → Notifications → Allow notifications when mirroring or sharing the
+  display**.
+- Clicking a notification does not bring the NewsBot window forward on every
+  system.
+- To try it without live feeds, quit the app, run `jac run fake_tweets` in the
+  NewsBot folder, then start the app; it attaches to that test server.
+
+The app gives the server's pages permission to show notifications and nothing
+else (see `service_notifications` in `src-tauri/src/main.rs`).
 
 ## API keys and cost
 

@@ -20,6 +20,7 @@ tracks the launch work.
 | Browser | `web/main.jac` and `web/main.css`, built by `jac build web` into `.jac/client/web/dist/index.html` |
 | Desktop | `desktop/` is a Tauri window that starts `jac run`, shows `/`, and stops the service on quit; see its README |
 | Replay | `replay.jac` sends fixture posts to a running service's `/ingest` endpoint |
+| Fake tweets | `fake_tweets.jac` (`jac run fake_tweets`) runs an isolated service on a database copy, feeds it five significant test tweets through a fake twitterapi.io, and reports each outcome |
 | Verification | Jac tests under `tests/`; Python collaboration tests under `scripts/tests/`; one combined CI entry point |
 
 ```text
