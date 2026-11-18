@@ -92,3 +92,37 @@ test "failed card insert rolls back the event decisions and queue claim" {
     }
     asyncio.run(body());
 }
+
+test "upgrading a legacy database recovers unfinished inputs only once" {
+    async def body {
+        settings = make_settings();
+        inputs = load_fixture("kharg_strikes");
+        async with open_repo(settings) as repo {
+            await repo.db.executescript(
+                "DROP TRIGGER queue_ingested_post; DROP TABLE pipeline_pending; DROP TABLE pipeline_migrations;"
+            );
+            stranded = await repo.insert_post(inputs[0][0]);
+            complete = await repo.insert_post(inputs[1][0]);
+            assert stranded is not None and complete is not None;
+            await repo.insert_decision(
+                complete, "triage", "fixture", materiality_score=0, is_final=True
+            );
+        }
+        async with open_repo(settings) as repo {
+            assert await repo._all("SELECT post_id FROM pipeline_pending")
+                == [{"post_id": stranded}];
+            worker = Pipeline(
+                settings, repo, stub_llm([classify_response(sub_scores())]), Bus()
+            );
+            assert stranded is not None;
+            assert await worker._process_pending(inputs[0][0], stranded)
+                == "suppressed";
+        }
+        async with open_repo(settings) as repo {
+            assert not await repo._all("SELECT * FROM pipeline_pending");
+            assert len(await repo._all("SELECT * FROM decisions WHERE is_final=1"))
+                == 2;
+        }
+    }
+    asyncio.run(body());
+}
