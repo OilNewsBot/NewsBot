@@ -321,7 +321,7 @@ def ConnectionCard(
 }
 
 def FeedItem(item: any) -> JsxElement {
-    <article className="ps-feed-item">
+    <article className="ps-feed-item" id={"personal-item-" + str(item.id)}>
         <div className="ps-feed-meta">
             <span className={"ps-provider ps-provider-" + str(item.provider)}>
                 {"X" if item.provider == "x" else "RSS"}
@@ -488,7 +488,11 @@ def:pub SourcesPage -> JsxElement {
         win: any = window;
         # same rule as the news page: notify unless this page is in front and focused
         in_front = doc.visibilityState == "visible" and doc.hasFocus();
-        if _ps_screen and api and api.permission == "granted" and not in_front {
+        if _ps_screen
+            and api
+            and api.permission == "granted"
+            and not in_front
+            and not doc.querySelector("newsstream-pwa[data-push-active]") {
             popup = new(
                 api,
                 str(item.source_name or "Newsstream"),
@@ -1047,6 +1051,7 @@ def:pub SourcesPage -> JsxElement {
                             </button>
                         </div>
                         <div className="ps-delivery">
+                            <newsstream-pwa/>
                             <label className="ps-toggle">
                                 <input
                                     type="checkbox"
