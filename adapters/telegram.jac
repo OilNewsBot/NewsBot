@@ -9,6 +9,7 @@ Channel usernames come from config.yaml `telegram_channels`; never guessed.
 
 import asyncio;
 import logging;
+import time;
 import httpx;
 import from datetime { UTC, datetime }
 import from adapters.base { AdapterStatus, Json, NormalizedPost, Sink, SourceAdapter }
@@ -152,14 +153,45 @@ obj TelegramAdapter(SourceAdapter) {
         await client.run_until_disconnected();
     }
 
-    async def _run_bot(sink: Sink) {
+    async def _run_bot(sink: Sink, *, http: httpx.AsyncClient | None = None) {
         base = f"https://api.telegram.org/bot{self.settings.telegram_bot_token}";
         offset = 0;
         self.status.state = "live";
         self.status.detail = "bot API long-poll";
-        http = httpx.AsyncClient(timeout=70);
+        http = http or httpx.AsyncClient(timeout=70);
         async with http {
+            channels: dict[str, str] = {};
+            retry_at = 0.0;
             while True {
+                if time.monotonic() >= retry_at {
+                    # Resolve once so a renamed channel keeps its identity.
+                    for ch in self.settings.telegram_channels {
+                        name = ch.channel
+                            if ch.channel.lstrip("-").isdigit()
+                            else "@" + ch.channel.lstrip("@");
+                        if name in channels {
+                            continue;
+                        }
+                        try {
+                            resolved = await http.get(
+                                f"{base}/getChat", params={"chat_id": name}
+                            );
+                            resolved.raise_for_status();
+                            channels[name] = str(resolved.json()["result"]["id"]);
+                        } except (httpx.HTTPError, KeyError, ValueError) {
+                            log.warning(
+                                "Could not resolve configured Telegram channel %s", name
+                            );
+                        }
+                    }
+                    retry_at = time.monotonic() + 60;
+                }
+                if not channels {
+                    self.status.state = "reconnecting";
+                    self.status.detail = "No configured Telegram channels resolved";
+                    await asyncio.sleep(5);
+                    continue;
+                }
                 try {
                     r = await http.get(
                         f"{base}/getUpdates",
@@ -174,7 +206,9 @@ obj TelegramAdapter(SourceAdapter) {
                     for update in r.json().get("result", []) {
                         offset = int(update["update_id"]) + 1;
                         post = bot_update_to_post(update);
-                        if post {
+                        if post
+                            and str(update["channel_post"]["chat"]["id"])
+                                in channels.values() {
                             await sink(post);
                         }
                     }
