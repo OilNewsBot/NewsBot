@@ -5,24 +5,21 @@ import { subscribe, subscription } from './src/native';
 
 export default function App() {
   const [value, setValue] = useState(subscription.value);
-  const [busy, setBusy] = useState(true);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    let refreshing = false;
     const unsubscribe = subscribe(() => { if (mounted) setValue(subscription.value); });
-    const refresh = async () => {
-      if (refreshing) return;
-      refreshing = true;
-      try { await subscription.refresh(); }
-      catch { /* Durable pending state is shown by the label; retry while active. */ }
-      finally { refreshing = false; if (mounted) setBusy(false); }
+    const refresh = (deviceToken?: Notifications.DevicePushToken) => {
+      void subscription.refresh(deviceToken).catch(() => {
+        // A failed token refresh leaves a durable pending preference.
+      });
     };
-    void refresh();
-    const state = AppState.addEventListener('change', next => { if (next === 'active') void refresh(); });
-    const tokens = Notifications.addPushTokenListener(() => { void refresh(); });
+    refresh();
+    const state = AppState.addEventListener('change', next => { if (next === 'active') refresh(); });
+    const tokens = Notifications.addPushTokenListener(refresh);
     const retry = setInterval(() => {
-      if (AppState.currentState === 'active') void refresh();
+      if (AppState.currentState === 'active') void subscription.retryPending().catch(() => {});
     }, 30000);
     return () => { mounted = false; unsubscribe(); state.remove(); tokens.remove(); clearInterval(retry); };
   }, []);
@@ -48,7 +45,7 @@ export default function App() {
         <Switch
           accessibilityLabel="Enable NewsDrop notifications"
           accessibilityHint={value?.pending ? 'Waiting to sync with NewsDrop' : undefined}
-          disabled={busy}
+          disabled={!value || (busy && !value.enabled)}
           value={value?.enabled ?? false}
           onValueChange={enabled => { void toggle(enabled); }}
         />

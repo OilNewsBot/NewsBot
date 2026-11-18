@@ -9,7 +9,7 @@ self.addEventListener("fetch", (event) => {
         new Response(`<!doctype html><html lang="en"><meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
         <title>NewsDrop is offline</title><h1>NewsDrop is offline</h1>
-        <p>Reconnect to open your news and sources.</p><a href="/sources">Try again</a></html>`,
+        <p>Reconnect to open your news and sources.</p><button type="button" onclick="location.reload()">Try again</button></html>`,
         { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } })
     ));
 });

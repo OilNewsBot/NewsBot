@@ -8,7 +8,7 @@
 //!
 //! Remote mode, for demos: with `NEWSBOT_URL` set (at build time, or in the
 //! environment at run time), the window is a thin client for that server. It
-//! starts and stops nothing locally and needs no NewsBot folder.
+//! starts and stops nothing locally and needs no NewsDrop folder.
 //!
 //! Jac has no Windows build, so on Windows the service runs in Ubuntu on WSL
 //! (docs/getting-started.md) and the window connects to it over localhost.
@@ -16,15 +16,17 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::fs::{self, File};
-use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
+use std::io::Read;
+use std::net::{Ipv6Addr, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
 
 use tauri::ipc::CapabilityBuilder;
-use tauri::webview::NewWindowResponse;
+use tauri::webview::{NewWindowResponse, PageLoadEvent};
 use tauri::{Manager, RunEvent, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 /// The first start compiles the web page (`jac build web`), which is slow.
@@ -37,15 +39,20 @@ struct Service(Mutex<Option<Child>>);
 
 /// Remote server for a thin-client app: `NEWSBOT_URL` from the environment,
 /// else the value it had when the app was built. None means local mode.
-fn remote_url() -> Option<Url> {
-    let raw = std::env::var("NEWSBOT_URL")
+fn remote_setting() -> Option<String> {
+    std::env::var("NEWSBOT_URL")
         .ok()
-        .or_else(|| option_env!("NEWSBOT_URL").map(String::from))?;
-    let url = Url::parse(raw.trim()).ok()?;
+        .or_else(|| option_env!("NEWSBOT_URL").map(String::from))
+        .filter(|value| !value.trim().is_empty())
+}
+
+fn remote_url(raw: &str) -> Result<Url, &'static str> {
+    let invalid = "Set NEWSBOT_URL to the full server address, including http:// or https://.";
+    let url = Url::parse(raw.trim()).map_err(|_| invalid)?;
     if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
-        return None;
+        return Err(invalid);
     }
-    url.join("/").ok()
+    url.join("/").map_err(|_| invalid)
 }
 
 /// Repository root: `NEWSBOT_ROOT`, else the checkout this app was built from.
@@ -91,15 +98,56 @@ fn server_address(root: &Path) -> (String, u16) {
             port = v.parse().unwrap_or(port);
         }
     }
-    // 0.0.0.0 is a listen address, not one to connect to.
-    if host == "0.0.0.0" {
-        host = "127.0.0.1".to_string();
+    match host.as_str() {
+        "0.0.0.0" => host = "127.0.0.1".to_string(),
+        "::" | "[::]" => host = "::1".to_string(),
+        _ => {}
     }
     (host, port)
 }
 
-fn listening(addr: &SocketAddr) -> bool {
-    TcpStream::connect_timeout(addr, Duration::from_millis(300)).is_ok()
+fn local_url(host: &str, port: u16) -> Result<Url, &'static str> {
+    let invalid = "Check server.host and server.port in config.yaml.";
+    let mut url = Url::parse("http://localhost/").expect("constant HTTP URL");
+    if let Ok(ip) = host.parse::<Ipv6Addr>() {
+        url.set_ip_host(ip.into()).map_err(|_| invalid)?;
+    } else {
+        url.set_host(Some(host)).map_err(|_| invalid)?;
+    }
+    url.set_port(Some(port)).map_err(|_| invalid)?;
+    Ok(url)
+}
+
+fn listening(server: &Url, timeout: Duration) -> bool {
+    server.socket_addrs(|| None).is_ok_and(|addresses| {
+        addresses.into_iter().any(|address| TcpStream::connect_timeout(&address, timeout).is_ok())
+    })
+}
+
+// Existing NewsDrop releases expose the FastAPI schema without requiring a
+// session. Verify the application before reusing another process's listener.
+fn is_newsbot(server: &Url) -> bool {
+    let Ok(schema) = server.join("/openapi.json") else {
+        return false;
+    };
+    let Ok(client) = reqwest::blocking::Client::builder()
+        .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(Duration::from_secs(4))
+        .build()
+    else {
+        return false;
+    };
+    let Ok(response) = client.get(schema).send().and_then(|r| r.error_for_status()) else {
+        return false;
+    };
+    let Ok(doc) = serde_json::from_reader::<_, serde_json::Value>(response.take(2 * 1024 * 1024))
+    else {
+        return false;
+    };
+    matches!(doc["info"]["title"].as_str(), Some("NewsDrop" | "newsstream"))
+        && doc["paths"]["/feed"]["get"].is_object()
+        && doc["paths"]["/notifications"]["get"].is_object()
 }
 
 /// macOS apps opened from Finder get a minimal PATH, without Homebrew or
@@ -259,15 +307,16 @@ fn show_error(window: &WebviewWindow, title: &str, detail: &str) {
 
 /// Pages that stay in the window: the bundled loading page and the service
 /// (the remote server in remote mode, otherwise the local port).
-fn is_local(url: &Url, port: u16, remote: Option<&Url>) -> bool {
+fn is_local(url: &Url, server: Option<&Url>, remote: bool) -> bool {
     match url.scheme() {
         "tauri" | "about" | "data" => true,
-        "http" | "https" => match (url.host_str(), remote) {
-            (Some("tauri.localhost"), _) => true,
-            (_, Some(server)) => url.origin() == server.origin(),
-            (Some("127.0.0.1" | "localhost"), None) => url.port_or_known_default() == Some(port),
-            _ => false,
-        },
+        "http" | "https" if url.host_str() == Some("tauri.localhost") => true,
+        "http" | "https" => server.is_some_and(|target| {
+            url.origin() == target.origin()
+                || (!remote && url.scheme() == "http"
+                    && matches!(url.host_str(), Some("127.0.0.1" | "localhost"))
+                    && url.port_or_known_default() == target.port_or_known_default())
+        }),
         _ => false,
     }
 }
@@ -293,16 +342,10 @@ fn open_in_browser(url: &Url) {
 }
 
 /// Wait for the service, then point the window at it (runs on its own thread).
-fn connect(app: tauri::AppHandle, root: PathBuf, host: String, port: u16) {
+fn connect(app: tauri::AppHandle, root: PathBuf, page: Url) {
     let window = app.get_webview_window("main").expect("main window");
-    let page = Url::parse(&format!("http://{host}:{port}/")).expect("service URL");
-    let Some(addr) = (host.as_str(), port).to_socket_addrs().ok().and_then(|mut a| a.next())
-    else {
-        show_error(&window, "Bad server address", &format!("{host}:{port} in config.yaml"));
-        return;
-    };
-
-    if !listening(&addr) {
+    let timeout = Duration::from_millis(300);
+    if !listening(&page, timeout) {
         if !root.join("jac.toml").is_file() {
             show_error(
                 &window,
@@ -331,7 +374,7 @@ fn connect(app: tauri::AppHandle, root: PathBuf, host: String, port: u16) {
             }
         }
         let deadline = Instant::now() + START_TIMEOUT;
-        while !listening(&addr) {
+        while !listening(&page, timeout) {
             let exited = app
                 .state::<Service>()
                 .0
@@ -358,67 +401,77 @@ fn connect(app: tauri::AppHandle, root: PathBuf, host: String, port: u16) {
             thread::sleep(Duration::from_millis(500));
         }
     }
+    if !is_newsbot(&page) {
+        show_error(
+            &window,
+            "The configured port did not return NewsDrop",
+            &format!("Check the service at {page} or change server.port in config.yaml."),
+        );
+        return;
+    }
     let _ = window.navigate(page);
 }
 
 /// Remote mode: wait briefly for the server to answer, then show it.
 fn connect_remote(app: tauri::AppHandle, server: Url) {
     let window = app.get_webview_window("main").expect("main window");
-    let host = server.host_str().unwrap_or_default().to_string();
-    let port = server.port_or_known_default().unwrap_or(443);
     let deadline = Instant::now() + Duration::from_secs(20);
+    let mut reported = false;
     loop {
-        let reachable = (host.as_str(), port)
-            .to_socket_addrs()
-            .ok()
-            .and_then(|mut a| a.next())
-            .is_some_and(|addr| TcpStream::connect_timeout(&addr, Duration::from_secs(3)).is_ok());
-        if reachable {
+        if listening(&server, Duration::from_secs(3)) {
             let _ = window.navigate(server);
             return;
         }
-        if Instant::now() > deadline {
+        if !reported && Instant::now() > deadline {
             show_error(
                 &window,
-                "Cannot reach the NewsBot server",
-                &format!(
-                    "{server}\nCheck your internet connection, or ask the presenter \
-                     whether the demo server is running."
-                ),
+                "Cannot reach the NewsDrop server",
+                &format!("{server}\nCheck your connection. NewsDrop will retry automatically."),
             );
-            return;
+            reported = true;
         }
-        thread::sleep(Duration::from_secs(1));
+        thread::sleep(Duration::from_secs(if reported { 3 } else { 1 }));
     }
 }
 
 /// Lets the service's pages (a remote origin to Tauri) send notifications and
 /// nothing else. Built at startup because the port comes from config.yaml, or
 /// the server from NEWSBOT_URL in remote mode.
-fn service_notifications(host: &str, port: u16, remote: Option<&Url>) -> CapabilityBuilder {
+fn service_notifications(server: &Url, remote: bool) -> CapabilityBuilder {
+    // Tauri uses URLPattern syntax. Literal colons in an IPv6 hostname
+    // must be escaped there, independently of the actual browser URL.
+    let host_pattern = server.host_str().expect("HTTP server host").replace(':', r"\:");
+    let port_pattern = server.port().map(|n| format!(":{n}")).unwrap_or_default();
+    let pattern = format!("{}://{host_pattern}{port_pattern}/*", server.scheme());
     let mut capability = CapabilityBuilder::new("service-notifications")
         .local(false)
         .window("main")
         .permission("notification:allow-is-permission-granted")
         .permission("notification:allow-request-permission")
-        .permission("notification:allow-notify");
-    if let Some(server) = remote {
-        return capability.remote(format!("{}/*", server.origin().ascii_serialization()));
-    }
-    let mut hosts = vec!["127.0.0.1", "localhost"];
-    if !hosts.contains(&host) {
-        hosts.push(host);
-    }
-    for h in hosts {
-        capability = capability.remote(format!("http://{h}:{port}/*"));
+        .permission("notification:allow-notify")
+        .remote(pattern);
+    if !remote {
+        for host in ["127.0.0.1", "localhost"] {
+            if server.host_str() != Some(host) {
+                let port = server.port_or_known_default().expect("HTTP server port");
+                capability = capability.remote(format!("http://{host}:{port}/*"));
+            }
+        }
     }
     capability
 }
 
 fn main() {
-    let remote = remote_url();
     let root = repo_root();
-    let (host, port) = server_address(&root);
+    let setting = remote_setting();
+    let remote = setting.is_some();
+    let target = match setting {
+        Some(raw) => remote_url(&raw),
+        None => {
+            let (host, port) = server_address(&root);
+            local_url(&host, port)
+        }
+    };
     let service_root = root.clone();
 
     let app = tauri::Builder::default()
@@ -427,14 +480,17 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .manage(Service(Mutex::new(None)))
         .setup(move |app| {
-            app.add_capability(service_notifications(&host, port, remote.as_ref()))?;
-            let window_remote = remote.clone();
+            if let Ok(server) = &target {
+                app.add_capability(service_notifications(server, remote))?;
+            }
+            let navigation_target = target.clone();
+            let started = AtomicBool::new(false);
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("NewsDrop")
                 .inner_size(1280.0, 860.0)
                 .min_inner_size(720.0, 480.0)
                 .on_navigation(move |url| {
-                    let local = is_local(url, port, window_remote.as_ref());
+                    let local = is_local(url, navigation_target.as_ref().ok(), remote);
                     if !local {
                         open_in_browser(url);
                     }
@@ -444,12 +500,27 @@ fn main() {
                     open_in_browser(&url);
                     NewWindowResponse::Deny
                 })
+                .on_page_load(move |window, payload| {
+                    // The bundled page installs showError during load. Starting
+                    // after that point also makes immediate config errors visible.
+                    if payload.event() != PageLoadEvent::Finished
+                        || started.swap(true, Ordering::SeqCst)
+                    {
+                        return;
+                    }
+                    let handle = window.app_handle().clone();
+                    match target.clone() {
+                        Ok(server) if remote => {
+                            thread::spawn(move || connect_remote(handle, server));
+                        }
+                        Ok(server) => {
+                            let service_root = root.clone();
+                            thread::spawn(move || connect(handle, service_root, server));
+                        }
+                        Err(detail) => show_error(&window, "Invalid NewsDrop server address", detail),
+                    }
+                })
                 .build()?;
-            let handle = app.handle().clone();
-            match remote.clone() {
-                Some(server) => thread::spawn(move || connect_remote(handle, server)),
-                None => thread::spawn(move || connect(handle, root, host, port)),
-            };
             Ok(())
         })
         .build(tauri::generate_context!())
