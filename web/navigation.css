@@ -113,13 +113,22 @@
 
 /* Responsive left sidebar navigation */
 
+/* Desktop sidebar width; navigation.jac's SidebarResizer adjusts it. */
+:root {
+    --sidebar-w: 200px;
+}
+
+.site-nav-resizer {
+    display: none;
+}
+
 @media (min-width: 801px) {
     .site-nav {
         position: fixed;
         top: 0;
         left: 0;
         bottom: 0;
-        width: 260px;
+        width: var(--sidebar-w);
         height: 100vh;
         z-index: 15;
 
@@ -165,7 +174,31 @@
 
     /* Make room for the sidebar on every page */
     body:has(.site-nav) {
-        padding-left: 260px;
+        padding-left: var(--sidebar-w);
+    }
+
+    .site-nav-resizer {
+        display: block;
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 6px;
+        cursor: col-resize;
+        touch-action: none;
+        background: transparent;
+    }
+
+    .site-nav-resizer:hover,
+    .site-nav-resizer:focus-visible,
+    body.sidebar-resizing .site-nav-resizer {
+        background: #4b5563;
+        outline: none;
+    }
+
+    body.sidebar-resizing {
+        cursor: col-resize;
+        user-select: none;
     }
 }
 

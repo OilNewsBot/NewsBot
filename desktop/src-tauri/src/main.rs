@@ -6,6 +6,10 @@
 //! the configured port, the window reuses it and leaves it running on quit.
 //! Links to posts (x.com, t.me, ...) open in the default browser.
 //!
+//! Remote mode, for demos: with `NEWSBOT_URL` set (at build time, or in the
+//! environment at run time), the window is a thin client for that server. It
+//! starts and stops nothing locally and needs no NewsBot folder.
+//!
 //! Jac has no Windows build, so on Windows the service runs in Ubuntu on WSL
 //! (docs/getting-started.md) and the window connects to it over localhost.
 
@@ -30,6 +34,19 @@ const STOP_TIMEOUT: Duration = Duration::from_secs(8);
 
 /// The service this app started, if any; stopped when the app exits.
 struct Service(Mutex<Option<Child>>);
+
+/// Remote server for a thin-client app: `NEWSBOT_URL` from the environment,
+/// else the value it had when the app was built. None means local mode.
+fn remote_url() -> Option<Url> {
+    let raw = std::env::var("NEWSBOT_URL")
+        .ok()
+        .or_else(|| option_env!("NEWSBOT_URL").map(String::from))?;
+    let url = Url::parse(raw.trim()).ok()?;
+    if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
+        return None;
+    }
+    url.join("/").ok()
+}
 
 /// Repository root: `NEWSBOT_ROOT`, else the checkout this app was built from.
 fn repo_root() -> PathBuf {
@@ -240,13 +257,15 @@ fn show_error(window: &WebviewWindow, title: &str, detail: &str) {
     ));
 }
 
-/// Pages that stay in the window: the bundled loading page and the service.
-fn is_local(url: &Url, port: u16) -> bool {
+/// Pages that stay in the window: the bundled loading page and the service
+/// (the remote server in remote mode, otherwise the local port).
+fn is_local(url: &Url, port: u16, remote: Option<&Url>) -> bool {
     match url.scheme() {
         "tauri" | "about" | "data" => true,
-        "http" | "https" => match url.host_str() {
-            Some("tauri.localhost") => true,
-            Some("127.0.0.1" | "localhost") => url.port_or_known_default() == Some(port),
+        "http" | "https" => match (url.host_str(), remote) {
+            (Some("tauri.localhost"), _) => true,
+            (_, Some(server)) => url.origin() == server.origin(),
+            (Some("127.0.0.1" | "localhost"), None) => url.port_or_known_default() == Some(port),
             _ => false,
         },
         _ => false,
@@ -342,15 +361,50 @@ fn connect(app: tauri::AppHandle, root: PathBuf, host: String, port: u16) {
     let _ = window.navigate(page);
 }
 
+/// Remote mode: wait briefly for the server to answer, then show it.
+fn connect_remote(app: tauri::AppHandle, server: Url) {
+    let window = app.get_webview_window("main").expect("main window");
+    let host = server.host_str().unwrap_or_default().to_string();
+    let port = server.port_or_known_default().unwrap_or(443);
+    let deadline = Instant::now() + Duration::from_secs(20);
+    loop {
+        let reachable = (host.as_str(), port)
+            .to_socket_addrs()
+            .ok()
+            .and_then(|mut a| a.next())
+            .is_some_and(|addr| TcpStream::connect_timeout(&addr, Duration::from_secs(3)).is_ok());
+        if reachable {
+            let _ = window.navigate(server);
+            return;
+        }
+        if Instant::now() > deadline {
+            show_error(
+                &window,
+                "Cannot reach the NewsBot server",
+                &format!(
+                    "{server}\nCheck your internet connection, or ask the presenter \
+                     whether the demo server is running."
+                ),
+            );
+            return;
+        }
+        thread::sleep(Duration::from_secs(1));
+    }
+}
+
 /// Lets the service's pages (a remote origin to Tauri) send notifications and
-/// nothing else. Built at startup because the port comes from config.yaml.
-fn service_notifications(host: &str, port: u16) -> CapabilityBuilder {
+/// nothing else. Built at startup because the port comes from config.yaml, or
+/// the server from NEWSBOT_URL in remote mode.
+fn service_notifications(host: &str, port: u16, remote: Option<&Url>) -> CapabilityBuilder {
     let mut capability = CapabilityBuilder::new("service-notifications")
         .local(false)
         .window("main")
         .permission("notification:allow-is-permission-granted")
         .permission("notification:allow-request-permission")
         .permission("notification:allow-notify");
+    if let Some(server) = remote {
+        return capability.remote(format!("{}/*", server.origin().ascii_serialization()));
+    }
     let mut hosts = vec!["127.0.0.1", "localhost"];
     if !hosts.contains(&host) {
         hosts.push(host);
@@ -362,6 +416,7 @@ fn service_notifications(host: &str, port: u16) -> CapabilityBuilder {
 }
 
 fn main() {
+    let remote = remote_url();
     let root = repo_root();
     let (host, port) = server_address(&root);
     let service_root = root.clone();
@@ -372,13 +427,14 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .manage(Service(Mutex::new(None)))
         .setup(move |app| {
-            app.add_capability(service_notifications(&host, port))?;
+            app.add_capability(service_notifications(&host, port, remote.as_ref()))?;
+            let window_remote = remote.clone();
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("NewsBot")
                 .inner_size(1280.0, 860.0)
                 .min_inner_size(720.0, 480.0)
                 .on_navigation(move |url| {
-                    let local = is_local(url, port);
+                    let local = is_local(url, port, window_remote.as_ref());
                     if !local {
                         open_in_browser(url);
                     }
@@ -390,7 +446,10 @@ fn main() {
                 })
                 .build()?;
             let handle = app.handle().clone();
-            thread::spawn(move || connect(handle, root, host, port));
+            match remote.clone() {
+                Some(server) => thread::spawn(move || connect_remote(handle, server)),
+                None => thread::spawn(move || connect(handle, root, host, port)),
+            };
             Ok(())
         })
         .build(tauri::generate_context!())
