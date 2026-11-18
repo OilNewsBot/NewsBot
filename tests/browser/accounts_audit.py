@@ -101,6 +101,41 @@ class AccountAudit(unittest.TestCase):
         expect(second.locator(".account-username")).to_contain_text("Second account")
         expect(self.page.locator(".account-username")).to_contain_text("Second account")
 
+    def test_older_personal_alert_link(self):
+        with sqlite3.connect(self.db) as db:
+            connection = db.execute("""INSERT INTO personal_connections (user_id,provider,label,created_at)
+                VALUES (?,'rss','Archive',CURRENT_TIMESTAMP)""", (self.uid,)).lastrowid
+            source = db.execute("""INSERT INTO personal_sources
+                (user_id,connection_id,remote_id,name,url,next_poll_at,created_at)
+                VALUES (?,?,'archive','News archive','https://example.invalid/feed',
+                '2099-01-01T00:00:00+00:00',CURRENT_TIMESTAMP)""", (self.uid, connection)).lastrowid
+            db.executemany("""INSERT INTO personal_items
+                (user_id,source_id,external_id,title,text,url,posted_at,received_at)
+                VALUES (?,?,?,?,?, 'https://example.invalid/story', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
+                [(self.uid, source, str(i), f"Archive item {i}", "News article") for i in range(101)])
+            oldest = db.execute("SELECT MIN(id) FROM personal_items WHERE source_id=?", (source,)).fetchone()[0]
+        self.sign_in()
+        self.page.goto(f"{self.origin}/sources#personal-item-{oldest}")
+        expect(self.page.locator(f"#personal-item-{oldest}")).to_contain_text("Archive item 0")
+        expect(self.page.locator(".ps-feed-item")).to_have_count(101)
+        self.page.goto(f"{self.origin}/sources#personal-item-900000")
+        expect(self.page.get_by_text("This article is no longer available in your sources.")).to_be_visible()
+
+    def test_installed_app_retries_original_route(self):
+        context = self.browser.new_context()
+        self.addCleanup(context.close)
+        page = context.new_page()
+        page.goto(self.origin + "/trading")
+        page.wait_for_function("!!navigator.serviceWorker.controller", timeout=15000)
+        context.set_offline(True)
+        page.reload()
+        retry = page.get_by_role("link", name="Try again")
+        expect(retry).to_be_visible()
+        context.set_offline(False)
+        retry.click()
+        expect(page).to_have_url(self.origin + "/trading")
+        expect(retry).to_have_count(0)
+
     def test_independent_filters_across_tabs(self):
         with sqlite3.connect(self.db) as db:
             cid = db.execute("""INSERT INTO personal_connections (user_id,provider,label,created_at)

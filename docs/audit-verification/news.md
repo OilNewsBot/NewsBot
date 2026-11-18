@@ -19,4 +19,3 @@ The rows follow the order in the [November audit](../2026-11-18-feature-audit.ht
 | 13. Overflow cannot be opened from keyboard | Tabbing from the first source link through the visible cards reached the overflow button. Enter expanded all 12 alerts. |
 | 14. Repeated event headline | An event with identical title, summary, and origin text displayed the headline once and retained its original source link. A distinct summary remained visible. |
 | 15. Unfiltered badge repeated | Each unfiltered card showed one warning badge even when both its kind and its stored badges identified it as unfiltered. |
-

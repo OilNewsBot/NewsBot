@@ -2,7 +2,7 @@
 
 The acceptance test holds the first model call open, accepts three posts, cancels the worker, and reopens the same SQLite database. All three raw posts and pending jobs survive shutdown. Redelivering the first does not create more work. The restarted worker records exactly three final decisions and empties the queue.
 
-A second test injects a SQLite failure during notification insertion. The decision, event, membership, card and dequeue roll back together. Retrying commits one event and one alert. Both cases passed with the pinned Jac runtime in `tests/pipeline_recovery_tests.jac`.
+A second test injects a SQLite failure during notification insertion. The decision, event, membership, card and dequeue roll back together. Retrying commits one event and one alert. A third case upgrades a database containing an unfinished raw post and a completed zero-score decision. Only the unfinished post is reprocessed. These cases passed with the pinned Jac runtime in `tests/pipeline_recovery_tests.jac`.
 
 The legacy upgrade regression in `tests/legacy_surface_recovery_tests.jac` seeds seven posts in a database with the queue trigger removed, closes it, and starts the production worker on the same file. A material final decision lacking an event completes deduplication and gets one alert. An origin and an update already linked to their event receive their missing cards. A duplicate, a held post, a below-threshold post, and a previously notified update retain their original outcomes. Every stored classifier decision, existing link, event summary, and notification survives. The focused regression passed with zero model calls, including a same-category orphan candidate.
 
