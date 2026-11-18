@@ -30,13 +30,14 @@ CREATE TABLE IF NOT EXISTS posts (
 );
 -- Older Bot API rows used Telegram's negative marked channel ID. Keep those
 -- keys and their foreign-key references while deduplicating canonical writes.
-CREATE TRIGGER IF NOT EXISTS prevent_telegram_transport_duplicate
+DROP TRIGGER IF EXISTS prevent_telegram_transport_duplicate;
+CREATE TRIGGER IF NOT EXISTS ignore_legacy_telegram_duplicate
 BEFORE INSERT ON posts
 WHEN NEW.source='telegram' AND NEW.account_id <> ''
      AND NEW.account_id NOT GLOB '*[^0-9]*'
      AND substr(NEW.source_post_id,1,length(NEW.account_id)+1)=NEW.account_id||':'
 BEGIN
-    SELECT RAISE(ABORT,'Telegram message already stored with marked channel ID')
+    SELECT RAISE(IGNORE)
     WHERE EXISTS (
         SELECT 1 FROM posts WHERE source='telegram' AND source_post_id IN (
             '-100'||NEW.source_post_id,
