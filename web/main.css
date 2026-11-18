@@ -202,6 +202,8 @@ footer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel)
         border-top: 1px solid var(--border); font-size: 13px; cursor: pointer; border-radius: 4px; }
 .sugg:hover { background: var(--panel2); }
 .sugg.picked { background: #1d2740; }
+.trading button.sugg { width: 100%; text-align: left; font: inherit; color: inherit; }
+.trading button.sugg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sugg .tick { font-weight: 600; }
 .sugg .side { font-size: 11px; font-weight: 700; letter-spacing: .06em; }
 .sugg .side.long { color: var(--green); }
