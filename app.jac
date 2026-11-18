@@ -410,6 +410,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
             "llm_fail_open": llm.fail_open,
             "x_reads_today": await repo.x_reads_today(),
             "refetch_running": x_push.refetch_running,
+            "refetch_configured": bool(settings.x_push_api_key),
             "x_daily_read_budget": settings.x_daily_read_budget,
             "threshold": settings.market.threshold,
             "max_stacked": settings.ui_max_stacked,
