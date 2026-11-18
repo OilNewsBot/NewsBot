@@ -401,13 +401,29 @@ test "personal X API keys stay private and source validation spends the connecti
                     response = await client.post(
                         "/api/me/sources",
                         headers=ALICE,
-                        json={"connection_id": cid, "locator": "alice-source"}
+                        json={"connection_id": cid, "locator": "invalid-handle"}
                     );
-                    assert response.status_code == 201 , response.text;
+                    assert response.status_code == 422 , response.text;
+                    assert (
+                        await personal_store.get_connection(
+                            int(fixture.users["alice"]), cid
+                        )
+                    )["requests_today"]
+                        == 0;
                     response = await client.post(
                         "/api/me/sources",
                         headers=ALICE,
-                        json={"connection_id": cid, "locator": "second-source"}
+                        json={
+                            "connection_id": cid,
+                            "locator": "https://x.com/Example?s=21"
+                        }
+                    );
+                    assert response.status_code == 201 , response.text;
+                    assert response.json()["source"]["remote_id"] == "Example";
+                    response = await client.post(
+                        "/api/me/sources",
+                        headers=ALICE,
+                        json={"connection_id": cid, "locator": "second_source"}
                     );
                     assert response.status_code == 429;
                     assert "private-example-provider-key"

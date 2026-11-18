@@ -2,7 +2,7 @@
 
 import "./sources.css";
 import from react { useEffect }
-import from .auth { AuthPanel }
+import from .auth { SESSION_EVENT }
 import from .navigation { Navigation }
 
 # These values belong to this mounted page, never to persistent browser storage.
@@ -101,19 +101,25 @@ async def personal_request(path: str, method: str = "GET", body: any = None) -> 
 }
 
 def SourceCard(source: any, busy: bool, onUpdate: any, onRemove: any) -> JsxElement {
-    has includeText: str = ", ".join(source.include_keywords or []),
-        excludeText: str = ", ".join(source.exclude_keywords or []),
+    has includeDraft: str | None = None,
+        excludeDraft: str | None = None,
         confirmRemove: bool = False;
+    savedInclude = ", ".join(source.include_keywords or []);
+    savedExclude = ", ".join(source.exclude_keywords or []);
 
-    def save(e: any) {
+    async def save(e: any) {
         e.preventDefault();
-        onUpdate(
-            source.id,
-            {
-                "include_keywords": keywords(includeText),
-                "exclude_keywords": keywords(excludeText)
-            }
-        );
+        changes: any = {};
+        if includeDraft is not None {
+            changes.include_keywords = keywords(includeDraft);
+        }
+        if excludeDraft is not None {
+            changes.exclude_keywords = keywords(excludeDraft);
+        }
+        if await onUpdate(source.id, changes) {
+            includeDraft = None;
+            excludeDraft = None;
+        }
     }
 
     <article className="ps-source">
@@ -202,25 +208,36 @@ def SourceCard(source: any, busy: bool, onUpdate: any, onRemove: any) -> JsxElem
                 <label>
                     Include any of these keywords
                     <input
-                        value={includeText}
+                        value={savedInclude if includeDraft is None else includeDraft}
+                        disabled={busy}
                         maxLength={1000}
                         placeholder="earnings, semiconductor, inflation"
-                        onChange={lambda (e: any) { includeText = e.target.value; }}
+                        onChange={lambda (e: any) { includeDraft = None
+                            if e.target.value == savedInclude
+                            else e.target.value; }}
                     />
                 </label>
                 <label>
                     Exclude these keywords
                     <input
-                        value={excludeText}
+                        value={savedExclude if excludeDraft is None else excludeDraft}
+                        disabled={busy}
                         maxLength={1000}
                         placeholder="Giveaway, promotion"
-                        onChange={lambda (e: any) { excludeText = e.target.value; }}
+                        onChange={lambda (e: any) { excludeDraft = None
+                            if e.target.value == savedExclude
+                            else e.target.value; }}
                     />
                 </label>
                 <p className="ps-help">
                     Separate keywords with commas. Leave both empty to alert on every new post. Your feed keeps all collected posts.
                 </p>
-                <button type="submit" disabled={busy}>Save filters</button>
+                <button
+                    type="submit"
+                    disabled={busy or (includeDraft is None and excludeDraft is None)}
+                >
+                    Save filters
+                </button>
             </form>
         </details>
     </article>
@@ -353,6 +370,7 @@ def:pub SourcesPage -> JsxElement {
         loaded: bool = False,
         busy: bool = False,
         error: str = "",
+        refreshError: str = "",
         notice: str = "",
         connectionForm: bool = False,
         provider: str = "rss",
@@ -410,6 +428,7 @@ def:pub SourcesPage -> JsxElement {
         screenEnabled = False;
         screenHint = "";
         error = "";
+        refreshError = "";
         notice = "";
         connectionForm = False;
     }
@@ -442,7 +461,7 @@ def:pub SourcesPage -> JsxElement {
                 return;
             }
             if not response.ok {
-                error = response.error;
+                refreshError = response.error;
                 return;
             }
             if endpoint == "connections" {
@@ -465,6 +484,7 @@ def:pub SourcesPage -> JsxElement {
                 linkedMissing = lookup and linked not in [item.id for item in feed];
             }
         }
+        refreshError = "";
         loaded = True;
     }
 
@@ -587,6 +607,16 @@ def:pub SourcesPage -> JsxElement {
         if nextId {
             _ps_user_id = nextId;
             user = nextUser;
+            api: any = globalThis.Notification;  # jac:ignore[E1053]
+            try {
+                _ps_screen = bool(
+                    api
+                        and api.permission == "granted"
+                        and localStorage.getItem("ns_personal_screen_" + str(nextId))
+                            == "1"
+                );
+                screenEnabled = _ps_screen;
+            } except Exception {}
             initialize(_ps_epoch);
         }
     }
@@ -684,10 +714,12 @@ def:pub SourcesPage -> JsxElement {
         }
     }
 
-    async def update_source(sid: int, changes: any) {
+    async def update_source(sid: int, changes: any) -> bool {
         if await mutate("/api/me/sources/" + str(sid), "PATCH", changes) {
             notice = "Source preferences saved.";
+            return True;
         }
+        return False;
     }
 
     async def remove_source(sid: int) {
@@ -716,7 +748,7 @@ def:pub SourcesPage -> JsxElement {
         if want and not api {
             want = False;
             screenHint = "This browser does not support screen notifications.";
-        } elif want {
+        } elif want and api.permission != "granted" {
             permission = await api.requestPermission();
             if epoch != _ps_epoch {
                 return;
@@ -728,6 +760,11 @@ def:pub SourcesPage -> JsxElement {
         }
         _ps_screen = want;
         screenEnabled = want;
+        try {
+            localStorage.setItem(
+                "ns_personal_screen_" + str(_ps_user_id), "1" if want else "0"
+            );
+        } except Exception {}
     }
 
     def dismiss(nid: int) {
@@ -747,10 +784,12 @@ def:pub SourcesPage -> JsxElement {
             on_hash = lambda { refresh(_ps_epoch); };
             window.addEventListener("hashchange", on_hash);
             window.addEventListener("focus", focus);
+            window.addEventListener(SESSION_EVENT, focus);
             return lambda {
                 clearInterval(timer);
                 window.removeEventListener("hashchange", on_hash);
                 window.removeEventListener("focus", focus);
+                window.removeEventListener(SESSION_EVENT, focus);
                 clear_session();
             };
         },
@@ -774,6 +813,9 @@ def:pub SourcesPage -> JsxElement {
             </div>
             {if error {
                 <div className="ps-message ps-error" role="alert">{error}</div>
+            }}
+            {if refreshError {
+                <div className="ps-message ps-error" role="alert">{refreshError}</div>
             }}
             {if notice {
                 <div className="ps-message ps-notice" role="status">{notice}</div>

@@ -9,7 +9,7 @@ import from fastapi.responses { StreamingResponse }
 import from auth { require_user }
 import from db.repo { Repo, Row, iso, utcnow }
 import from personal.store { PersonalStore }
-import from personal.providers { ProviderError, resolve_source }
+import from personal.providers { ProviderError, resolve_source, x_handle }
 
 type Resolver = Callable[[str, str, str], Row];
 
@@ -315,6 +315,13 @@ def install_personal_routes(
                 raise HTTPException(
                     429, "This connection is temporarily paused; try again later"
                 );
+            }
+            if connection["provider"] == "x" {
+                try {
+                    locator = x_handle(locator);
+                } except ProviderError as error {
+                    raise HTTPException(422, error.detail) from error;
+                }
             }
             secret = await store.connection_secret(connection_id);
             if connection["provider"] == "x"

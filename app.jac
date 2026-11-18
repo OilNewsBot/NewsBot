@@ -27,7 +27,7 @@ import from adapters.telegram { TelegramAdapter }
 import from adapters.x_api { XApiAdapter }
 import from adapters.x_push { XPushAdapter }
 import from config { ROOT, Settings, load_settings }
-import from db.repo { Repo, Row, load_demo_suggestions }
+import from db.repo { RegistrationConflict, Repo, Row, load_demo_suggestions }
 import from pipeline.llm { LLMClient }
 import from pipeline.notify { Bus }
 import from pipeline.prices { PriceFeed, PriceUnavailable }
@@ -228,7 +228,11 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         }
 
         password_hash = hash_password(data["password"]);
-        user_id = await repo.create_user(username, email, password_hash);
+        try {
+            user_id = await repo.create_user(username, email, password_hash);
+        } except RegistrationConflict as exc {
+            raise HTTPException(409, str(exc)) from exc;
+        }
 
         return {"message": "Registration successful", "user_id": user_id};
     }

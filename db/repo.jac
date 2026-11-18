@@ -11,6 +11,8 @@ import from adapters.base { NormalizedPost }
 type Row = dict[str, any];
 type Params = Sequence[any];
 
+class RegistrationConflict(ValueError) {}
+
 glob SCHEMA: str = (Path(__file__).parent / "schema.sql").read_text(),
      # hand-entered demo suggestions (config.yaml demo.seed_suggestions)
      DEMO_SEED: Path = Path(__file__).parent / "demo_seed.json";
@@ -80,10 +82,16 @@ obj Repo {
     async def create_user(username: str, email: str, password_hash: str) -> int {
         cur = await self._run(
             """INSERT INTO users (username, email, password_hash)
-               VALUES (?, ?, ?)""",
+               VALUES (?, ?, ?) ON CONFLICT DO NOTHING""",
             (username, email, password_hash)
         );
         await self.db.commit();
+        if cur.rowcount == 0 {
+            if await self.get_user_by_email(email) {
+                raise RegistrationConflict("An account with this email already exists");
+            }
+            raise RegistrationConflict("This username is already taken");
+        }
         return cur.lastrowid or 0;
     }
 

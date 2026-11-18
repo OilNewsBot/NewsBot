@@ -26,7 +26,8 @@ implemented in this release.
 4. Mute alerts to continue collecting silently, pause to stop collecting, or
    remove the source. Re-enabling collection seeds recent history silently.
 5. Enable browser notifications if desired. The source page must remain open
-   and the browser must allow notifications. In-page alerts work without OS
+   and the browser must allow notifications. My Sources remembers the screen
+   notification choice for this account in this browser. In-page alerts work without OS
    notification permission. A fresh page session starts at the current alert
    head, so saved history does not flood the screen; temporary stream reconnects
    replay missed alerts by ID.

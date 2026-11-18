@@ -591,14 +591,22 @@ obj PersonalStore {
                     );
                     title = str(item.get("title", ""))[:500];
                     body = str(item.get("text", ""))[:20000];
+                    if not old and item.get("legacy_external_id") {
+                        # Adopt a matching previously delivered description-only item.
+                        # Keep its row ID and alert history during the identity upgrade.
+                        old = await self._one(
+                            "SELECT id FROM personal_items WHERE source_id=? AND external_id=? AND text=?",
+                            (source_id, item["legacy_external_id"], body)
+                        );
+                    }
                     url = str(item.get("url", ""))[:2048];
                     if not url.lower().startswith(("http://", "https://")) {
                         url = "";
                     }
                     if old {
                         await self._run(
-                            "UPDATE personal_items SET title=?,text=?,url=? WHERE id=?",
-                            (title, body, url, old["id"])
+                            "UPDATE personal_items SET external_id=?,title=?,text=?,url=? WHERE id=?",
+                            (ext, title, body, url, old["id"])
                         );
                         continue;
                     }

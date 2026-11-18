@@ -292,6 +292,11 @@ def child_text(element_node: any, names: list[str]) -> str {
     return "";
 }
 
+def xml_base_for(element: any, inherited: str) -> str {
+    value = element.attrib.get("{http://www.w3.org/XML/1998/namespace}base");
+    return safe_link(str(value), inherited) if value else inherited;
+}
+
 def item_date(value: str) -> str {
     try {
         date = datetime.fromisoformat(value.replace("Z", "+00:00"));
@@ -332,7 +337,14 @@ def parse_feed(body: bytes, base: str) -> tuple[str, list[Row]] {
     }
     title = plain(child_text(container, ["title"]))[:200];
     items: list[Row] = [];
+    bases: dict[any, str] = {};
     for element in feed_root.iter() {
+        element_base = xml_base_for(element, bases.pop(element, base));
+        if element_base != base {
+            for child in element {
+                bases[child] = element_base;
+            }
+        }
         if local_name(str(element.tag)) not in ("item", "entry") {
             continue;
         }
@@ -345,7 +357,8 @@ def parse_feed(body: bytes, base: str) -> tuple[str, list[Row]] {
                 rel = str(child.attrib.get("rel", "alternate"));
                 if rel in ("", "alternate") {
                     link = safe_link(
-                        str(child.attrib.get("href") or child.text or ""), base
+                        str(child.attrib.get("href") or child.text or ""),
+                        xml_base_for(child, element_base)
                     );
                     if link {
                         break;
@@ -354,17 +367,25 @@ def parse_feed(body: bytes, base: str) -> tuple[str, list[Row]] {
             }
         }
         item_title = plain(child_text(element, ["title"]))[:300];
-        text = plain(
-            child_text(element, ["encoded", "content", "summary", "description"])
-        );
+        text = "";
+        for name in ["encoded", "content", "summary", "description"] {
+            text = plain(child_text(element, [name]));
+            if text {
+                break;
+            }
+        }
         date = item_date(
             child_text(element, ["published", "pubdate", "date", "updated"])
         );
         identity = child_text(element, ["guid", "id"]) or link;
+        legacy_id = "";
         if not identity {
-            # Content is intentionally excluded so a corrected description does
-            # not become another article. Publishers should provide GUIDs.
             identity = hashlib.sha256((item_title + "\n" + date).encode()).hexdigest();
+            if not item_title and not date {
+                # The body is the only information distinguishing these entries.
+                legacy_id = identity;
+                identity = hashlib.sha256(("text\n" + text).encode()).hexdigest();
+            }
         }
         if not item_title and not text {
             continue;
@@ -372,6 +393,7 @@ def parse_feed(body: bytes, base: str) -> tuple[str, list[Row]] {
         items.append(
             {
                 "external_id": identity[:2048],
+                "legacy_external_id": legacy_id,
                 "title": item_title or text[:140],
                 "text": text,
                 "url": link or base,
@@ -392,8 +414,7 @@ def x_handle(value: str) -> str {
                     not in ("x.com", "www.x.com", "twitter.com", "www.twitter.com")
                 or p.username
                 or p.password
-                or p.query
-                or p.fragment {
+                or p.port not in (None, 443) {
                 raise ValueError("profile");
             }
             value = p.path.strip("/");

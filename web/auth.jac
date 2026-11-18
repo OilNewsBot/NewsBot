@@ -8,10 +8,14 @@ glob:pub SESSION_EVENT: str = "ns-session";
 def announce_session_change {
     # the checker has no browser typings for Event
     window.dispatchEvent(new(Event, SESSION_EVENT));  # jac:ignore[E1053]
+    try {
+        localStorage.setItem(SESSION_EVENT, str(Date.now()) + "-" + str(Math.random()));
+    } except Exception {}
 }
 
 def:pub AuthPanel(onSessionChange: any = None) -> JsxElement {
     authEpoch: any = useRef(0);
+    readSeq: any = useRef(0);
     has mode: str = "login",
         username: str = "",
         email: str = "",
@@ -24,17 +28,19 @@ def:pub AuthPanel(onSessionChange: any = None) -> JsxElement {
         currentEmail: str = "";
     async def check_session {
         epoch = authEpoch.current;
+        readSeq.current += 1;
+        seq = readSeq.current;
         try {
             response = await fetch(
                 "/me", {"credentials": "same-origin", "cache": "no-store"}
             );
-            if epoch != authEpoch.current {
+            if epoch != authEpoch.current or seq != readSeq.current {
                 return;
             }
 
             if response.ok {
                 user: any = await response.json();
-                if epoch != authEpoch.current {
+                if epoch != authEpoch.current or seq != readSeq.current {
                     return;
                 }
                 currentUsername = str(user["username"]);
@@ -43,22 +49,31 @@ def:pub AuthPanel(onSessionChange: any = None) -> JsxElement {
                 if onSessionChange {
                     onSessionChange(user);
                 }
-            } else {
+            } elif response.status == 401 {
                 loggedIn = False;
                 if onSessionChange {
                     onSessionChange(None);
                 }
             }
-        } except Exception {
-            loggedIn = False;
-        }
+        } except Exception {}
     }
 
     useEffect(
         lambda {
             authEpoch.current += 1;
             check_session();
-            return lambda { authEpoch.current += 1; };
+            focus = lambda { check_session(); };
+            storage = lambda (e: any) { if e.key == SESSION_EVENT {
+                check_session();
+                window.dispatchEvent(new(Event, SESSION_EVENT));  # jac:ignore[E1053]
+            }};
+            window.addEventListener("focus", focus);
+            window.addEventListener("storage", storage);
+            return lambda {
+                authEpoch.current += 1;
+                window.removeEventListener("focus", focus);
+                window.removeEventListener("storage", storage);
+            };
         },
         []
     );
