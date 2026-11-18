@@ -151,7 +151,7 @@ def:pub AuthPanel(onSessionChange: any = None) -> JsxElement {
     <section className={"auth-panel auth-panel-compact" if loggedIn else "auth-panel"}>
         {if loggedIn {
             <div className="account-controls">
-                <span className="account-username">{"👤 " + currentUsername}</span>
+                <span className="account-username">{currentUsername}</span>
                 <button type="button" onClick={logout}>Log out</button>
             </div>
         } else {

@@ -4,11 +4,17 @@ You can browse public channels and read discussions without signing in. Open **M
 
 ## Find a channel
 
-**Home** has a card for each of the eight market sectors and a separate link to General News. Choose a sector to see channels covering it. Reader recommendations also appear on Home when channels have received votes. [Default channels and publisher links](default-sources.md)
+**Home** lists the eight market sectors and a separate link to General News. Choose a sector to see channels covering it. Reader recommendations also appear on Home when channels have received votes. [Default channels and publisher links](default-sources.md)
 
 In **Discover**, choose a category or leave **All categories** selected. **All channels** sorts by name, category or clicks. **New channels** shows the most recently published channels first. **Trending** ranks channels with at least one click by their total recorded clicks.
 
 Expand a channel to see its publisher, coverage tags, click count, recommendations and up to three recent items. Opening the preview records a click. Continue to **Open channel** for the full discussion, or use **Copy link** to share its address. On the channel page, **Follow channel** adds it to your feed. **Recommend** adds one vote for your account and can be toggled off.
+
+## Read the insights panel
+
+Select **Insights** on Home, Discover, or a sector page to see the number of channels and distinct reports in the current channel previews. The source mix shows how many of those channels use RSS, X, Telegram, or community posts. The three latest dated story timelines open the underlying reporting. Changing a Discover tab or sector updates the panel.
+
+On **Following**, Insights shows your followed channels, the updates in your current feed, channel alert settings, and saved story and topic counts. The panel opens at the side on wide screens and above the feed on smaller screens. Newsstream remembers your choice in this browser.
 
 ## Set up your feed and alerts
 

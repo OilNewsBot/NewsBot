@@ -87,6 +87,16 @@ async def:pub request_json(path: str, method: str = "GET", body: any = None) -> 
     }
 }
 
+def:pub channel_preview(channel: any, sector: str = "") -> list[any] {
+    return [
+        item
+        for item in channel.headlines
+        if not sector
+            or item.section == sector
+            or (not item.section and sector in (channel.tags or [channel.category]))
+    ][:3];
+}
+
 def:pub by_sector(channels: list[any], slug: str) -> list[any] {
     selected: list[any] = [];
     for ch in channels {

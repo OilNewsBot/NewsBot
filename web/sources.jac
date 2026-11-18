@@ -764,7 +764,6 @@ def:pub SourcesPage -> JsxElement {
         <main className="ps-main">
             <div className="ps-intro">
                 <div>
-                    <p className="ps-eyebrow">YOUR WORKSPACE</p>
                     <h1>My Sources</h1>
                     <p>Connect private sources and publish channels.</p>
                 </div>
