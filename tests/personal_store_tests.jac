@@ -286,3 +286,56 @@ test "personal_credentials_fail_closed_and_budget_persists" {
     }
     asyncio.run(run());
 }
+
+test "reader category filters private stories before pagination and delivery" {
+    async def run {
+        settings = make_settings();
+        async with open_repo(settings) as repo {
+            uid = await repo.create_user("reader", "r@example.test", "unused");
+            store = PersonalStore(settings.db_path);
+            await store.connect();
+            try {
+                c = await store.create_connection(uid, "rss", "My feeds");
+                source = await store.create_source(
+                    uid, c["id"], "desk", "Markets", "https://example.com/feed"
+                );
+                assert source["tags"] == ["general"];
+                await store.persist_batch(source["id"], [], "baseline");
+                await store.db.execute(
+                    "INSERT INTO news_feed_categories VALUES (?,?)", (uid, "energy")
+                );
+                await store.db.commit();
+                await store.persist_batch(
+                    source["id"],
+                    [
+                        item("1", "Crude oil prices"),
+                        item("2", "New semiconductor processors")
+                    ],
+                    "update"
+                );
+                assert len(await store.feed(uid)) == 2;
+                stories = await store.feed_for_following(uid, ["energy"], 1);
+                assert len(stories) == 1 and stories[0]["section"] == "energy";
+                assert stories[0]["topic"] and stories[0]["private_source"];
+                assert stories[0]["source_name"] == "Markets";
+                assert len(await store.feed_for_following(uid, ["utilities"])) == 0;
+                alerts = await store.notifications_since(uid);
+                assert len(alerts) == 1 and alerts[0]["title"] == "Crude oil prices";
+                changed = await store.update_source(
+                    uid,
+                    source["id"],
+                    {"tags": ["utilities", "energy"], "alerts_enabled": False}
+                );
+                assert changed["tags"] == ["utilities", "energy"];
+                await store.persist_batch(
+                    source["id"], [item("3", "Electric utility raises rates")], "next"
+                );
+                assert len(await store.feed_for_following(uid, ["utilities"])) >= 1;
+                assert not await store.notifications_since(uid);
+            } finally {
+                await store.close();
+            }
+        }
+    }
+    asyncio.run(run());
+}

@@ -8,7 +8,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(fetch(event.request, { cache: "no-store" }).catch(() =>
         new Response(`<!doctype html><html lang="en"><meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
-        <title>NewsStream is offline</title><h1>NewsStream is offline</h1>
+        <title>NewsDrop is offline</title><h1>NewsDrop is offline</h1>
         <p>Reconnect to open your news and sources.</p><a href="/sources">Try again</a></html>`,
         { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } })
     ));
@@ -35,7 +35,7 @@ self.addEventListener("push", (event) => {
     try { ticket = event.data?.json()?.ticket; } catch { return; }
     event.waitUntil((async () => {
         if (!await destination(ticket)) return;
-        await self.registration.showNotification("NewsStream", {
+        await self.registration.showNotification("NewsDrop", {
             body: "New post from one of your selected sources.",
             icon: "/pwa/icon-192.png",
             tag: "newsstream-push-" + ticket,

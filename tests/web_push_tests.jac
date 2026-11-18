@@ -181,6 +181,22 @@ test "web_push_routes_personal_fixture_only_to_eligible_active_devices" {
                 assert (await bob.get("/api/me/notifications")).json()["notifications"]
                     == [];
                 assert len((await bob.get("/api/me/feed")).json()["items"]) == 1;
+                # A filter changed after collection must also apply to background delivery.
+                await store.db.execute(
+                    "INSERT INTO news_feed_categories(user_id,category) VALUES(?,?)",
+                    (a_uid, "healthcare")
+                );
+                await store.db.commit();
+                assert (await alice.get("/api/me/notifications")).json()[
+                    "notifications"
+                ]
+                    == [];
+                await service.send_pending(None);
+                assert len(mock.calls) == 0;
+                await store.db.execute(
+                    "DELETE FROM news_feed_categories WHERE user_id=?", (a_uid, )
+                );
+                await store.db.commit();
                 await asyncio.gather(
                     service.send_pending(None), service.send_pending(None)
                 );

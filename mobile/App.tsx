@@ -46,8 +46,8 @@ export default function App() {
       <View style={styles.row}>
         <Text style={styles.label}>{value?.pending ? 'Notifications · sync pending' : 'Notifications'}</Text>
         <Switch
-          accessibilityLabel="Enable NewsBot notifications"
-          accessibilityHint={value?.pending ? 'Waiting to sync with NewsBot' : undefined}
+          accessibilityLabel="Enable NewsDrop notifications"
+          accessibilityHint={value?.pending ? 'Waiting to sync with NewsDrop' : undefined}
           disabled={busy}
           value={value?.enabled ?? false}
           onValueChange={enabled => { void toggle(enabled); }}

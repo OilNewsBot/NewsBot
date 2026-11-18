@@ -50,7 +50,7 @@ async def demo_source(
 ) -> Row {
     user = await repo.get_user_by_email(email.lower());
     if not user {
-        raise ValueError("Register both demo accounts in NewsStream first");
+        raise ValueError("Register both demo accounts in NewsDrop first");
     }
     uid = int(user["id"]);
     for source in await store.list_sources(uid) {
@@ -145,6 +145,8 @@ def main {
     ) {
         os.environ[key] = "";
     }
+    os.environ["NEWSSTREAM_PUBLIC_RSS"] = "0";
+    os.environ["NEWSSTREAM_SUMMARY_PROVIDER"] = "disabled";
     settings = load_settings(db_path=DEMO_DB);
     settings.host = "127.0.0.1";
     settings.port = 8011;

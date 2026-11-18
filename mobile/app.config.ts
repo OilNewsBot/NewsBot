@@ -1,7 +1,7 @@
 import type { ExpoConfig } from 'expo/config';
 
 const config: ExpoConfig = {
-  name: 'NewsBot',
+  name: 'NewsDrop',
   slug: 'newsbot-mobile',
   version: '0.1.0',
   orientation: 'portrait',

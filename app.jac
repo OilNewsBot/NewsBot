@@ -21,12 +21,20 @@ import uvicorn;
 import from datetime { UTC, datetime }
 import from pathlib { Path }
 import from fastapi { FastAPI, HTTPException, Request }
-import from fastapi.responses { HTMLResponse, Response, StreamingResponse }
+import from fastapi.responses {
+    FileResponse,
+    HTMLResponse,
+    RedirectResponse,
+    Response,
+    StreamingResponse
+}
 import from adapters.base { Json, NormalizedPost, SourceAdapter }
 import from adapters.telegram { TelegramAdapter }
 import from adapters.x_api { XApiAdapter }
 import from adapters.x_push { XPushAdapter }
 import from config { ROOT, Settings, load_settings }
+import from db.directory { PublicDirectory }
+import from pipeline.forum_routing { ForumRouter }
 import from db.repo { Repo, Row, load_demo_suggestions }
 import from pipeline.llm { LLMClient }
 import from pipeline.notify { Bus }
@@ -37,6 +45,8 @@ import from pipeline.trade { MAX_HOLD_MINUTES, MAX_PORTFOLIO_SHARE, Trader }
 import from personal.store { PERSONAL_ALERT_ELIGIBILITY, PersonalStore }
 import from personal.api { check_origin, install_personal_routes }
 import from personal.worker { PersonalWorker }
+import from personal.publishing { install_publishing_routes }
+import from publicnews.integration { install_catalog_routes, make_catalog, run_catalog }
 import from pwa.routes { install_pwa, pwa_index }
 
 glob log: logging.Logger = logging.getLogger("newsstream.app");
@@ -47,9 +57,9 @@ glob UI_SOURCE: Path = ROOT / "web",
      UI_INDEX: Path = ROOT / ".jac" / "client" / "web" / "dist" / "index.html";
 
 glob UI_MISSING_HTML: str = (
-         "<!doctype html><meta charset=utf-8><title>newsstream</title>"
+         "<!doctype html><meta charset=utf-8><title>NewsDrop</title>"
          "<body style='font:14px sans-serif;background:#0e1116;color:#d7dde8;padding:24px'>"
-         "<h1>newsstream is running, but its web page has not been built</h1>"
+         "<h1>NewsDrop is running, but its web page has not been built</h1>"
          "<p>Run <code>jac build web</code> in the project folder, then reload. "
          "The server log says why the automatic build failed.</p>"
      );
@@ -108,7 +118,7 @@ async def _guarded(adapter: SourceAdapter, work: Awaitable[None]) {
     }
 }
 
-"""Resolve configured handles to stable IDs once and store both (§4)."""
+"""Resolve configured handles to stable IDs once and store both (Â§4)."""
 async def _resolve_x_accounts(settings: Settings, repo: Repo, x_api: XApiAdapter) {
     known_handles = {str(a["handle"]).lower() for a in await repo.get_accounts("x")};
     for acct in settings.accounts {
@@ -137,6 +147,17 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     personal_worker = PersonalWorker(personal);
     bus = Bus();
     llm = LLMClient(settings.anthropic_api_key, repo);
+    directory = PublicDirectory(
+        cache=settings.db_path.parent / "directory-rss.json",
+        router=ForumRouter(
+            LLMClient(settings.anthropic_api_key, repo)
+                if settings.anthropic_api_key
+                else None,
+            settings.triage_model
+        )
+    );
+    directory.load();
+    catalog = make_catalog(settings, directory, llm);
     prices = PriceFeed(settings);
     trader = Trader(settings, repo, llm, prices);
     pipeline = Pipeline(settings, repo, llm, bus, trader=trader);
@@ -161,10 +182,12 @@ def create_app(settings: Settings | None = None) -> FastAPI {
             }
         }
         await personal.connect();
+        await catalog.start();
         tasks: list[asyncio.Task[None]] = [
             asyncio.create_task(pipeline.run(), name="pipeline"),
             asyncio.create_task(pipeline.stale_sweeper(), name="stale-sweeper"),
-            asyncio.create_task(personal_worker.run(), name="personal-sources")
+            asyncio.create_task(personal_worker.run(), name="personal-sources"),
+            asyncio.create_task(run_catalog(catalog), name="public-news")
         ];
         if settings.x_api_enabled and settings.x_bearer_token {
             await _resolve_x_accounts(settings, repo, x_api);
@@ -177,7 +200,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
                 )
             );
         }
-        log.info("newsstream up at http://%s:%d", settings.host, settings.port);
+        log.info("NewsDrop up at http://%s:%d", settings.host, settings.port);
         try {
             yield ;
         } finally {
@@ -190,9 +213,12 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         }
     }
 
-    app = FastAPI(title="newsstream", lifespan=lifespan);
+    app = FastAPI(title="NewsDrop", lifespan=lifespan);
     install_mobile(app, repo);
     install_personal_routes(app, repo, personal);
+    install_catalog_routes(app, repo, catalog, personal);
+    install_publishing_routes(app, repo, personal, catalog);
+    setattr(app.state, "catalog", catalog);
     install_pwa(
         app,
         repo,
@@ -208,9 +234,9 @@ def create_app(settings: Settings | None = None) -> FastAPI {
 
     @app.post("/register")
     async def register(data: dict[str, str]) -> dict[str, str | int] {
-        if not data["username"].strip()
-            or not data["email"].strip()
-            or len(data["password"]) < 12 {
+        if not data.get("username", "").strip()
+            or not data.get("email", "").strip()
+            or len(data.get("password", "")) < 12 {
             raise HTTPException(
                 status_code=400,
                 detail="Username and email are required; password must be at least 12 characters"
@@ -229,6 +255,9 @@ def create_app(settings: Settings | None = None) -> FastAPI {
 
         password_hash = hash_password(data["password"]);
         user_id = await repo.create_user(username, email, password_hash);
+        if not user_id {
+            raise HTTPException(409, "Username or email is already registered");
+        }
 
         return {"message": "Registration successful", "user_id": user_id};
     }
@@ -334,14 +363,56 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         return await pwa_index(UI_INDEX);
     }
 
-    """The trading page is the same single-page UI; it picks the view by path."""
-    @app.get("/trading")
-    async def trading_page -> Response {
+    @app.get("/brand/drop.svg")
+    async def brand_mark -> Response {
+        return FileResponse(
+            ROOT / "desktop" / "app-icon.svg", media_type="image/svg+xml"
+        );
+    }
+
+    @app.get("/favicon.ico")
+    async def favicon -> Response {
+        return FileResponse(
+            ROOT / "desktop" / "src-tauri" / "icons" / "icon.ico",
+            media_type="image/x-icon"
+        );
+    }
+
+    @app.get("/api/directory")
+    async def public_directory -> Row {
+        if catalog.ready {
+            return await catalog.editorial_view();
+        }
+        return directory.view();
+    }
+
+    @app.get("/directory-images/{sector}.jpg")
+    async def sector_image(sector: str) -> Response {
+        image = UI_SOURCE / "directory-images" / (sector + ".jpg");
+        if sector not in directory.sections() or not image.is_file() {
+            raise HTTPException(status_code=404, detail="Unknown sector image");
+        }
+        return FileResponse(image, media_type="image/jpeg");
+    }
+
+    @app.get("/categories/{slug}")
+    @app.get("/channels/{slug}")
+    @app.get("/stories/{slug}")
+    async def directory_page(slug: str) -> Response {
         return await index();
     }
 
+    @app.get("/oil")
+    @app.get("/trading")
+    async def retired_workspace -> Response {
+        return RedirectResponse("/");
+    }
+
+    @app.get("/login")
     @app.get("/sources")
-    async def sources_page -> Response {
+    @app.get("/discover")
+    @app.get("/following")
+    async def workspace_page -> Response {
         return await index();
     }
 
@@ -411,10 +482,11 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         };
     }
 
-    # ---------- trading page (docs/spec.md §16) ----------
+    # ---------- trading page (docs/spec.md Â§16) ----------
 
     @app.get("/portfolio")
-    async def get_portfolio -> Json {
+    async def get_portfolio(request: Request) -> Json {
+        await require_admin(request);
         trading = settings.trading;
         return {
             "portfolio": await repo.get_portfolio(),
@@ -428,7 +500,8 @@ def create_app(settings: Settings | None = None) -> FastAPI {
 
     """Manual entry: the app has no brokerage link."""
     @app.put("/portfolio")
-    async def put_portfolio(body: Json) -> Json {
+    async def put_portfolio(body: Json, request: Request) -> Json {
+        await require_admin(request);
         value = 0.0;
         cash = 0.0;
         level = "";

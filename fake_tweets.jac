@@ -5,15 +5,15 @@
     jac run fake_tweets -- --remote https://<server> [--no-wait] [--interval 10]
 
 Starts a fake twitterapi.io (REST rule/backfill endpoints and the tweet
-WebSocket) and an in-process NewsBot whose x_push adapter connects to it, then
+WebSocket) and an in-process NewsDrop whose x_push adapter connects to it, then
 pushes five tweets about major military or government events through the
 WebSocket, exactly as the vendor would. The real adapter, classifier, dedup,
 notifications, SSE and UI all run.
 
-Isolation: NewsBot runs on a temporary copy of the configured database (your
+Isolation: NewsDrop runs on a temporary copy of the configured database (your
 sign-in works; nothing is written to the real one), Telegram and the official
 X API are off, X_PUSH_API_KEY is a fake key, and Expo mobile push is off. Model
-calls are real when ANTHROPIC_API_KEY is set (a few cents). Quit the NewsBot app
+calls are real when ANTHROPIC_API_KEY is set (a few cents). Quit the NewsDrop app
 or `jac run` first: this script serves on the same port so the desktop app can
 attach to it.
 
@@ -349,7 +349,7 @@ async def run(args: argparse.Namespace) -> int {
     port = args.port or real.port;
     if port_in_use(host, port) {
         print(
-            f"Port {port} is in use. Quit the NewsBot app (or stop `jac run`) first, "
+            f"Port {port} is in use. Quit the NewsDrop app (or stop `jac run`) first, "
             "or pass --port."
         );
         return 2;
@@ -411,13 +411,13 @@ async def run(args: argparse.Namespace) -> int {
         deadline = time.monotonic() + 60;
         while not state.clients {
             if time.monotonic() > deadline or any(t.done() for t in tasks) {
-                print("NewsBot's x_push adapter did not connect to the fake vendor.");
+                print("NewsDrop's x_push adapter did not connect to the fake vendor.");
                 return 1;
             }
             await asyncio.sleep(0.5);
         }
         page = f"http://{settings.host}:{settings.port}";
-        print(f"NewsBot is running on a copy of your database at {page}");
+        print(f"NewsDrop is running on a copy of your database at {page}");
         print("Its X push feed is connected to the fake twitterapi.io.");
         if not args.no_wait and sys.stdin.isatty() {
             print(
@@ -471,7 +471,7 @@ async def run(args: argparse.Namespace) -> int {
     } except (KeyboardInterrupt, asyncio.CancelledError) {
         # Ctrl+C: fall through to shutdown
     } finally {
-        # NewsBot first: on shutdown it deactivates its rules at the vendor.
+        # NewsDrop first: on shutdown it deactivates its rules at the vendor.
         app_server.should_exit = True;
         await asyncio.gather(tasks[1], return_exceptions=True);
         vendor_server.should_exit = True;
@@ -502,7 +502,7 @@ def main {
         "--timeout", `type=float, `default=240.0, help="seconds to wait for results"
     );
     parser.add_argument(
-        "--port", `type=int, `default=0, help="NewsBot port (default: config.yaml)"
+        "--port", `type=int, `default=0, help="NewsDrop port (default: config.yaml)"
     );
     parser.add_argument(
         "--vendor-port", `type=int, `default=8790, help="fake twitterapi.io port"

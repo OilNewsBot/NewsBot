@@ -1,0 +1,79 @@
+{
+  "energy": [
+    "Oil and gas producers cut crude output as OPEC reviews its quota. Refineries face tighter fuel supplies.",
+    "Solar farms, photovoltaic panels and wind turbines deliver renewable power to the electricity grid.",
+    "A utility needs new transmission lines and battery storage to meet electric power demand.",
+    "Nuclear power plants and reactors produce electricity as coal plants retire.",
+    "Natural gas pipelines and LNG exports change the price of heating fuel.",
+    "Drought cuts hydroelectric generation while utilities restart fossil fuel plants.",
+    "Offshore drilling, shale wells and petroleum reserves expand oil production."
+  ],
+  "tech": [
+    "Software developers patch a Java vulnerability after a cyberattack exposes customer accounts.",
+    "Apple restores iCloud, Apple Pay and other online services after a digital outage.",
+    "Artificial intelligence labs train a language model. AI chips and data centers compete for computing capacity.",
+    "Nvidia designs processors and semiconductors for computers. Chipmakers build advanced chips.",
+    "Cloud computing networks, DNS servers and internet platforms recover from a security breach.",
+    "A startup releases a smartphone app and a developer toolkit for mobile devices.",
+    "Social media platforms and search engines change how their algorithms rank posts."
+  ],
+  "healthcare": [
+    "A measles outbreak leads to vaccination clinics as public health officials track infections.",
+    "Hospitals and nurses care for patients with heart disease, diabetes and cancer.",
+    "A drugmaker reports clinical trial results and seeks FDA approval for a new treatment.",
+    "Medicare and Medicaid insurance coverage affects hospital bills and access to medical care.",
+    "Scientists study viruses, disease transmission, immunization and vaccine effectiveness.",
+    "A medical device detects early symptoms and helps doctors diagnose patients.",
+    "Mental health researchers evaluate a therapy for depression in a clinical study.",
+    "Neuroscience researchers study brain activity and neural implants in clinical research with patients."
+  ],
+  "industrials": [
+    "Aircraft manufacturers and aerospace suppliers deliver engines and airplanes to airlines.",
+    "Automakers retool assembly lines while factories expand industrial production and manufacturing.",
+    "Railroads, trucking companies and ports report freight delays and shipping container shortages.",
+    "Machinery makers install industrial robots and machine tools in steel mills.",
+    "Construction contractors order heavy equipment to build bridges and railway infrastructure.",
+    "Logistics firms move cargo through warehouses as a dockworkers strike disrupts supply chains.",
+    "A shipbuilder opens a shipyard to make vessels and transport equipment."
+  ],
+  "consumer-discretionary": [
+    "Retailers report comparable store sales, apparel demand and department store spending.",
+    "Auto dealers say discretionary spending on cars and electric vehicles increased.",
+    "Hotel bookings, cruise line reservations and leisure travel demand lift tourism revenue.",
+    "Restaurants and fast food chains report same store sales and menu pricing.",
+    "Consumer brands and e-commerce merchants prepare for holiday shopping."
+  ],
+  "materials": [
+    "Mining companies develop copper, gold and iron ore mines and expand mineral reserves.",
+    "Steelmakers and aluminum smelters report lower output of primary metals.",
+    "Specialty chemicals producers and fertilizer manufacturers raise feedstock prices.",
+    "Paper mills and packaging suppliers increase paperboard and pulp production.",
+    "Cement and aggregates producers sell construction materials to contractors."
+  ],
+  "utilities": [
+    "Utility regulators approve electric utility rates and ratepayer bill increases.",
+    "Grid operators upgrade transmission lines and electricity distribution substations.",
+    "Water utilities invest in wastewater treatment plants and drinking water systems.",
+    "A public utility commission reviews cost recovery and the utility rate base.",
+    "Electric utilities restore power after outages and replace distribution poles."
+  ],
+  "real-estate": [
+    "Home sales, housing starts and mortgage rates shape the residential housing market.",
+    "Commercial real estate investors buy office buildings as lease vacancy rates rise.",
+    "A real estate investment trust reports occupancy and rents for multifamily apartments.",
+    "Property developers seek planning permission for industrial real estate and warehouses.",
+    "Homebuilders report house prices and residential construction permits."
+  ],
+  "general": [
+    "Voters decide a national election. Congress debates party leadership, policy and campaign spending.",
+    "Diplomats discuss peace negotiations as a military conflict continues overseas.",
+    "Actors and directors attend a film festival while an author releases a new novel.",
+    "A football team wins its championship and fans celebrate a playoff victory.",
+    "A court hears arguments on immigration law as the government announces a border policy.",
+    "A chef opens a restaurant and shares a recipe. Travelers visit museums and parks.",
+    "Schools and universities debate curriculum and the cost of a college education.",
+    "World leaders discuss trade, tariffs and diplomatic relations at an international summit. Export negotiations affect the talks.",
+    "The Senate weighs military appointments and the defense secretary discusses army leadership and foreign policy.",
+    "Weather forecasters track a storm as schools close and families prepare to evacuate."
+  ]
+}

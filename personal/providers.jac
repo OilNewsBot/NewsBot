@@ -203,7 +203,7 @@ async def _fetch_feed(
             target = urlunsplit((p.scheme, f"{ip_host}:{port}", p.path, p.query, ""));
             headers = {
                 "Host": p.netloc,
-                "User-Agent": "Newsstream/0.1 personal-feeds",
+                "User-Agent": "NewsDrop/0.1 personal-feeds",
                 "Accept": "application/atom+xml, application/rss+xml, application/xml, text/xml",
                 "Accept-Encoding": "identity"
             };

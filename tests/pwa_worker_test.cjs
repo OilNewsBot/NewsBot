@@ -63,7 +63,7 @@ test("worker fetches navigations without caching and leaves API and SSE alone", 
         request: { mode: "navigate", url: "https://example.test/sources" },
     });
     assert.equal(page.status, 503);
-    assert.match(await page.text(), /NewsStream is offline/);
+    assert.match(await page.text(), /NewsDrop is offline/);
 });
 
 test("worker shows a generic notice and rechecks ownership when clicked", async () => {
@@ -78,7 +78,7 @@ test("worker shows a generic notice and rechecks ownership when clicked", async 
     await event("activate", {});
     await event("push", { data: { json: () => ({ ticket }) } });
     assert.equal(notices.length, 1);
-    assert.equal(notices[0].title, "NewsStream");
+    assert.equal(notices[0].title, "NewsDrop");
     assert.equal(notices[0].options.body, "New post from one of your selected sources.");
     const notification = { close: () => {}, data: notices[0].options.data };
     await event("notificationclick", { notification });

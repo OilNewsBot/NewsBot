@@ -8,6 +8,8 @@ from pathlib import Path
 import aiosqlite
 import httpx
 
+from personal.coverage import item_section
+
 LOG = logging.getLogger("newsstream.web_push")
 SCHEMA = Path(__file__).with_name("schema.sql").read_text(encoding="utf-8")
 
@@ -30,6 +32,8 @@ class PushService:
             JOIN personal_notifications n ON n.user_id = d.user_id AND n.id > d.since_id
             JOIN personal_sources s ON s.id = n.source_id AND s.user_id = n.user_id
             JOIN personal_connections c ON c.id = s.connection_id AND c.user_id = n.user_id
+            JOIN personal_items i ON i.id = n.item_id AND i.user_id = n.user_id
+            LEFT JOIN personal_source_tags t ON t.source_id = s.id
             WHERE d.vapid_key = ? AND {eligibility}
         """
 
@@ -40,6 +44,7 @@ class PushService:
     async def connect(self):
         self.db = await aiosqlite.connect(self.db_path, isolation_level=None)
         self.db.row_factory = aiosqlite.Row
+        await self.db.create_function("item_section", 3, item_section, deterministic=True)
         await self.db.execute("PRAGMA busy_timeout = 5000")
         await self.db.execute("PRAGMA foreign_keys = ON")
         await self.db.executescript(SCHEMA)

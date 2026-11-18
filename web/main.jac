@@ -1,17 +1,14 @@
-"""newsstream web UI (docs/spec.md §10): notification tray, event feed, suppressed
-list and status footer.
+"""NewsDrop browser entry point (docs/spec.md §10).
 
-This is the browser half of the app, written in Jac and compiled to one
-self-contained page by `jac build web`. It talks to the FastAPI service
-(app.jac) over the same plain HTTP endpoints as before: /stream (SSE),
-/notifications, /feed, /suppressed, /status and /refetch.
-"""
+The compiled web client opens the briefing or sector directory on Home. It also
+routes Discover, Following, My Sources, channels and story timelines. Market
+monitor components use the separate event and notification endpoints below."""
 
 import "./main.css";
 import from react { useEffect }
 import from .auth { AuthPanel, SESSION_EVENT }
-import from .trading { TradingPage }
 import from .sources { SourcesPage }
+import from .directory { DirectoryPage }
 import "./navigation.css";
 import from .navigation { Navigation }
 
@@ -179,7 +176,7 @@ def notify_api -> any {
     return globalThis.Notification or None;  # jac:ignore[E1053]
 }
 
-"""System notification for a new event, only when the NewsBot page is not in
+"""System notification for a new event, only when the NewsDrop page is not in
 front; clicking it brings the page forward."""
 def screen_notify(n: Notification) {
     api = notify_api();
@@ -195,7 +192,7 @@ def screen_notify(n: Notification) {
     try {
         note: any = new(
             api,
-            "newsstream — " + (n.category or "new event"),
+            "NewsDrop — " + (n.category or "new event"),
             {
                 "body": n.one_line + "\n@" + n.handle,
                 "tag": "ns-" + str(n.notification_id)
@@ -329,10 +326,10 @@ def SuppressedRow(p: SuppressedPost) -> JsxElement {
 
 def Footer(s: Status | None, unreachable: bool) -> JsxElement {
     if unreachable {
-        return <footer>server unreachable</footer>;
+        return <footer className="feed-status">Server unreachable</footer>;
     }
     if s is None {
-        return <footer>connecting…</footer>;
+        return <footer className="feed-status">Connecting…</footer>;
     }
     lat = s.latency;
     platform = "platform p50 "
@@ -350,19 +347,24 @@ def Footer(s: Status | None, unreachable: bool) -> JsxElement {
         + " today";
     reads = "X reads " + str(s.x_reads_today) + "/" + str(s.x_daily_read_budget);
 
-    <footer>
-        {for a in s.adapters {
-            <span key={a.name} title={a.detail}>
-                <span className={"dot " + a.state}></span>
-                {a.name}
-            </span>
-        }}
-        <span>{platform}</span>
-        <span>{pipeline}</span>
-        <span>{counts}</span>
-        <span>{"LLM ~$" + str(s.llm_spend_today)}</span>
-        <span>{reads}</span>
-        <span>{"threshold " + str(s.threshold)}</span>
+    <footer className="feed-status">
+        <details>
+            <summary>System status</summary>
+            <div className="feed-status-metrics">
+                {for a in s.adapters {
+                    <span key={a.name} title={a.detail}>
+                        <span className={"dot " + a.state}></span>
+                        {a.name}
+                    </span>
+                }}
+                <span>{platform}</span>
+                <span>{pipeline}</span>
+                <span>{counts}</span>
+                <span>{"LLM ~$" + str(s.llm_spend_today)}</span>
+                <span>{reads}</span>
+                <span>{"threshold " + str(s.threshold)}</span>
+            </div>
+        </details>
     </footer>
 }
 
@@ -385,23 +387,74 @@ def banner_text(s: Status | None) -> str {
 
 # ---------- the pages ----------
 
-"""Shown instead of every page until the visitor signs in."""
+"""Sign-in gate for personal sources."""
 def LockedPage -> JsxElement {
     <main className="locked">
         <div className="titlebar">
-            <h1>newsstream — crude oil</h1>
+            <h1>My Sources</h1>
         </div>
         <p className="locked-note">
-            {"🔒 Sign in to see the feeds, trading view and your sources."}
+            {"Sign in to manage your sources and read your personal feed."}
         </p>
         <AuthPanel/>
     </main>
 }
 
-"""The service serves this one page at /, /trading and /sources; pick the
-view by path. Every view stays locked behind sign-in: no page mounts (so
-nothing is fetched or streamed) until /me confirms a session."""
 def:pub app -> JsxElement {
+    useEffect(
+        lambda {
+            announce = lambda { window.dispatchEvent(new(Event, SESSION_EVENT)); };  # jac:ignore[E1053]
+            change = lambda (e: any) { if e.key == "ns-session-change" { announce(); }};
+            restore = lambda (e: any) { if e.persisted { announce(); }};
+            window.addEventListener("storage", change);
+            window.addEventListener("pageshow", restore);
+            return lambda {
+                window.removeEventListener("storage", change);
+                window.removeEventListener("pageshow", restore);
+            };
+        },
+        []
+    );
+    win: any = window;
+    path = str(win.location.pathname);
+    useEffect(
+        lambda {
+            names: any = {
+                "/": "Home",
+                "/discover": "Discover",
+                "/following": "Following",
+                "/sources": "My Sources",
+                "/login": "Log in"
+            };
+            title = names[path]
+                or (
+                    "Story timeline"
+                        if path.startswith("/stories/")
+                        else ("Channel" if path.startswith("/channels/") else "Sector")
+                );
+            doc: any = document;
+            doc.title = title + " · NewsDrop";
+        },
+        [path]
+    );
+    if path == "/login" {
+        return
+            <div className="app-layout">
+                <Navigation active=""/>
+                <main className="locked">
+                    <h1>NewsDrop account</h1>
+                    <AuthPanel/>
+                </main>
+            </div>;
+    }
+    if path == "/sources" {
+        return <Workspace/>;
+    }
+    return <DirectoryPage path={path}/>;
+}
+
+"""Private views begin fetching only after the service confirms a session."""
+def Workspace -> JsxElement {
     has session: str = "checking";  # checking | in | out
 
     async def check_session {
@@ -445,31 +498,16 @@ def:pub app -> JsxElement {
             </main>;
     }
     if session == "out" {
-        return <LockedPage/>;
-    }
-    # the checker's window typings lack location
-    win: any = window;
-    if str(win.location.pathname).startswith("/sources") {
         return
             <div className="app-layout">
                 <Navigation active="sources"/>
-                <AuthPanel/>
-                <SourcesPage/>
-            </div>;
-    }
-    if str(win.location.pathname).startswith("/trading") {
-        return
-            <div className="app-layout">
-                <Navigation active="trading"/>
-                <AuthPanel/>
-                <TradingPage/>
+                <LockedPage/>
             </div>;
     }
     return
         <div className="app-layout">
-            <Navigation active="news"/>
-            <AuthPanel/>
-            <NewsPage/>
+            <Navigation active="sources"/>
+            <SourcesPage/>
         </div>;
 }
 
@@ -695,17 +733,16 @@ def NewsPage -> JsxElement {
                 </div>
             }}
         </div>
-        <main>
+        <main className="news-main">
             <div className="titlebar news-header">
                 <div>
                     <div className="news-eyebrow">MARKET INTELLIGENCE</div>
-                    <h1>News Feed</h1>
+                    <h1>Market Monitor</h1>
                     <p className="dim">
-                        {"Breaking Oil-Market News & Real-Time Event Alerts"}
+                        {"Breaking market news and live event alerts"}
                     </p>
                 </div>
             </div>
-            <AuthPanel/>
             <div className="news-toolbar">
                 <div className="news-toolbar-left">
                     <span className="news-live-indicator"></span>
@@ -762,12 +799,12 @@ def NewsPage -> JsxElement {
                         <div className="news-empty-icon">◇</div>
                         <h2>No market events yet</h2>
                         <p>
-                            {"New oil-market headlines and alerts will appear here as they're detected."}
+                            {"New market headlines and alerts will appear here as they're detected."}
                         </p>
                     </div>
                 }}
             </div>
+            <Footer s={status} unreachable={unreachable}/>
         </main>
-        <Footer s={status} unreachable={unreachable}/>
     </div>
 }

@@ -58,7 +58,7 @@
     class NewsstreamPwa extends HTMLElement {
         connectedCallback() {
             this.innerHTML = `
-                <button type="button" class="ps-quiet" data-install hidden>Install NewsStream</button>
+                <button type="button" class="ps-quiet" data-install hidden>Install NewsDrop</button>
                 <span data-install-help></span>
                 <button type="button" class="ps-quiet" data-push hidden>Enable Web Push</button>
                 <span data-push-help role="status"></span>`;
@@ -86,7 +86,7 @@
             this.installButton.hidden = standalone() || !installPrompt;
             this.installHelp.textContent = standalone() ? "" : ios
                 ? "On iPhone or iPad, open Safari’s Share menu and choose Add to Home Screen."
-                : installPrompt ? "" : "Install NewsStream from your browser menu when available.";
+                : installPrompt ? "" : "Install NewsDrop from your browser menu when available.";
         }
 
         async install() {
@@ -101,7 +101,7 @@
         async refresh() {
             if (this.busy || this.refreshing) return;
             if (ios && !standalone()) {
-                this.pushHelp.textContent = "Open NewsStream from the Home Screen to enable Web Push.";
+                this.pushHelp.textContent = "Open NewsDrop from the Home Screen to enable Web Push.";
                 return;
             }
             if (!worker || !("PushManager" in window) || !("Notification" in window)) {
@@ -126,7 +126,7 @@
                 this.pushButton.textContent = config.active ? "Disable Web Push" : "Enable Web Push";
                 this.pushHelp.textContent = !config.publicKey ? "Web Push is unavailable on this server."
                     : config.active ? "This device receives alerts from your selected sources."
-                    : "Receive personal alerts even when NewsStream is closed.";
+                    : "Receive personal alerts even when NewsDrop is closed.";
             } catch (error) {
                 this.removeAttribute("data-push-active");
                 this.pushButton.hidden = true;

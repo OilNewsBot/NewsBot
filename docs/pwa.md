@@ -1,4 +1,4 @@
-# NewsStream PWA and personal Web Push
+# NewsDrop PWA and personal Web Push
 
 ## Run locally
 
@@ -23,7 +23,7 @@ export DYLD_LIBRARY_PATH=/opt/homebrew/opt/expat/lib
 ```
 
 Open <http://localhost:8000/sources> and sign in. In a browser that exposes an
-install prompt, select **Install NewsStream** in My Sources or use the browser
+install prompt, select **Install NewsDrop** in My Sources or use the browser
 menu. The installed app starts at My Sources. The standard responsive web UI
 serves as the app. A disconnected navigation shows a small offline page.
 
@@ -53,7 +53,7 @@ open page when Web Push is inactive on that device.
 The worker is served at `/newsstream-sw.js` with scope `/`. It uses ordinary
 service-worker activation. Close the origin's open tabs and installed windows
 to release an old worker during an update. DevTools → Application shows the
-manifest, icons and worker. Cache Storage should have no NewsStream caches.
+manifest, icons and worker. Cache Storage should have no NewsDrop caches.
 
 ### Repeatable simulated event
 
@@ -92,7 +92,7 @@ jac run pwa/demo.jac -- serve
    ```
 
 3. Reload My Sources and enable Web Push in all three profiles. Background
-   or close their NewsStream windows while leaving the server running.
+   or close their NewsDrop windows while leaving the server running.
 
    ```sh
    jac run pwa/demo.jac -- emit --alice alice@example.test --bob bob@example.test 9002000001

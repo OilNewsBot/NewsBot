@@ -78,11 +78,11 @@ obj Repo {
     async def create_user(username: str, email: str, password_hash: str) -> int {
         cur = await self._run(
             """INSERT INTO users (username, email, password_hash)
-               VALUES (?, ?, ?)""",
+               VALUES (?, ?, ?) ON CONFLICT DO NOTHING""",
             (username, email, password_hash)
         );
         await self.db.commit();
-        return cur.lastrowid or 0;
+        return (cur.lastrowid or 0) if cur.rowcount else 0;
     }
 
     async def get_user_by_email(email: str) -> Row | None {

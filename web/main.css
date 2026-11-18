@@ -1,26 +1,35 @@
-/* newsstream UI styles, carried over from the original static/index.html.
+/* NewsDrop UI styles, carried over from the original static/index.html.
    One change: #banner no longer has `display: none` (see the note at #banner). */
 :root {
-  /* NewsStream — premium financial dashboard */
-  --bg: #0b0f12;
-  --panel: #151b20;
-  --panel2: #1c242a;
-  --border: #252d34;
+  color-scheme: dark;
+  --bg: #232323;
+  --nav-bg: #1e1e1e;
+  --panel: #2c2c2c;
+  --panel2: #363636;
+  --border: #454545;
 
-  --text: #f2f5f7;
-  --dim: #929da6;
-  --accent: #52c69a;
+  --text: #e7ecf1;
+  --dim: #aab7c1;
+  --accent: #a6c1d4;
+  --accent-fill: #cbd7e1;
+  --accent-hover: #e1e8ee;
+  --accent-ink: #17252f;
+  --accent-surface: #383838;
+  --accent-border: #667e90;
+  --round-card: 12px;
+  --round-control: 8px;
 
-  --red: #f07178;
-  --amber: #e8b86d;
-  --green: #52c69a;
+  --red: #d6aaa5;
+  --amber: #cdb69b;
+  --green: #a5beaf;
 }
 * { box-sizing: border-box; }
 body {
+    accent-color: var(--accent);
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 14px;
     font-weight: 400;
     line-height: 1.6;
@@ -81,9 +90,25 @@ details.extras > summary:hover { color: var(--text); }
 .controls button:disabled { opacity: .5; cursor: default; }
 
 /* ---- footer ---- */
-footer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel);
-         border-top: 1px solid var(--border); padding: 7px 16px; font-size: 12px;
-         color: var(--dim); display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
+.news-main { padding-bottom: 24px; }
+.feed-status {
+    margin-top: 20px;
+    padding: 0 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--dim);
+}
+.feed-status summary { padding: 10px 0; cursor: pointer; color: var(--text); }
+.feed-status-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    padding: 10px 0 14px;
+    border-top: 1px solid var(--border);
+    overflow-wrap: anywhere;
+}
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
 .dot.live { background: var(--green); } .dot.disabled { background: #555; }
 .dot.reconnecting, .dot.starting, .dot.degraded { background: var(--amber); }
@@ -154,11 +179,11 @@ footer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel)
 }
 
 .auth-error {
-    color: #ff8080;
+    color: var(--red);
 }
 
 .auth-success {
-    color: #80e0a0;
+    color: var(--green);
 }
 
 /* Sign-in gate: the only view before login */
@@ -262,6 +287,11 @@ footer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel)
 }
 
 /* Trading Insights — minimalist financial dashboard */
+.app-layout > .auth-panel.auth-panel-compact {
+    position: static;
+    width: fit-content;
+    margin: 12px clamp(16px, 3vw, 32px) 0 auto;
+}
 
 .trading {
     color: #f0f5f3;
@@ -431,3 +461,18 @@ footer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel)
 .news-empty h2 { margin: 0 0 8px; color: #e9f2ed; font-size: 17px; font-weight: 600; letter-spacing: normal; text-transform: none; }
 .news-empty p { max-width: 390px; margin: 0; color: #94a9a0; font-size: 13px; line-height: 1.6; }
 @media (max-width: 650px) { .news-toolbar, .controls.news-settings { padding-left: 14px; padding-right: 14px; } .controls.news-settings { gap: 14px; } }
+
+/* Account forms share the reading workspace's surfaces and focus treatment. */
+.locked { max-width: 520px; padding: clamp(28px, 5vw, 72px) 22px; }
+.locked h1 { color: var(--text); text-transform: none; font-size: 32px; font-weight: 600; letter-spacing: -.04em; margin: 0; }
+.auth-panel { background: var(--panel); border-color: var(--border); color: var(--text); }
+.auth-panel input, .auth-panel button { background: var(--panel2); border-color: var(--border); color: var(--text); font: inherit; }
+.auth-panel input { background: var(--bg); }
+.auth-panel { border-radius: var(--round-card); }
+.auth-panel input, .auth-panel button { border-radius: var(--round-control); }
+.auth-panel button:hover { background: #333e45; }
+.auth-panel form + button { margin-top: 14px; }
+.auth-panel button[type=submit] { background: var(--accent-fill); color: var(--accent-ink); font-weight: 600; }
+.auth-panel button[type=submit]:hover:not(:disabled) { background: var(--accent-hover); }
+.auth-panel :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.app-layout > .auth-panel-compact { position: static; display: flex; justify-content: flex-end; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; }

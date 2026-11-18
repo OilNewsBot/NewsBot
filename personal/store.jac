@@ -1,10 +1,11 @@
 """Private source storage. Every public read includes authenticated ownership.
 
 Items, their notification intent, and polling checkpoints commit together. The
-private tables never participate in legacy oil summaries or mobile broadcasts.
+private tables are scoped to the authenticated account.
 """
 
 import asyncio;
+import importlib;
 import json;
 import os;
 import aiosqlite;
@@ -13,11 +14,17 @@ import from pathlib { Path }
 import from db.repo { Row, iso, utcnow }
 import from personal.secrets { SecretBox, credential_fingerprint }
 
-glob SCHEMA: str = Path(__file__).with_name("schema.sql").read_text(),
-     PERSONAL_ALERT_ELIGIBILITY: str = (
-         "n.id>s.alert_after_id AND s.deleted_at IS NULL AND c.deleted_at IS NULL "
-         + "AND s.enabled=1 AND s.alerts_enabled=1 AND c.status<>'disconnected'"
-     );
+glob SCHEMA: str = Path(__file__).with_name("schema.sql").read_text();
+
+glob story_text: any = importlib.import_module("publicnews.storytext"),
+     topic_rules: any = importlib.import_module("publicnews.topics"),
+     coverage: any = importlib.import_module("personal.coverage");
+
+glob PERSONAL_ALERT_ELIGIBILITY: str = coverage.ALERT_ELIGIBILITY;
+
+def source_tags(value: any) -> list[str] {
+    return topic_rules.categories(value) or ["general"];
+}
 
 def keywords(value: any) -> list[str] {
     if not isinstance(value, list) or len(value) > 20 {
@@ -67,6 +74,9 @@ obj PersonalStore {
         self._reader.row_factory = aiosqlite.Row;
         await self._reader.execute("PRAGMA busy_timeout = 5000");
         await self._reader.execute("PRAGMA query_only = ON");
+        await self._reader.create_function(
+            "item_section", 3, coverage.item_section, deterministic=True
+        );
     }
 
     async def close {
@@ -126,6 +136,8 @@ obj PersonalStore {
         out = dict(row);
         out["include_keywords"] = json.loads(out["include_keywords"]);
         out["exclude_keywords"] = json.loads(out["exclude_keywords"]);
+        out["tags"] = json.loads(out.pop("tags_json", None) or '["general"]');
+        out["category"] = out["tags"][0];
         out["enabled"] = bool(out["enabled"]);
         out["alerts_enabled"] = bool(out["alerts_enabled"]);
         return out;
@@ -273,7 +285,7 @@ obj PersonalStore {
 
     async def list_sources(user_id: int) -> list[Row] {
         rows = await self._all(
-            "SELECT s.*,c.provider FROM personal_sources s JOIN personal_connections c ON c.id=s.connection_id WHERE s.user_id=? AND s.deleted_at IS NULL AND c.deleted_at IS NULL ORDER BY s.id",
+            "SELECT s.*,(SELECT t.tags FROM personal_source_tags t WHERE t.source_id=s.id) AS tags_json,c.provider FROM personal_sources s JOIN personal_connections c ON c.id=s.connection_id WHERE s.user_id=? AND s.deleted_at IS NULL AND c.deleted_at IS NULL ORDER BY s.id",
             (user_id, )
         );
         return [self._source(r) for r in rows];
@@ -281,7 +293,7 @@ obj PersonalStore {
 
     async def get_source(user_id: int, source_id: int) -> Row {
         row = await self._read_one(
-            "SELECT s.*,c.provider FROM personal_sources s JOIN personal_connections c ON c.id=s.connection_id WHERE s.user_id=? AND s.id=? AND s.deleted_at IS NULL AND c.deleted_at IS NULL",
+            "SELECT s.*,(SELECT t.tags FROM personal_source_tags t WHERE t.source_id=s.id) AS tags_json,c.provider FROM personal_sources s JOIN personal_connections c ON c.id=s.connection_id WHERE s.user_id=? AND s.id=? AND s.deleted_at IS NULL AND c.deleted_at IS NULL",
             (user_id, source_id)
         );
         if row is None {
@@ -299,8 +311,10 @@ obj PersonalStore {
         alerts_enabled: bool = True,
         include_keywords: list[str] | None = None,
         exclude_keywords: list[str] | None = None,
-        connection_revision: int | None = None
+        connection_revision: int | None = None,
+        tags: list[str] | None = None
     ) -> Row {
+        selected = source_tags(tags if tags is not None else []);
         inc = keywords(include_keywords if include_keywords is not None else []);
         exc = keywords(exclude_keywords if exclude_keywords is not None else []);
         if not remote_id
@@ -339,6 +353,10 @@ obj PersonalStore {
                     )
                 );
                 sid = int(cur.lastrowid or 0);
+                await self._run(
+                    "INSERT INTO personal_source_tags(source_id,tags) VALUES (?,?)",
+                    (sid, json.dumps(selected))
+                );
                 await self.db.commit();
             } except aiosqlite.IntegrityError {
                 await self.db.rollback();
@@ -349,7 +367,13 @@ obj PersonalStore {
     }
 
     async def update_source(user_id: int, source_id: int, changes: Row) -> Row {
-        allowed = ["enabled", "alerts_enabled", "include_keywords", "exclude_keywords"];
+        allowed = [
+            "tags",
+            "enabled",
+            "alerts_enabled",
+            "include_keywords",
+            "exclude_keywords"
+        ];
         if not changes or any(k not in allowed for k in changes) {
             raise ValueError("Unsupported source setting");
         }
@@ -360,6 +384,7 @@ obj PersonalStore {
         }
         async with self._lock {
             source = await self.get_source(user_id, source_id);
+            selected = source_tags(changes.get("tags", source["tags"]));
             inc = keywords(changes.get("include_keywords", source["include_keywords"]));
             exc = keywords(changes.get("exclude_keywords", source["exclude_keywords"]));
             enabled = bool(changes.get("enabled", source["enabled"]));
@@ -373,6 +398,7 @@ obj PersonalStore {
             floor = source["alert_after_id"];
             if resumed
                 or alerts != bool(source["alerts_enabled"])
+                or selected != source["tags"]
                 or inc != source["include_keywords"]
                 or exc != source["exclude_keywords"] {
                 floor = await self.notification_head(user_id);
@@ -394,6 +420,12 @@ obj PersonalStore {
                     user_id
                 )
             );
+            if selected != source["tags"] {
+                await self._run(
+                    "INSERT INTO personal_source_tags(source_id,tags) VALUES (?,?) ON CONFLICT(source_id) DO UPDATE SET tags=excluded.tags",
+                    (source_id, json.dumps(selected))
+                );
+            }
             await self.db.commit();
         }
         return await self.get_source(user_id, source_id);
@@ -412,7 +444,7 @@ obj PersonalStore {
 
     async def active_sources -> list[Row] {
         rows = await self._all(
-            "SELECT s.*,c.provider,c.revision AS connection_revision,c.status AS connection_status,c.daily_limit FROM personal_sources s JOIN personal_connections c ON c.id=s.connection_id WHERE s.deleted_at IS NULL AND c.deleted_at IS NULL AND s.enabled=1 AND c.status NOT IN ('needs_reconnect','disconnected') AND s.next_poll_at<=? AND c.retry_at<=? ORDER BY s.next_poll_at,s.id",
+            "SELECT s.*,(SELECT t.tags FROM personal_source_tags t WHERE t.source_id=s.id) AS tags_json,c.provider,c.revision AS connection_revision,c.status AS connection_status,c.daily_limit FROM personal_sources s JOIN personal_connections c ON c.id=s.connection_id WHERE s.deleted_at IS NULL AND c.deleted_at IS NULL AND s.enabled=1 AND c.status NOT IN ('needs_reconnect','disconnected') AND s.next_poll_at<=? AND c.retry_at<=? ORDER BY s.next_poll_at,s.id",
             (iso(utcnow()), iso(utcnow()))
         );
         return [self._source(r) for r in rows];
@@ -468,7 +500,7 @@ obj PersonalStore {
         source_id: int, source_revision: int | None, connection_revision: int | None
     ) -> Row | None {
         row = await self._one(
-            "SELECT s.*,c.provider,c.revision AS connection_revision FROM personal_sources s JOIN personal_connections c ON c.id=s.connection_id WHERE s.id=? AND s.enabled=1 AND s.deleted_at IS NULL AND c.deleted_at IS NULL AND c.status NOT IN ('needs_reconnect','disconnected')",
+            "SELECT s.*,(SELECT t.tags FROM personal_source_tags t WHERE t.source_id=s.id) AS tags_json,c.provider,c.revision AS connection_revision FROM personal_sources s JOIN personal_connections c ON c.id=s.connection_id WHERE s.id=? AND s.enabled=1 AND s.deleted_at IS NULL AND c.deleted_at IS NULL AND c.status NOT IN ('needs_reconnect','disconnected')",
             (source_id, )
         );
         if row is None {
@@ -578,6 +610,11 @@ obj PersonalStore {
             silent = initial or not source["initialized"];
             inc = json.loads(source["include_keywords"]);
             exc = json.loads(source["exclude_keywords"]);
+            selected = await self._all(
+                "SELECT category FROM news_feed_categories WHERE user_id=?",
+                (source["user_id"], )
+            );
+            allowed_sections = [row["category"] for row in selected];
             now = iso(utcnow());
             try {
                 for item in items {
@@ -586,7 +623,7 @@ obj PersonalStore {
                         continue;
                     }
                     old = await self._one(
-                        "SELECT id FROM personal_items WHERE source_id=? AND external_id=?",
+                        "SELECT id,title,text,url FROM personal_items WHERE source_id=? AND external_id=?",
                         (source_id, ext)
                     );
                     title = str(item.get("title", ""))[:500];
@@ -596,6 +633,23 @@ obj PersonalStore {
                         url = "";
                     }
                     if old {
+                        if (title, body, url)
+                            == (old["title"], old["text"], old["url"]) {
+                            continue;
+                        }
+                        previous = await self._one(
+                            "SELECT title,body FROM personal_developments WHERE item_id=? ORDER BY id DESC LIMIT 1",
+                            (old["id"], )
+                        );
+                        if previous
+                            and story_text.meaningful_change(
+                                previous["title"], previous["body"], title, body
+                            ) {
+                            await self._run(
+                                "INSERT INTO personal_developments(user_id,item_id,kind,observed_at,title,body,url) VALUES (?,?,'updated',?,?,?,?)",
+                                (source["user_id"], old["id"], now, title, body, url)
+                            );
+                        }
                         await self._run(
                             "UPDATE personal_items SET title=?,text=?,url=? WHERE id=?",
                             (title, body, url, old["id"])
@@ -618,7 +672,14 @@ obj PersonalStore {
                     content = (title + " " + body).lower();
                     matches = (not inc or any(k in content for k in inc))
                         and not any(k in content for k in exc);
-                    if not silent and source["alerts_enabled"] and matches {
+                    if not silent
+                        and source["alerts_enabled"]
+                        and matches
+                        and (
+                            not allowed_sections
+                            or coverage.item_section(title, body, source["tags_json"])
+                                in allowed_sections
+                        ) {
                         await self._run(
                             "INSERT INTO personal_notifications(user_id,item_id,source_id,created_at) VALUES (?,?,?,?)",
                             (source["user_id"], cur.lastrowid, source_id, now)
@@ -638,21 +699,29 @@ obj PersonalStore {
     }
 
     async def feed(user_id: int, after: int = 0, limit: int = 100) -> list[Row] {
-        return await self._all(
-            "SELECT i.*,s.name AS source_name,c.provider FROM personal_items i JOIN personal_sources s ON s.id=i.source_id JOIN personal_connections c ON c.id=s.connection_id WHERE i.user_id=? AND s.deleted_at IS NULL AND c.deleted_at IS NULL AND i.id>? ORDER BY i.posted_at DESC,i.id DESC LIMIT ?",
-            (user_id, max(0, after), min(200, max(1, limit)))
+        rows = await self._all(
+            coverage.PRIVATE_FEED, (user_id, max(0, after), min(200, max(1, limit)))
         );
+        return [coverage.present(row) for row in rows];
+    }
+
+    async def feed_for_following(
+        user_id: int, categories: list[str], limit: int = 200
+    ) -> list[Row] {
+        selected = json.dumps(categories);
+        rows = await self._all(
+            coverage.FOLLOWING, (user_id, selected, selected, min(200, max(1, limit)))
+        );
+        return [coverage.for_following(row) for row in rows];
     }
 
     async def notifications_since(
         user_id: int, since: int = 0, limit: int = 100
     ) -> list[Row] {
-        return await self._all(
-            "SELECT i.*,n.id AS notification_id,'SOURCE_POST' AS kind,s.name AS source_name,c.provider FROM personal_notifications n JOIN personal_items i ON i.id=n.item_id JOIN personal_sources s ON s.id=n.source_id JOIN personal_connections c ON c.id=s.connection_id WHERE n.user_id=? AND n.id>? AND "
-                + PERSONAL_ALERT_ELIGIBILITY
-                + " ORDER BY n.id ASC LIMIT ?",
-            (user_id, max(0, since), min(200, max(1, limit)))
+        rows = await self._all(
+            coverage.NOTIFICATIONS, (user_id, max(0, since), min(200, max(1, limit)))
         );
+        return [coverage.present(row) for row in rows];
     }
 
     async def notification_head(user_id: int) -> int {

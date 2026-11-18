@@ -1,8 +1,8 @@
 {
-  "name": "newsbot-desktop",
+  "name": "newsdrop-desktop",
   "private": true,
   "version": "0.1.0",
-  "description": "Tauri desktop window for the NewsBot / newsstream service",
+  "description": "Tauri desktop window for the NewsDrop service",
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",

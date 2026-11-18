@@ -1,6 +1,6 @@
-//! NewsBot desktop window.
+//! NewsDrop desktop window.
 //!
-//! Starts the existing newsstream service (`jac run` in the repository root),
+//! Starts the existing NewsDrop service (`jac run` in the repository root),
 //! waits for it to listen, and shows its page in a native window. Quitting the
 //! window stops the service it started. If a service is already listening on
 //! the configured port, the window reuses it and leaves it running on quit.
@@ -306,9 +306,9 @@ fn connect(app: tauri::AppHandle, root: PathBuf, host: String, port: u16) {
         if !root.join("jac.toml").is_file() {
             show_error(
                 &window,
-                "NewsBot folder not found",
+                "NewsDrop folder not found",
                 &format!(
-                    "No jac.toml in {}.\nSet NEWSBOT_ROOT to the NewsBot folder.",
+                    "No jac.toml in {}.\nSet NEWSBOT_ROOT to the NewsDrop folder.",
                     root.display()
                 ),
             );
@@ -342,7 +342,7 @@ fn connect(app: tauri::AppHandle, root: PathBuf, host: String, port: u16) {
             if let Some(status) = exited {
                 show_error(
                     &window,
-                    &format!("NewsBot stopped while starting ({status})"),
+                    &format!("NewsDrop stopped while starting ({status})"),
                     &format!("{}\n\nFull log: {}", last_lines(&log_path, 25), log_path.display()),
                 );
                 return;
@@ -350,7 +350,7 @@ fn connect(app: tauri::AppHandle, root: PathBuf, host: String, port: u16) {
             if Instant::now() > deadline {
                 show_error(
                     &window,
-                    "NewsBot is taking too long to start",
+                    "NewsDrop is taking too long to start",
                     &format!("{}\n\nFull log: {}", last_lines(&log_path, 25), log_path.display()),
                 );
                 return;
@@ -430,7 +430,7 @@ fn main() {
             app.add_capability(service_notifications(&host, port, remote.as_ref()))?;
             let window_remote = remote.clone();
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                .title("NewsBot")
+                .title("NewsDrop")
                 .inner_size(1280.0, 860.0)
                 .min_inner_size(720.0, 480.0)
                 .on_navigation(move |url| {
@@ -453,7 +453,7 @@ fn main() {
             Ok(())
         })
         .build(tauri::generate_context!())
-        .expect("error while building the NewsBot window");
+        .expect("error while building the NewsDrop window");
 
     // The service runs in its own process group, so a terminal's Ctrl+C does
     // not reach it; exit through Tauri instead so RunEvent::Exit stops it.

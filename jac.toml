@@ -1,7 +1,7 @@
 [project]
-name = "newsstream"
+name = "newsdrop"
 version = "0.1.0"
-description = "Agentic financial news monitor: watches OSINT accounts, classifies materiality for crude oil, surfaces events in seconds"
+description = "Community news channels and market intelligence across eight sectors"
 default-app = "server"
 
 # `jac run` starts the FastAPI service (app.jac). `jac build web` compiles the
@@ -21,7 +21,7 @@ kind = "cli"
 entry-point = "replay"
 
 # `jac run fake_tweets` injects five test tweets through a fake twitterapi.io
-# into an isolated NewsBot (see fake_tweets.jac).
+# into an isolated NewsDrop (see fake_tweets.jac).
 [apps.fake_tweets]
 kind = "cli"
 entry-point = "fake_tweets"
@@ -57,7 +57,7 @@ vite = "^6.4.1"
 "@vitejs/plugin-react" = "^4.7.0"
 
 [client.app_meta_data]
-title = "newsstream"
+title = "NewsDrop"
 
 [test]
 directories = ["tests"]

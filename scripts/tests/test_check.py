@@ -28,12 +28,17 @@ class CheckTest(unittest.TestCase):
             with patch.object(check, "ROOT", root), patch.object(check, "jac_binary", return_value="jac"), patch.object(sys, "argv", ["check.py"]), patch.dict(os.environ, {"ANTHROPIC_API_KEY": "do-not-use", "TRIAGE_MODEL": "custom-model"}), patch.object(check.subprocess, "run") as run, contextlib.redirect_stdout(io.StringIO()):
                 check.main()
             commands = [c.args[0] for c in run.call_args_list]
-            self.assertEqual(commands[1:], [["jac", "fmt", "--check", "main.jac", "adapters", "db", "personal", "pipeline", "tests", "web"], ["jac", "check"], ["jac", "test"], ["jac", "build", "web"]])
+            self.assertEqual(commands[1:], [["jac", "fmt", "--check", "main.jac", "adapters", "db", "personal", "pipeline", "publicnews", "pwa", "tests", "web"], ["jac", "check"], ["jac", "test"], [str(root / ".jac/venv/bin/python"), "-m", "unittest", "discover", "-s", "tests", "-p", "pwa_transport_test.py"], ["node", "--test", "tests/pwa_worker_test.cjs"], ["jac", "build", "web"]])
             for call in run.call_args_list:
                 env = call.kwargs["env"]
                 self.assertEqual(env["ANTHROPIC_API_KEY"], "")
                 self.assertEqual(env["TRIAGE_MODEL"], "")
                 self.assertEqual(env["NEWSBOT_CONNECTION_KEY"], "")
+                self.assertEqual(env["NEWSSTREAM_PUBLIC_RSS"], "0")
+                self.assertEqual(env["NEWSSTREAM_SUMMARY_PROVIDER"], "disabled")
+                self.assertEqual(env["NEWSSTREAM_SUMMARY_API_KEY"], "")
+                self.assertEqual(env["NEWSSTREAM_SUMMARY_BASE_URL"], "")
+                self.assertEqual(env["NEWSSTREAM_TELEGRAM_WEBHOOK_SECRET"], "")
                 self.assertEqual(env["JAC_TEST_JOBS"], "0")
                 self.assertEqual(env["NEWSSTREAM_CASSETTE_MODE"], "replay")
 

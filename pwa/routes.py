@@ -1,4 +1,4 @@
-"""NewsStream's same-origin PWA assets and session-authenticated API."""
+"""NewsDrop's same-origin PWA assets and session-authenticated API."""
 
 import asyncio
 import hashlib
@@ -18,7 +18,7 @@ from .transport import WebPush, browser_key, decode, endpoint_url
 ASSETS = Path(__file__).with_name("assets")
 ICON_512 = ASSETS.parents[1] / "desktop" / "src-tauri" / "icons" / "icon.png"
 HEAD = """
-    <meta name="theme-color" content="#0e1116">
+    <meta name="theme-color" content="#232323">
     <link rel="manifest" href="/pwa/manifest.webmanifest">
     <link rel="apple-touch-icon" href="/pwa/icon-192.png">
     <link rel="stylesheet" href="/pwa/controls.css">
