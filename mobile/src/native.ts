@@ -40,10 +40,10 @@ export const subscription = new Subscription({
     }
     return allowed();
   },
-  pushToken: async () => {
+  pushToken: async devicePushToken => {
     const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
     if (!projectId) throw new Error('This build needs an Expo EAS project ID. See mobile/README.md.');
-    return (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    return (await Notifications.getExpoPushTokenAsync({ projectId, devicePushToken })).data;
   },
   update: async value => {
     const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '');

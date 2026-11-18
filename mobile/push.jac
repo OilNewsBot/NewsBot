@@ -49,10 +49,17 @@ obj PushService {
 
     async def initialize {
         await self.repo.db.executescript(SCHEMA);
+        # Upgrade disabled registrations from versions that kept their old token.
+        await self.repo._run(
+            "UPDATE mobile_subscriptions SET token=NULL WHERE enabled=0 AND token IS NOT NULL"
+        );
         await self.repo.db.commit();
     }
 
     async def subscribe(device_id: str, token: str | None, enabled: bool) {
+        if not enabled {
+            token = None;
+        }
         # A token belongs to one installation. Knowing somebody else's Expo
         # token is insufficient to modify or disable their subscription.
         owner = await self.repo._one(
@@ -67,7 +74,7 @@ obj PushService {
             """INSERT INTO mobile_subscriptions (device_id, token, enabled, since_id)
                VALUES (?, ?, ?, (SELECT COALESCE(MAX(id), 0) FROM notifications))
                ON CONFLICT(device_id) DO UPDATE SET
-                 token = COALESCE(excluded.token, mobile_subscriptions.token),
+                 token = excluded.token,
                  enabled = excluded.enabled,
                  since_id = CASE WHEN mobile_subscriptions.enabled = 0 OR excluded.enabled = 0
                    THEN excluded.since_id ELSE mobile_subscriptions.since_id END""",
@@ -78,7 +85,7 @@ obj PushService {
 
     async def invalidate(row: Row) {
         await self.repo._run(
-            "UPDATE mobile_subscriptions SET enabled = 0 WHERE device_id = ? AND token = ?",
+            "UPDATE mobile_subscriptions SET enabled = 0, token = NULL WHERE device_id = ? AND token = ?",
             (row["device_id"], row["token"])
         );
         await self.repo.db.commit();

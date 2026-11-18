@@ -60,10 +60,13 @@ test("worker fetches navigations without caching and leaves API and SSE alone", 
     assert.equal(event("fetch", { request: { mode: "cors", url: "https://example.test/api/me/feed" } }), undefined);
     assert.equal(event("fetch", { request: { mode: "cors", url: "https://example.test/api/me/stream" } }), undefined);
     const page = await event("fetch", {
-        request: { mode: "navigate", url: "https://example.test/sources" },
+        request: { mode: "navigate", url: "https://example.test/following?sector=energy" },
     });
     assert.equal(page.status, 503);
-    assert.match(await page.text(), /NewsDrop is offline/);
+    const html = await page.text();
+    assert.match(html, /NewsDrop is offline/);
+    const original = "https://example.test/following?sector=energy";
+    assert.equal(new URL(html.match(/href="([^"]*)"/)[1], original).href, original);
 });
 
 test("worker shows a generic notice and rechecks ownership when clicked", async () => {
