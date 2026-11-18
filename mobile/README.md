@@ -116,6 +116,14 @@ signing, distribution, and build costs depend on your accounts/plans.
 - A small receipt check handles invalid tokens, including errors received after
   submission. Old-token errors cannot disable a replacement token. Receipt success
   is provider acceptance, not proof of phone display. See [Expo delivery semantics](https://docs.expo.dev/push-notifications/sending-notifications/).
+- Disabling releases the device's token so a subsequent installation can register
+  it. An active token stays bound to its current installation. The app checks
+  token changes on resume and retries pending synchronization every 30 seconds
+  while active. An unchanged, synced phone sends no repeat registration. Turning
+  notifications off interrupts a pending Expo token lookup. If foreground ID
+  storage temporarily fails, an alert may still appear once in the running app.
+  The next delivery retries saving the ID history. A restart before storage recovers
+  can lose this in-memory duplicate history.
 - Offline toggle changes show **sync pending** and retry while the app is active
   or on resume. Until disable reaches the server, closed-app alerts may continue;
   phone Settings can block them immediately. Already submitted pushes cannot be
