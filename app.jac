@@ -398,6 +398,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         return RedirectResponse("/");
     }
 
+    @app.get("/login")
     @app.get("/sources")
     @app.get("/discover")
     @app.get("/following")

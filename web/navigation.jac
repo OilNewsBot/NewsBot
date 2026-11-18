@@ -1,5 +1,6 @@
 """Navigation shared by public pages and the private workspace."""
 
+import from .auth { AuthPanel }
 import from .channel_alerts { ChannelAlerts }
 import from react { useEffect, useRef }
 
@@ -120,6 +121,7 @@ def:pub Navigation(active: str) -> JsxElement {
             />
             <ChannelAlerts/>
         </div>
+        <AuthPanel navigation={True}/>
         <button
             className="site-nav-collapse"
             type="button"

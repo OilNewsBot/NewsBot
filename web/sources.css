@@ -365,3 +365,8 @@
     font-size: 16px;
     line-height: 1.5;
 }
+.ps-grid { margin-bottom: 22px; }
+.ps-sources-empty { align-items: flex-start; min-height: 0; padding: 18px 28px; text-align: left; }
+.ps-sources-empty p { color: var(--dim); font-size: 14px; }
+.ps-grid .ps-sources-heading .ps-small-button { background: var(--accent); color: var(--accent-ink); min-height: 36px; padding: 8px 14px; }
+.ps-grid .ps-sources-heading .ps-small-button:hover { background: var(--accent); color: var(--accent-ink); }

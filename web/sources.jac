@@ -1,7 +1,7 @@
 """Account-owned source settings, feed, and live notifications at /sources."""
 
 import "./sources.css";
-import from react { useEffect }
+import from react { useEffect, useRef }
 import from .auth { SESSION_EVENT }
 import from .sector_tags { SectorPicker, SectorTags }
 import from .publishing { PublishingPanel }
@@ -354,6 +354,8 @@ def FeedItem(item: any) -> JsxElement {
 }
 
 def:pub SourcesPage -> JsxElement {
+    sourceField: any = useRef(None);
+    serviceField: any = useRef(None);
     has user: any = None,
         connections: list[any] = [],
         sources: list[any] = [],
@@ -362,6 +364,9 @@ def:pub SourcesPage -> JsxElement {
         loaded: bool = False,
         busy: bool = False,
         error: str = "",
+        formError: str = "",
+        errorFor: str = "",
+        sourceForm: bool = False,
         notice: str = "",
         connectionForm: bool = False,
         provider: str = "rss",
@@ -421,6 +426,9 @@ def:pub SourcesPage -> JsxElement {
         screenHint = "";
         error = "";
         notice = "";
+        formError = "";
+        errorFor = "";
+        sourceForm = False;
         connectionForm = False;
     }
 
@@ -615,10 +623,12 @@ def:pub SourcesPage -> JsxElement {
         }
     }
 
-    async def mutate(path: str, method: str, body: any = None) -> bool {
+    async def mutate(path: str, method: str, body: any = None, field: str = "") -> any {
         epoch = _ps_epoch;
         _ps_refresh_revision += 1;
         busy = True;
+        formError = "";
+        errorFor = "";
         error = "";
         notice = "";
         response = await personal_request(path, method, body);
@@ -631,11 +641,16 @@ def:pub SourcesPage -> JsxElement {
             return False;
         }
         if not response.ok {
-            error = response.error;
-            return False;
+            if field {
+                formError = response.error;
+                errorFor = field;
+            } else {
+                error = response.error;
+            }
+            return None;
         }
         await refresh(epoch);
-        return epoch == _ps_epoch;
+        return response.data if epoch == _ps_epoch else None;
     }
 
     async def add_connection(e: any) {
@@ -649,10 +664,13 @@ def:pub SourcesPage -> JsxElement {
             body.daily_limit = int(dailyLimit);
         }
         apiKey = "";
-        if await mutate("/api/me/connections", "POST", body) {
+        result = await mutate("/api/me/connections", "POST", body, "connection");
+        if result {
+            selectedConnection = str(result.connection.id);
+            sourceForm = True;
             label = "";
             connectionForm = False;
-            notice = "Connection added. Choose a source to follow below.";
+            notice = "Connection added. Enter the feed URL or X account to follow.";
         }
     }
 
@@ -674,8 +692,10 @@ def:pub SourcesPage -> JsxElement {
                 "tags": newTags,
                 "include_keywords": keywords(newInclude),
                 "exclude_keywords": keywords(newExclude)
-            }
+            },
+            "source"
         ) {
+            sourceForm = False;
             locator = "";
             newTags = [];
             newInclude = "";
@@ -707,6 +727,28 @@ def:pub SourcesPage -> JsxElement {
             notice = "Key replaced. Collection will resume on the next check.";
         }
     }
+
+    def show_form(kind: str) {
+        formError = "";
+        errorFor = "";
+        notice = "";
+        apiKey = "";
+        if kind == "connection" or not len(connections) {
+            sourceForm = False;
+            connectionForm = not connectionForm;
+        } else {
+            connectionForm = False;
+            sourceForm = not sourceForm;
+        }
+    }
+    useEffect(
+        lambda { if sourceForm and sourceField.current {
+            sourceField.current.focus();
+        } elif connectionForm and serviceField.current {
+            serviceField.current.focus();
+        } },
+        [sourceForm, connectionForm]
+    );
 
     async def toggle_screen(e: any) {
         epoch = _ps_epoch;
@@ -780,88 +822,9 @@ def:pub SourcesPage -> JsxElement {
             {if notice {
                 <div className="ps-message ps-notice" role="status">{notice}</div>
             }}
-            {if not user {
-                <div className="ps-welcome">
-                    <h2>A news feed built around what you follow.</h2>
-                    <div className="ps-welcome-steps">
-                        <div>
-                            <span>01</span>
-                            <strong>Connect a service</strong>
-                            <p>RSS needs a feed link. X uses your TwitterAPI.io key.</p>
-                        </div>
-                        <div>
-                            <span>02</span>
-                            <strong>Pick your sources</strong>
-                            <p>Follow accounts and feeds covering any topic.</p>
-                        </div>
-                        <div>
-                            <span>03</span>
-                            <strong>Set your alerts</strong>
-                            <p>Choose keywords, mute a source, or keep every update.</p>
-                        </div>
-                    </div>
-                </div>
+            {if not user or not loaded {
+                <p role="status">Loading your sources…</p>
             } else {
-                <p className="ps-follow-link">
-                    <a href="/following">Open Following →</a>{" "}
-                    to read across your sources, choose categories, and manage channel alerts.
-                </p>
-                <PublishingPanel
-                    key={user.user_id}
-                    sources={sources}
-                    feed={feed}
-                    request={personal_request}
-                />
-                <div className="ps-overview">
-                    <div className="ps-stat">
-                        <span className="ps-stat-icon">
-                            <svg
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.8"
-                                strokeLinecap="round"
-                                aria-hidden="true"
-                            >
-                                <path d="M4 11a9 9 0 0 1 9 9"/>
-                                <path d="M4 4a16 16 0 0 1 16 16"/>
-                                <circle
-                                    cx="5"
-                                    cy="19"
-                                    r="1"
-                                    fill="currentColor"
-                                    stroke="none"
-                                />
-                            </svg>
-                        </span>
-                        <strong>{len(connections)}</strong>
-                        <span>Connected services</span>
-                    </div>
-                    <div className="ps-stat">
-                        <span className="ps-stat-icon">
-                            <svg
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.8"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                aria-hidden="true"
-                            >
-                                <path
-                                    d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"
-                                />
-                                <path d="M10 21h4"/>
-                            </svg>
-                        </span>
-                        <strong>{len(sources)}</strong>
-                        <span>Followed sources</span>
-                    </div>
-                </div>
                 <div className="ps-grid">
                     <aside className="ps-settings">
                         <div className="ps-sources-heading">
@@ -869,25 +832,153 @@ def:pub SourcesPage -> JsxElement {
                             <button
                                 type="button"
                                 className="ps-small-button"
-                                onClick={lambda {
-                                    connectionForm = not connectionForm;
-                                    apiKey = "";
-                                }}
+                                onClick={lambda { show_form("source"); }}
+                                disabled={busy or not loaded}
+                                aria-expanded={sourceForm
+                                    or (not len(connections) and connectionForm)}
                             >
-                                {"Cancel" if connectionForm else "+ Add source"}
+                                {"Cancel"
+                                    if sourceForm
+                                        or (not len(connections) and connectionForm)
+                                    else "+ Add source"}
                             </button>
                         </div>
                         {if not len(connections)
                             and not len(sources)
                             and not connectionForm {
                             <div className="ps-sources-empty">
-                                <span className="ps-sources-empty-icon">{"◉"}</span>
-                                <p>Connect your first feed to get started.</p>
+                                <p>
+                                    Add your first RSS feed or X account. Choose a service, then enter the source you want to follow.
+                                </p>
                             </div>
                         } else {
+                            if len(connections) or len(sources) {
+                                <section className="ps-panel">
+                                    <div className="ps-section-heading">
+                                        <h2>Followed sources</h2>
+                                        <span className="ps-count">{len(sources)}</span>
+                                    </div>
+                                    {if sourceForm and len(connections) {
+                                        <form
+                                            className="ps-form ps-add-source"
+                                            onSubmit={add_source}
+                                        >
+                                            <h3>Add a source</h3>
+                                            <label>
+                                                Connection
+                                                <select
+                                                    value={selectedConnection
+                                                        or str(connections[0].id)}
+                                                    onChange={lambda (e: any) { selectedConnection = e.target.value; }}
+                                                >
+                                                    {for connection in connections {
+                                                        <option
+                                                            key={connection.id}
+                                                            value={str(connection.id)}
+                                                        >
+                                                            {connection.label}
+                                                        </option>
+                                                    }}
+                                                </select>
+                                            </label>
+                                            <label>
+                                                Feed URL or X account
+                                                <input
+                                                    ref={sourceField}
+                                                    value={locator}
+                                                    required
+                                                    maxLength={2048}
+                                                    placeholder="https://example.com/feed or @account"
+                                                    onChange={lambda (e: any) { locator = e.target.value; }}
+                                                />
+                                            </label>
+                                            <SectorPicker
+                                                selected={newTags}
+                                                label="Category tags"
+                                                onChange={lambda (values: any) { newTags = values; }}
+                                            />
+                                            <details className="ps-filters">
+                                                <summary>
+                                                    Optional alert keywords
+                                                </summary>
+                                                <label>
+                                                    Include keywords
+                                                    <input
+                                                        value={newInclude}
+                                                        maxLength={1000}
+                                                        placeholder="earnings, technology"
+                                                        onChange={lambda (e: any) { newInclude = e.target.value; }}
+                                                    />
+                                                </label>
+                                                <label>
+                                                    Exclude keywords
+                                                    <input
+                                                        value={newExclude}
+                                                        maxLength={1000}
+                                                        placeholder="promotion"
+                                                        onChange={lambda (e: any) { newExclude = e.target.value; }}
+                                                    />
+                                                </label>
+                                                <p className="ps-help">
+                                                    Separate keywords with commas. These filter alerts; your feed keeps all collected posts.
+                                                </p>
+                                            </details>
+                                            <label className="ps-toggle">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={newAlerts}
+                                                    onChange={lambda (e: any) { newAlerts = e.target.checked; }}
+                                                />{" "}
+                                                Notify me about new posts
+                                            </label>
+                                            {if formError and errorFor == "source" {
+                                                <p
+                                                    className="ps-inline-error"
+                                                    role="alert"
+                                                >
+                                                    {formError}
+                                                </p>
+                                            }}
+                                            <button type="submit" disabled={busy}>
+                                                {"Adding…" if busy else "Follow source"}
+                                            </button>
+                                        </form>
+                                    }}
+                                    {for source in sources {
+                                        <SourceCard
+                                            key={str(_ps_user_id)
+                                                + ":"
+                                                + str(source.id)}
+                                            source={source}
+                                            busy={busy}
+                                            onUpdate={update_source}
+                                            onRemove={remove_source}
+                                        />
+                                    }}
+                                    {if not len(sources) {
+                                        <p className="ps-empty-small">
+                                            Your followed accounts and feeds will appear here.
+                                        </p>
+                                    }}
+                                </section>
+                            }
                             <section className="ps-panel">
                                 <div className="ps-section-heading">
                                     <h2>Connections</h2>
+                                    {if len(connections) {
+                                        <button
+                                            type="button"
+                                            disabled={busy}
+                                            aria-expanded={connectionForm}
+                                            onClick={lambda { show_form(
+                                                "connection"
+                                            ); }}
+                                        >
+                                            {"Cancel"
+                                                if connectionForm
+                                                else "Add connection"}
+                                        </button>
+                                    }}
                                 </div>
                                 {for connection in connections {
                                     <ConnectionCard
@@ -905,9 +996,11 @@ def:pub SourcesPage -> JsxElement {
                                 }}
                                 {if connectionForm {
                                     <form className="ps-form" onSubmit={add_connection}>
+                                        <h3>Connect a service</h3>
                                         <label>
                                             Service
                                             <select
+                                                ref={serviceField}
                                                 value={provider}
                                                 onChange={lambda (e: any) {
                                                     provider = e.target.value;
@@ -960,105 +1053,15 @@ def:pub SourcesPage -> JsxElement {
                                                 No API key needed. Add public RSS or Atom links after connecting.
                                             </p>
                                         } }
+                                        {if formError and errorFor == "connection" {
+                                            <p className="ps-inline-error" role="alert">
+                                                {formError}
+                                            </p>
+                                        }}
                                         <button type="submit" disabled={busy}>
                                             {"Connecting…"
                                                 if busy
                                                 else "Add connection"}
-                                        </button>
-                                    </form>
-                                }}
-                            </section>
-                            <section className="ps-panel">
-                                <div className="ps-section-heading">
-                                    <h2>Private sources</h2>
-                                    <span className="ps-count">{len(sources)}</span>
-                                </div>
-                                {for source in sources {
-                                    <SourceCard
-                                        key={str(_ps_user_id) + ":" + str(source.id)}
-                                        source={source}
-                                        busy={busy}
-                                        onUpdate={update_source}
-                                        onRemove={remove_source}
-                                    />
-                                }}
-                                {if not len(sources) {
-                                    <p className="ps-empty-small">
-                                        Your followed accounts and feeds will appear here.
-                                    </p>
-                                }}
-                                {if len(connections) {
-                                    <form
-                                        className="ps-form ps-add-source"
-                                        onSubmit={add_source}
-                                    >
-                                        <h3>Add a source</h3>
-                                        <label>
-                                            Connection
-                                            <select
-                                                value={selectedConnection
-                                                    or str(connections[0].id)}
-                                                onChange={lambda (e: any) { selectedConnection = e.target.value; }}
-                                            >
-                                                {for connection in connections {
-                                                    <option
-                                                        key={connection.id}
-                                                        value={str(connection.id)}
-                                                    >
-                                                        {connection.label}
-                                                    </option>
-                                                }}
-                                            </select>
-                                        </label>
-                                        <label>
-                                            Feed URL or X account
-                                            <input
-                                                value={locator}
-                                                required
-                                                maxLength={2048}
-                                                placeholder="https://example.com/feed or @account"
-                                                onChange={lambda (e: any) { locator = e.target.value; }}
-                                            />
-                                        </label>
-                                        <SectorPicker
-                                            selected={newTags}
-                                            label="Category tags"
-                                            onChange={lambda (values: any) { newTags = values; }}
-                                        />
-                                        <details className="ps-filters">
-                                            <summary>Optional alert keywords</summary>
-                                            <label>
-                                                Include keywords
-                                                <input
-                                                    value={newInclude}
-                                                    maxLength={1000}
-                                                    placeholder="earnings, technology"
-                                                    onChange={lambda (e: any) { newInclude = e.target.value; }}
-                                                />
-                                            </label>
-                                            <label>
-                                                Exclude keywords
-                                                <input
-                                                    value={newExclude}
-                                                    maxLength={1000}
-                                                    placeholder="promotion"
-                                                    onChange={lambda (e: any) { newExclude = e.target.value; }}
-                                                />
-                                            </label>
-                                            <p className="ps-help">
-                                                Separate keywords with commas. These filter alerts; your feed keeps all collected posts.
-                                            </p>
-                                        </details>
-                                        <label className="ps-toggle">
-                                            <input
-                                                type="checkbox"
-                                                checked={newAlerts}
-                                                onChange={lambda (e: any) { newAlerts = e.target.checked; }}
-                                            />{" "}
-                                            Notify me about new posts
-                                        </label>
-                                        <button type="submit" disabled={busy}>
-                                            {"Adding…" if busy else "Follow source"}
                                         </button>
                                     </form>
                                 }}
@@ -1127,27 +1130,25 @@ def:pub SourcesPage -> JsxElement {
                         {for item in feed {
                             <FeedItem key={item.id} item={item}/>
                         }}
-                        {if not len(feed) {
+                        {if not len(feed) and len(sources) {
                             <div className="ps-feed-empty">
-                                <span className="ps-empty-icon">↗</span>
-                                <h3>
-                                    {"Your feed is ready for its first source"
-                                        if not len(sources)
-                                        else "Watching your sources"}
-                                </h3>
+                                <h3>Watching your sources</h3>
                                 <p>
-                                    {"Add an RSS feed or X account to start collecting news on any topic."
-                                        if not len(sources)
-                                        else (
-                                            "New posts will appear here after the next source check. Recent history loads without sending alerts."
-                                                if loaded
-                                                else "Loading your news…"
-                                        )}
+                                    New posts will appear after the next source check. Recent history loads without sending alerts.
                                 </p>
                             </div>
                         }}
                     </section>
                 </div>
+                <PublishingPanel
+                    key={user.user_id}
+                    sources={sources}
+                    feed={feed}
+                    request={personal_request}
+                />
+                <p className="ps-follow-link">
+                    <a href="/following">Open Following →</a>
+                </p>
             } }
         </main>
     </div>

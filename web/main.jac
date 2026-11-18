@@ -417,6 +417,36 @@ def:pub app -> JsxElement {
     );
     win: any = window;
     path = str(win.location.pathname);
+    useEffect(
+        lambda {
+            names: any = {
+                "/": "Home",
+                "/discover": "Discover",
+                "/following": "Following",
+                "/sources": "My Sources",
+                "/login": "Log in"
+            };
+            title = names[path]
+                or (
+                    "Story timeline"
+                        if path.startswith("/stories/")
+                        else ("Channel" if path.startswith("/channels/") else "Sector")
+                );
+            doc: any = document;
+            doc.title = title + " · NewsDrop";
+        },
+        [path]
+    );
+    if path == "/login" {
+        return
+            <div className="app-layout">
+                <Navigation active=""/>
+                <main className="locked">
+                    <h1>NewsDrop account</h1>
+                    <AuthPanel/>
+                </main>
+            </div>;
+    }
     if path == "/sources" {
         return <Workspace/>;
     }
@@ -477,7 +507,6 @@ def Workspace -> JsxElement {
     return
         <div className="app-layout">
             <Navigation active="sources"/>
-            <AuthPanel/>
             <SourcesPage/>
         </div>;
 }
