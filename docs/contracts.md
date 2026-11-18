@@ -80,6 +80,10 @@ The forum keeps `/oil` and `/trading` bookmarks pointed at Home. Its navigation 
 
 Adapters send `NormalizedPost` records to the asynchronous pipeline. The storage deduplication key is `(source, source_post_id)`. Each record includes the stable `account_id`, current `account_handle`, `tier`, `url`, `text`, optional `quoted_text`, `media_urls`, `is_reply`, and UTC-aware `posted_at` and `received_at`. The adapters filter replies during normal collection. The pipeline persists posts before classification, clusters accepted developments, stores the notification, then broadcasts its `notification_id` on the in-process event bus.
 
+Accepting an eligible market post commits its normalized source record and pending work together. The worker resumes pending inputs on startup, reuses existing final classifications when recovering an interrupted legacy result, and commits the decision, event membership and notification before broadcasting a card. Redelivery keeps the same post identity.
+
+For databases created before the durable queue, recovery retains completed outcomes. It uses the configured threshold to decide whether an unlinked, already classified post still needs an event. An existing origin or update link supplies the event identity for a missing notification. Historical repairs preserve stored event summaries and do not create trade suggestions.
+
 | Endpoint | Behavior |
 | --- | --- |
 | `GET /stream`, `GET /notifications?since=N` | Live market SSE cards use event type `notification` and the stored notification ID as the SSE ID, with heartbeat comments between events. Reconnect by fetching stored cards after the last notification ID in ascending order. |
