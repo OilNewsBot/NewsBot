@@ -160,6 +160,13 @@ separate setting; the page checkbox is the switch.
 The app gives the server's pages permission to show notifications and nothing
 else (see `service_notifications` in `src-tauri/src/main.rs`).
 
+## Demo builds for an audience (remote mode)
+
+Build with `NEWSBOT_URL=https://<server> npm run build` and the app becomes a
+thin client for that server: it starts and stops nothing locally and needs no
+NewsBot folder. Hosting the server from one Mac with Tailscale Funnel is
+covered in [docs/demo-hosting.md](../docs/demo-hosting.md).
+
 ## API keys and cost
 
 The app runs exactly what `jac run` runs. With no `.env` file, the X/Telegram
