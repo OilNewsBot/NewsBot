@@ -20,6 +20,8 @@ glob story_text: any = importlib.import_module("publicnews.storytext"),
      topic_rules: any = importlib.import_module("publicnews.topics"),
      coverage: any = importlib.import_module("personal.coverage");
 
+glob PERSONAL_ALERT_ELIGIBILITY: str = coverage.ALERT_ELIGIBILITY;
+
 def source_tags(value: any) -> list[str] {
     return topic_rules.categories(value) or ["general"];
 }

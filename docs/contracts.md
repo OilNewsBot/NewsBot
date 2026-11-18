@@ -70,6 +70,12 @@ Private connections, items, alerts and credentials belong to one account. The br
 | `POST /api/telegram/updates` | Telegram bot webhook. Authenticates the incoming request with the configured `X-Telegram-Bot-Api-Secret-Token` header. |
 | `POST /api/me/share-item` | Requires `confirmed: true`, a provider, an owned item ID and an owned matching API-channel slug. For Telegram, the reader supplies a title and selects an excerpt present in the original message. For X, the server retrieves the authorized record and validates its post URL. Returns the published `item`. |
 
+## Installed app and notifications
+
+The web manifest starts the installed NewsDrop app at `/sources`. The service worker provides an offline navigation page. The signed-in Web Push API under `/api/me/web-push` binds each subscription to its account session. Background alerts use the same private-source eligibility and sector filters as the in-page feed of alerts. Opening a notification rechecks the current session and preferences before navigating to its item. [Web Push controls and endpoints](pwa.md)
+
+The forum keeps `/oil` and `/trading` bookmarks pointed at Home. Its navigation exposes channel alerts, and My Sources exposes private-source alerts. The market API and Expo market notifications remain available to their existing clients.
+
 ## Market monitor and trading
 
 Adapters send `NormalizedPost` records to the asynchronous pipeline. The storage deduplication key is `(source, source_post_id)`. Each record includes the stable `account_id`, current `account_handle`, `tier`, `url`, `text`, optional `quoted_text`, `media_urls`, `is_reply`, and UTC-aware `posted_at` and `received_at`. The adapters filter replies during normal collection. The pipeline persists posts before classification, clusters accepted developments, stores the notification, then broadcasts its `notification_id` on the in-process event bus.

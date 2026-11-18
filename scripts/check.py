@@ -23,6 +23,7 @@ def main():
         "NEWSSTREAM_DEMO_RSS", "ANTHROPIC_API_KEY", "TELEGRAM_API_ID",
         "TELEGRAM_API_HASH", "TELEGRAM_BOT_TOKEN", "X_BEARER_TOKEN",
         "X_PUSH_API_KEY", "TRIAGE_MODEL", "REVIEW_MODEL", "TRADE_MODEL",
+        "NEWSBOT_PUBLIC_PWA", "NEWSBOT_VAPID_PRIVATE_KEY", "NEWSBOT_VAPID_SUBJECT",
         "NEWSBOT_CONNECTION_KEY", "NEWSSTREAM_TELEGRAM_WEBHOOK_SECRET",
         "NEWSSTREAM_TELEGRAM_BOT_USERNAME", "NEWSSTREAM_SUMMARY_MODEL",
         "NEWSSTREAM_SUMMARY_BASE_URL", "NEWSSTREAM_SUMMARY_API_KEY",
@@ -39,8 +40,12 @@ def main():
             raise RuntimeError("Recorded LLM fixtures must exist and be nonempty; do not silently skip behavior tests.")
         jac = jac_binary()
         # Explicit source paths avoid formatting installed packages under .jac/.
-        sources = sorted(p.name for p in ROOT.glob("*.jac") if p.is_file()) + ["adapters", "db", "personal", "pipeline", "publicnews", "tests", "web"]
-        commands += [[jac, "fmt", "--check", *sources], [jac, "check"], [jac, "test"], [jac, "build", "web"]]
+        sources = sorted(p.name for p in ROOT.glob("*.jac") if p.is_file()) + ["adapters", "db", "personal", "pipeline", "publicnews", "pwa", "tests", "web"]
+        commands += [
+            [jac, "fmt", "--check", *sources], [jac, "check"], [jac, "test"],
+            [str(ROOT / ".jac/venv/bin/python"), "-m", "unittest", "discover", "-s", "tests", "-p", "pwa_transport_test.py"],
+            ["node", "--test", "tests/pwa_worker_test.cjs"], [jac, "build", "web"],
+        ]
     for command in commands:
         print("+ " + " ".join(command), flush=True)
         subprocess.run(command, cwd=ROOT, env=env, check=True)

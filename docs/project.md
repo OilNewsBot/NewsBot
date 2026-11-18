@@ -52,7 +52,7 @@ Private items and developments retain the account owner in the `personal_*` tabl
 | `personal/` | Keep private connections, collection, notifications and story timelines scoped to their owner. Publishing copies only the selected material into a matching public channel. |
 | `web/` | Jac web client for the briefing, directory, Following, My Sources, discussions and watch controls. |
 | `adapters/`, `pipeline/`, `db/repo.jac` | Process configured market-monitoring accounts, classify and cluster posts, and produce event notifications, quotes and trade suggestions for the supported instruments. The operator portfolio is manually maintained. |
-| `desktop/`, `mobile/` | The Tauri window uses the local web service. The Expo client consumes market-event notifications. |
+| `desktop/`, `mobile/` | The Tauri window starts or reuses a local service, or opens a shared server with `NEWSBOT_URL`. The Expo client consumes market-event notifications. The installable web app opens My Sources and delivers opt-in personal Web Push. [PWA guide](pwa.md) · [Hosted desktop demo](demo-hosting.md) |
 
 ## Running the service
 

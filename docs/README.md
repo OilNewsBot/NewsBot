@@ -24,3 +24,5 @@
 | --- | --- |
 | [Architecture](project.md) | The web client, authentication, SQLite storage, collection, story updates and per-account visit tracking |
 | [API contracts](contracts.md) | Public, account-owned and administrative endpoints, source data, event streams and cursors |
+
+For installation, offline behavior and account-scoped browser alerts, see the [PWA guide](pwa.md). For a shared desktop demo, see the [hosting guide](demo-hosting.md).

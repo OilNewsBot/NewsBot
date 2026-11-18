@@ -1,0 +1,22 @@
+newsstream-pwa:not(:empty) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    width: 100%;
+    color: var(--muted);
+    font-size: .85rem;
+}
+
+newsstream-pwa [hidden] {
+    display: none;
+}
+
+newsstream-pwa button {
+    min-height: 44px;
+}
+
+.ps-feed-item:target {
+    outline: 2px solid currentColor;
+    outline-offset: -2px;
+}

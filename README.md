@@ -13,7 +13,7 @@ The directory starts with **42 channels** across eight sectors and General News.
 
 ## Run locally
 
-Run these commands from your `feature-overhaul` checkout on Linux or an Apple Silicon Mac. For a fresh checkout, use `git clone --branch feature-overhaul --single-branch https://github.com/OilNewsBot/NewsBot.git NewsDrop` and open the resulting `NewsDrop` directory.
+Run these commands from your NewsDrop checkout on Linux or an Apple Silicon Mac. For a fresh checkout, use `git clone https://github.com/OilNewsBot/NewsBot.git NewsDrop` and open the resulting `NewsDrop` directory.
 
 ```sh
 python3 scripts/bootstrap.py

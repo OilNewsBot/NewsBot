@@ -34,6 +34,17 @@ async function check() {
             return route.fulfill({status: 401, json: {detail: "Signed out"}});
         });
         await page.goto("http://newsstream.test/discover");
+        const sidebar = page.getByRole("navigation", {name: "Main navigation"});
+        const resizer = sidebar.getByRole("separator", {name: "Resize sidebar"});
+        await resizer.press("End");
+        await page.waitForFunction(() => document.querySelector(".site-nav").offsetWidth === 420);
+        await sidebar.getByRole("button", {name: "Collapse sidebar"}).click();
+        await resizer.waitFor({state: "hidden"});
+        await sidebar.getByRole("button", {name: "Expand sidebar"}).click();
+        await page.reload();
+        await page.waitForFunction(() => document.querySelector(".site-nav").offsetWidth === 420);
+        await resizer.dblclick();
+        await page.waitForFunction(() => document.querySelector(".site-nav").offsetWidth === 200);
         const panel = page.getByRole("complementary", {name: "Reading insights"});
         const toggle = page.getByRole("button", {name: "Insights", exact: true});
         await panel.waitFor();

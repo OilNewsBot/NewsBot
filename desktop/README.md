@@ -45,6 +45,10 @@ cd desktop
 npm run dev
 ```
 
+## Connect to a shared server
+
+Set `NEWSBOT_URL` to the shared server’s HTTP or HTTPS origin when building the desktop app, or set it at launch to override the compiled value. The window connects to that server and leaves its lifecycle to the host. Desktop notifications work for that origin. [Hosted demo setup](../docs/demo-hosting.md)
+
 ## Notifications
 
 In **Following**, enable alerts on individual channels. Open **Channel alerts** in the navigation to read new alerts or turn on **Screen notifications on this device**. In **My Sources**, each private feed or account has its own **Alerts** switch. **Private source screen notifications** applies while My Sources is open in the background. The operating system must allow notifications from the app. On macOS a development run can appear under Terminal in notification settings.

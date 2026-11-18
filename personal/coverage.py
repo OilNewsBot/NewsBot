@@ -45,11 +45,12 @@ PRIVATE_FEED = f"SELECT {_COLUMNS} {_JOINS} WHERE {_OWNER} AND i.id>? {_ORDER}"
 FOLLOWING = f"""SELECT {_COLUMNS} {_JOINS} WHERE {_OWNER} AND s.enabled=1
     AND (?='[]' OR item_section(i.title,i.text,t.tags) IN (SELECT value FROM json_each(?)))
     {_ORDER}"""
+ALERT_ELIGIBILITY = """n.id>s.alert_after_id AND s.deleted_at IS NULL AND c.deleted_at IS NULL
+    AND s.enabled=1 AND s.alerts_enabled=1 AND c.status<>'disconnected'
+    AND (NOT EXISTS (SELECT 1 FROM news_feed_categories f WHERE f.user_id=i.user_id)
+      OR EXISTS (SELECT 1 FROM news_feed_categories f WHERE f.user_id=i.user_id
+                 AND f.category=item_section(i.title,i.text,t.tags)))"""
 NOTIFICATIONS = f"""SELECT {_COLUMNS}, n.id AS notification_id, 'SOURCE_POST' AS kind
     {_JOINS} JOIN personal_notifications n ON n.item_id=i.id AND n.user_id=i.user_id
-    WHERE {_OWNER} AND n.id>? AND n.id>s.alert_after_id AND s.enabled=1 AND s.alerts_enabled=1
-      AND c.status<>'disconnected'
-      AND (NOT EXISTS (SELECT 1 FROM news_feed_categories f WHERE f.user_id=i.user_id)
-        OR EXISTS (SELECT 1 FROM news_feed_categories f WHERE f.user_id=i.user_id
-                   AND f.category=item_section(i.title,i.text,t.tags)))
+    WHERE i.user_id=? AND n.id>? AND {ALERT_ELIGIBILITY}
     ORDER BY n.id LIMIT ?"""
