@@ -43,11 +43,11 @@ null on the relevant paths. Do not assume every notification is classified.
 
 | Endpoint | Current response/behavior |
 | --- | --- |
-| `GET /` | Public forum home with a single list of categories, or 503 when the built UI is unavailable |
+| `GET /`, `GET /discover`, `GET /following` | Web client with public sector cards, sortable channel directory and signed-in Following. Returns 503 when the client build is unavailable. |
 | `GET /categories/{slug}`, `GET /channels/{slug}` | Shareable public views. Each channel row expands to show recent stories, summaries, dates and publisher links. |
-| `GET /api/directory` | Public editorial catalog seeded from `db/directory_seed.json`. Headlines include plain-text summaries. With `NEWSSTREAM_DEMO_RSS=1`, successful hourly refreshes add a per-channel `checked_at` timestamp and persist the latest stories across restarts. |
+| `GET /api/directory` | Compatibility view of the editorial catalog seeded from `db/directory_seed.json`. Successful RSS refreshes update the edition and `checked_at`. |
 | Multi-topic publisher entries | `publishers` contains each publisher's full recent edition (up to 24 stories). Its canonical slug can also appear in several categories, each showing up to three headlines assigned to that category's slug. Each routed headline carries its `section` and `routed_by` value. |
-| Retired workspace bookmarks | Redirect to `/`. The public navigation opens the directory and My Sources. |
+| Retired workspace bookmarks | Redirect to the public home. |
 | `GET /stream` | SSE `event: notification`, `id: <notification_id>`, `data: <card JSON>`; heartbeat comments |
 | `GET /notifications?since=N` | Array of stored cards after the notification ID, in ascending order (repository limit applies) |
 | `GET /feed` | Object containing `events` |
@@ -55,8 +55,8 @@ null on the relevant paths. Do not assume every notification is classified.
 | `GET /status` | Adapter states, latency/counts, estimated model spend, fail-open state, X budget/reads, UI threshold/settings, inactive accounts |
 | `POST /ingest` | Admin only: the `X-Admin-Token` header must equal `NEWSBOT_ADMIN_TOKEN` when that is set, otherwise only loopback clients are accepted (403 otherwise). A normalized-post JSON representation; parses ISO timestamps and queues it, returning `{"queued": true}` |
 | `POST /refetch?hours=12` | Signed-in session or admin client (401 otherwise). Starts source catch-up; clamps hours to 1–48; returns 409 when unconfigured or already running |
-| `GET /portfolio` | `portfolio` (row or null), `enabled`, `max_share`, `max_hold_minutes`, `aggressiveness` levels, `contracts` per ticker |
-| `PUT /portfolio` | JSON `portfolio_value`, `available_cash`, `aggressiveness`, `max_hold_minutes`; 422 when invalid; returns the saved row |
+| `GET /portfolio` | Admin access. Returns the shared operator portfolio and configured sizing rules. |
+| `PUT /portfolio` | Admin access. Accepts `portfolio_value`, `available_cash`, `aggressiveness` and `max_hold_minutes`. Returns 422 on invalid input. |
 | `GET /suggestions` | Object containing `suggestions`, newest first, each a `trade_suggestions` row plus `event_title` |
 | `GET /prices?ticker=<configured ticker>[&start=ISO&end=ISO]` | `ticker`, `symbol`, `last`, `bars` (`t` epoch seconds, `c` close), 1-minute; latest trading day or the given window; 502 when the feed fails |
 
@@ -65,7 +65,23 @@ SSE IDs are notification IDs, not post IDs or event IDs. When adding a field,
 prefer an additive change and update the frontend type in `web/main.jac` with
 the producer and tests. For breaking changes, sequence dependent PRs explicitly.
 
-## Personal source API
+## Public catalog and social activity
+
+| Endpoint | Behavior |
+| --- | --- |
+| `GET /api/channels` | Lists public channel metadata, counts, and story previews. An authenticated session adds viewer-specific ownership and follow/recommend flags. |
+| `GET /api/channels/{slug}` | Channel details, source references, recent items and discussion. |
+| `POST /api/channels` | Publish a channel for the authenticated user with a name, description, category, source type, and source URL or API mode where applicable. |
+| `POST /api/channels/{slug}/click` | Record a channel opening. Returns the updated total. |
+| `PUT /api/channels/{slug}/subscription`, `PUT /api/channels/{slug}/recommendation` | Set the session user's choice with `{"enabled":true}` or `false`. Repeating the request is idempotent. |
+| `GET /api/following` | Signed-in user's subscribed channels and grouped news items. |
+| `POST /api/channels/{slug}/posts` | Publish a titled post with text or an optional source URL in an eligible channel. |
+| `POST /api/channels/{slug}/comments` | Post text on a channel, or attach to an item or parent comment in the same thread. |
+| `GET /api/me/telegram`, `POST /api/me/telegram/pair`, `DELETE /api/me/telegram` | Read the account's private Telegram inbox, issue an expiring pairing link, or disconnect. |
+| `POST /api/telegram/updates` | Dedicated bot webhook authenticated by Telegram's configured secret header. |
+| `POST /api/me/share-item` | Publish an explicitly confirmed selection from the owner's private inbox or authorized X feed into an owned channel of the matching type. |
+
+## Private connections and collection
 
 Personal source records are isolated from the shared market-event feed. See
 [Personal sources](personal-sources.md) for setup, delivery semantics and limits.

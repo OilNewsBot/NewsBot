@@ -1,0 +1,410 @@
+"""Transactional storage and reads shared by every public channel type."""
+import asyncio
+import hashlib
+import ipaddress
+import re
+import sqlite3
+import uuid
+from contextlib import closing
+from datetime import datetime, timezone
+from pathlib import Path
+from urllib.parse import parse_qsl, urlsplit, urlunsplit
+
+from fastapi import HTTPException
+
+
+SECTORS = ("energy", "tech", "healthcare", "industrials", "general")
+PROMPT_VERSION = "attributed-v1"
+
+
+def now():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def digest(value):
+    return hashlib.sha256(value.encode()).hexdigest()
+
+
+def field(body, key, maximum, required=True):
+    value = body.get(key, "")
+    if not isinstance(value, str) or len(value) > maximum or (required and not value.strip()):
+        raise HTTPException(422, f"Enter a valid {key.replace('_', ' ')} (up to {maximum} characters)")
+    return value.strip()
+
+
+def public_url(value):
+    if not value:
+        return ""
+    try:
+        parsed = urlsplit(value)
+        host = parsed.hostname or ""
+        if (parsed.scheme not in ("https", "http") or not host or parsed.username is not None
+                or parsed.password is not None or "\\" in value or re.search(r"[\x00-\x20]", value)
+                or host.lower().rstrip(".") in ("localhost", "localhost.localdomain")
+                or host.lower().endswith((".local", ".localhost", ".internal"))):
+            raise ValueError
+        try:
+            address = ipaddress.ip_address(host.strip("[]"))
+        except ValueError:
+            address = None
+        if address and not address.is_global:
+            raise ValueError
+        _ = parsed.port
+        return urlunsplit((parsed.scheme, parsed.netloc.lower(), parsed.path, parsed.query, ""))
+    except ValueError:
+        raise HTTPException(422, "Use a public HTTP or HTTPS address") from None
+
+
+def channel_address(kind, mode, value):
+    if kind == "community":
+        if value:
+            raise HTTPException(422, "Community channels do not need a source address")
+        return ""
+    if kind == "rss":
+        url = public_url(value)
+        if not url or urlsplit(url).port not in (None, 80, 443):
+            raise HTTPException(422, "Enter a public RSS or Atom feed address")
+        secret_keys = {"access_token", "api_key", "apikey", "auth", "authorization", "key",
+                       "password", "secret", "signature", "token", "x-amz-signature"}
+        if any(k.lower() in secret_keys for k, _ in parse_qsl(urlsplit(url).query, keep_blank_values=True)):
+            raise HTTPException(422, "Publish a public feed URL without credentials")
+        return url
+    if not value and mode == "api":
+        return ""
+    if kind == "telegram" and mode == "api":
+        raise HTTPException(422, "Publish selected Telegram messages without a private chat address")
+    if value.startswith("@"):
+        value = ("https://x.com/" if kind == "x" else "https://t.me/") + value[1:]
+    parsed = urlsplit(public_url(value))
+    hosts = ("x.com", "www.x.com", "twitter.com", "www.twitter.com") if kind == "x" else ("t.me",)
+    profile = parsed.path.strip("/")
+    pattern = r"[A-Za-z0-9_]{1,15}" if kind == "x" else r"[A-Za-z][A-Za-z0-9_]{3,31}(?:/[1-9][0-9]{0,12})?"
+    if (parsed.hostname not in hosts or parsed.query or parsed.port or not re.fullmatch(pattern, profile)
+            or (kind == "telegram" and profile.split("/")[0].lower() in {"joinchat", "login", "proxy", "share", "addstickers"})):
+        raise HTTPException(422, f"Enter a public {kind} profile address")
+    return ("https://x.com/" if kind == "x" else "https://t.me/") + profile
+
+
+class Catalog:
+    def __init__(self, path, edition, model="", summary_sources="rss"):
+        self.path = Path(path)
+        self.edition = edition
+        self.model = model
+        self.ai_enabled = bool(model)
+        self.summary_sources = frozenset(summary_sources.lower().replace(" ", "").split(",")) & {"rss", "x", "community"}
+        self.ready = False
+
+    async def run_db(self, work, *args, write=False):
+        def run():
+            with closing(sqlite3.connect(self.path, timeout=10)) as db:
+                db.row_factory = sqlite3.Row
+                db.execute("PRAGMA foreign_keys=ON")
+                with db:
+                    db.execute("BEGIN IMMEDIATE" if write else "BEGIN")
+                    return work(db, *args)
+        return await asyncio.to_thread(run)
+
+    async def start(self):
+        def initialize(db):
+            db.executescript(Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"))
+            db.execute("BEGIN IMMEDIATE")
+            seed = self.edition
+            existing = self._seed_channels(seed)
+            for category, entry, mixed in existing:
+                source = self._source(db, "rss", entry["feed_url"], entry["publisher"], mixed)
+                inserted = db.execute(
+                    """INSERT OR IGNORE INTO news_channels
+                    (slug,name,description,category,curator,source_id,source_url,mode,created_at)
+                    VALUES(?,?,?,?,?,?,?,?,?)""",
+                    (entry["slug"], entry["name"], entry["description"], category,
+                     seed["curator"], source, entry["feed_url"], "rss", seed["captured_at"]))
+                if inserted.rowcount:
+                    for story in entry["headlines"]:
+                        self._item(db, source, story["url"], story["url"], story["title"],
+                                   story["summary"], entry["publisher"], story["published"],
+                                   story.get("section", category), False, seed["captured_at"])
+                    if entry.get("checked_at"):
+                        db.execute("UPDATE news_sources SET checked_at=? WHERE id=?",
+                                   (entry["checked_at"], source))
+        await self.run_db(initialize, write=True)
+        self.ready = True
+
+    @staticmethod
+    def _seed_channels(seed):
+        for category in seed["categories"]:
+            for channel in category["channels"]:
+                yield category["slug"], channel, False
+        for publisher in seed.get("publishers", []):
+            yield "general", publisher, True
+
+    @staticmethod
+    def _source(db, kind, locator, publisher, mixed=False):
+        db.execute("""INSERT OR IGNORE INTO news_sources(kind,locator,publisher,mixed)
+                    VALUES(?,?,?,?)""", (kind, locator, publisher, int(mixed)))
+        return db.execute("SELECT id FROM news_sources WHERE kind=? AND locator=?",
+                          (kind, locator)).fetchone()[0]
+
+    @staticmethod
+    def _item(db, source, external, url, title, body, author, published, section, eligible, collected, rss_alias=False):
+        stable = digest(external)
+        # A seed snapshot can identify a story by its URL before its feed GUID is known.
+        original = db.execute("SELECT id FROM news_items WHERE source_id=? AND external_id=?",
+                              (source, stable)).fetchone()
+        if not original and url and rss_alias:
+            original = db.execute("SELECT id FROM news_items WHERE source_id=? AND url=? ORDER BY id LIMIT 1",
+                                  (source, url)).fetchone()
+        signature = digest("\n".join(" ".join(x.split()) for x in (title, body, author)))
+        # A matching long headline on the same UTC day can group editions from multiple sources.
+        normalized = " ".join(re.findall(r"\w+", title.casefold()))
+        group = digest((published[:10] + " " + normalized) if len(normalized.split()) >= 6 else (url or stable))
+        values = (stable, url, title, body, author, published, collected, section, signature, group, int(eligible))
+        if original:
+            db.execute("""UPDATE news_items SET external_id=?,url=?,title=?,body=?,author=?,
+                       published=?,collected_at=?,section=?,revision=?,story_key=?,eligible=?
+                       WHERE id=? AND (revision<>? OR published<>? OR url<>? OR eligible<>? OR section<>?)""",
+                       (*values, original[0], signature, published, url, int(eligible), section))
+            return original[0]
+        return db.execute("""INSERT INTO news_items(external_id,url,title,body,author,published,
+                          collected_at,section,revision,story_key,eligible,source_id)
+                          VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""", (*values, source)).lastrowid
+
+    @staticmethod
+    def _by_slug(db, slug):
+        row = db.execute("""SELECT c.*,s.kind AS source_type,s.publisher AS original_publisher
+                         FROM news_channels c JOIN news_sources s ON s.id=c.source_id WHERE slug=?""",
+                         (slug,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Channel not found")
+        return row
+
+    def _stories(self, db, source, slug, category, mixed, limit, kind):
+        rows = db.execute("""SELECT i.id,i.title,i.body AS text,i.url,i.author,i.published,i.collected_at,
+                          i.section,i.story_key,i.eligible,k.summary AS ai,k.generated_at,k.attempts
+                          FROM news_items i LEFT JOIN news_summaries k ON i.eligible=1 AND k.rowid=(
+                              SELECT candidate.rowid FROM news_summaries candidate
+                              WHERE candidate.revision=i.revision AND candidate.prompt_version=?
+                              AND (candidate.model=? OR (? AND candidate.generated_at IS NOT NULL))
+                              ORDER BY (candidate.generated_at IS NOT NULL AND candidate.model=?) DESC,
+                                       candidate.generated_at DESC LIMIT 1)
+                          WHERE i.source_id=?
+                          ORDER BY i.published DESC,i.id DESC LIMIT ?""",
+                          (PROMPT_VERSION, self.model, not self.ai_enabled, self.model, source, limit))
+        stories = []
+        for row in rows:
+            data = dict(row)
+            generated = bool(data.pop("ai"))
+            if generated:
+                summary = row["ai"]
+            else:
+                summary = data["text"][:260].rstrip()
+                if len(data["text"]) > 260:
+                    summary += "…"
+            tries = data.pop("attempts") or 0
+            eligible = data.pop("eligible")
+            data.update(summary=summary, ai_generated=generated, generated_at=data["generated_at"] or "",
+                        channel_slug=slug, source_type=kind, section=(data["section"] if mixed else category),
+                        status=("summarized" if generated else "retry" if tries else
+                                "pending" if eligible and self.ai_enabled and kind in self.summary_sources else "source"))
+            stories.append(data)
+        return stories
+
+    def _channels(self, db, uid, slug=None, following=False, limit=3):
+        sql = """SELECT c.*,s.kind AS source_type,s.publisher AS source_publisher,s.mixed,s.checked_at,s.failures,
+               (SELECT COUNT(*) FROM news_subscriptions f WHERE f.slug=c.slug) AS subscribers,
+               EXISTS(SELECT 1 FROM news_subscriptions f WHERE f.slug=c.slug AND f.user_id=?) AS subscribed,
+               (SELECT COUNT(*) FROM news_votes r WHERE r.slug=c.slug) AS recommendations,
+               EXISTS(SELECT 1 FROM news_votes r WHERE r.slug=c.slug AND r.user_id=?) AS recommended
+               FROM news_channels c JOIN news_sources s ON s.id=c.source_id """
+        args = [uid, uid]
+        if slug is not None:
+            sql += " WHERE c.slug=?"
+            args.append(slug)
+        elif following:
+            sql += " WHERE EXISTS(SELECT 1 FROM news_subscriptions f WHERE f.slug=c.slug AND f.user_id=?)"
+            args.append(uid)
+        channels = []
+        for row in db.execute(sql + " ORDER BY c.name COLLATE NOCASE,c.slug", args):
+            public = dict(row)
+            is_mixed = public.pop("mixed")
+            failures = public.pop("failures")
+            public["refresh_status"] = ("retrying" if failures else "current" if row["checked_at"] else
+                                        "pending" if row["source_type"] == "rss" else "manual")
+            public.update(owned=public.pop("owner_id") == uid and uid is not None,
+                          subscribed=bool(public["subscribed"]), recommended=bool(public["recommended"]),
+                          publisher=public["curator"] if row["owner_id"] else public["source_publisher"],
+                          checked_at=public["checked_at"] or "")
+            public["headlines"] = self._stories(db, public.pop("source_id"), row["slug"], row["category"],
+                                                is_mixed, max(24, limit) if is_mixed else limit, row["source_type"])
+            channels.append(public)
+        return channels
+
+    async def channels(self, uid=None):
+        return await self.run_db(self._channels, uid)
+
+    async def editorial_view(self):
+        """Preserve the original directory contract while reading current public editions."""
+        rows = {c["slug"]: c for c in await self.channels()}
+        def edition(entry, mixed=False):
+            channel = rows[entry["slug"]]
+            headlines = []
+            original = {h["url"]: h for h in entry["headlines"]}
+            for story in channel["headlines"][:24 if mixed else 3]:
+                head = {k: story[k] for k in ("title", "url", "summary", "published")}
+                if mixed:
+                    head.update(section=story["section"], routed_by=original.get(story["url"], {}).get("routed_by", "local"))
+                headlines.append(head)
+            result = {**entry, "headlines": headlines}
+            if channel["checked_at"]:
+                result["checked_at"] = channel["checked_at"]
+            return result
+        publishers = [edition(entry, True) for entry in self.edition.get("publishers", [])]
+        categories = []
+        for sector in self.edition["categories"]:
+            channels = [edition(entry) for entry in sector["channels"]]
+            for publisher in publishers:
+                matching = [h for h in publisher["headlines"] if h["section"] == sector["slug"]]
+                if matching:
+                    channels.append({**publisher, "headlines": matching[:3]})
+            categories.append({**sector, "channels": channels})
+        return {**self.edition, "categories": categories, "publishers": publishers}
+
+    async def detail(self, slug, uid=None):
+        def read(db):
+            rows = self._channels(db, uid, slug=slug, limit=100)
+            if not rows:
+                raise HTTPException(404, "Channel not found")
+            comments = db.execute("""SELECT id,item_id,parent_id,author,text,created_at FROM news_comments
+                                  WHERE slug=? ORDER BY id""", (slug,))
+            return {"channel": rows[0], "comments": [dict(c) for c in comments]}
+        return await self.run_db(read)
+
+    async def following(self, uid):
+        def read(db):
+            channels = self._channels(db, uid, following=True, limit=50)
+            groups = {}
+            canonical = {}
+            for channel in channels:
+                for item in channel["headlines"]:
+                    key = canonical.get(item["url"], item["story_key"]) if item["url"] else item["story_key"]
+                    if item["url"]:
+                        canonical[item["url"]] = key
+                    group = groups.setdefault(key, {**item, "sources": []})
+                    if item["published"] > group["published"]:
+                        group.update(item)
+                    ref = {"channel_slug": channel["slug"], "name": channel["name"], "url": item["url"], "item_id": item["id"]}
+                    if ref not in group["sources"]:
+                        group["sources"].append(ref)
+            return {"channels": channels, "items": sorted(groups.values(),
+                    key=lambda i: (i["published"], i["id"]), reverse=True)[:200]}
+        return await self.run_db(read)
+
+    async def create(self, uid, username, body):
+        name = field(body, "name", 100)
+        description = field(body, "description", 1000)
+        kind = field(body, "source_type", 16)
+        category = field(body, "category", 24).lower()
+        if category not in SECTORS or kind not in ("rss", "community", "x", "telegram"):
+            raise HTTPException(422, "Choose a supported category and source type")
+        default_mode = "embed" if kind in ("x", "telegram") else kind
+        mode = body.get("mode") or default_mode
+        allowed_modes = ("embed", "api") if kind in ("x", "telegram") else (kind,)
+        if mode not in allowed_modes:
+            raise HTTPException(422, "Unsupported channel mode")
+        url = channel_address(kind, mode, field(body, "source_url", 2048, False))
+        def insert(db):
+            if db.execute("SELECT COUNT(*) FROM news_channels WHERE owner_id=?", (uid,)).fetchone()[0] >= 100:
+                raise HTTPException(429, "Your channel limit has been reached")
+            base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:60] or "channel"
+            slug = base
+            while db.execute("SELECT 1 FROM news_channels WHERE slug=?", (slug,)).fetchone():
+                slug = base + "-" + uuid.uuid4().hex[:8]
+            # Only public RSS editions share an ingestion identity. Each curated inbox
+            # publishes into a separate channel even when two creators use the same provider.
+            locator = url if kind == "rss" else slug
+            publisher = urlsplit(url).hostname if kind == "rss" else username
+            source = self._source(db, kind, locator, publisher)
+            db.execute("""INSERT INTO news_channels(slug,name,description,category,owner_id,curator,
+                       source_id,source_url,mode,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                       (slug, name, description, category, uid, username, source, url, mode, now()))
+            return self._channels(db, uid, slug)[0]
+        return await self.run_db(insert, write=True)
+
+    async def click(self, slug):
+        def count(db):
+            self._by_slug(db, slug)
+            db.execute("UPDATE news_channels SET clicks=clicks+1 WHERE slug=?", (slug,))
+            return db.execute("SELECT clicks FROM news_channels WHERE slug=?", (slug,)).fetchone()[0]
+        return await self.run_db(count, write=True)
+
+    async def toggle(self, slug, uid, key, enabled):
+        table = {"subscription": "news_subscriptions", "recommendation": "news_votes"}[key]
+        def change(db):
+            self._by_slug(db, slug)
+            if enabled:
+                db.execute(f"INSERT OR IGNORE INTO {table}(user_id,slug) VALUES(?,?)", (uid, slug))
+            else:
+                db.execute(f"DELETE FROM {table} WHERE user_id=? AND slug=?", (uid, slug))
+            return self._channels(db, uid, slug, limit=100)[0]
+        return await self.run_db(change, write=True)
+
+    async def comment(self, slug, uid, author, body):
+        text = field(body, "text", 4000)
+        item_id, parent = body.get("item_id"), body.get("parent_id")
+        for val in (item_id, parent):
+            if val is not None and (type(val) is not int or not 0 < val < 2**63):
+                raise HTTPException(422, "Invalid thread identifier")
+        def insert(db):
+            channel = self._by_slug(db, slug)
+            if item_id is not None and not db.execute(
+                    "SELECT 1 FROM news_items WHERE id=? AND source_id=?", (item_id, channel["source_id"])).fetchone():
+                raise HTTPException(404, "Story not found in this channel")
+            if parent is not None and not db.execute(
+                    "SELECT 1 FROM news_comments WHERE id=? AND slug=? AND item_id IS ?", (parent, slug, item_id)).fetchone():
+                raise HTTPException(404, "Parent comment not found in this thread")
+            created = now()
+            cid = db.execute("""INSERT INTO news_comments(slug,item_id,parent_id,user_id,author,text,created_at)
+                             VALUES(?,?,?,?,?,?,?)""", (slug, item_id, parent, uid, author, text, created)).lastrowid
+            return dict(id=cid, item_id=item_id, parent_id=parent, text=text, author=author, created_at=created)
+        return await self.run_db(insert, write=True)
+
+    async def post(self, slug, uid, author, body):
+        title = field(body, "title", 300)
+        text = field(body, "text", 12000, False)
+        url = public_url(field(body, "url", 2048, False))
+        if not text and not url:
+            raise HTTPException(422, "Provide a description or a source link")
+        return await self._publish(slug, uid, author, title, text, url, uuid.uuid4().hex, now(), None)
+
+    async def publish_selected(self, slug, user_id, author, title, text, url, external_id, published, source_type):
+        if source_type not in ("x", "telegram") or not external_id:
+            raise HTTPException(422, "Invalid provider selection")
+        return await self._publish(slug, user_id, str(author)[:200], str(title)[:300], str(text)[:12000],
+                                   public_url(url or ""), external_id, published or now(), source_type)
+
+    async def _publish(self, slug, uid, author, title, body, url, external, published, source_type):
+        def insert(db):
+            c = self._by_slug(db, slug)
+            if source_type:
+                if c["owner_id"] != uid or c["mode"] != "api" or c["source_type"] != source_type:
+                    raise HTTPException(403, "Select your own matching API channel")
+                if source_type == "x" and c["source_url"]:
+                    handle = urlsplit(c["source_url"]).path.strip("/").casefold()
+                    u = urlsplit(url)
+                    if u.hostname not in ("x.com", "twitter.com", "www.x.com", "www.twitter.com") or not re.fullmatch(
+                            "/" + re.escape(handle) + r"/status/\d+/?", u.path.casefold()):
+                        raise HTTPException(422, "The selected post must belong to this channel's account")
+            elif c["source_type"] != "community" and (c["source_type"] not in ("x", "telegram") or c["owner_id"] != uid):
+                raise HTTPException(403, "Post in a community or your own social channel")
+            # A manual link post on an embedded social channel has no authorized post body.
+            eligible = (source_type == "x" or c["source_type"] == "community") and bool(body.strip())
+            return_id = self._item(db, c["source_id"], external, url, title, body, author, published,
+                                   c["category"], eligible, now())
+            return self._stories_one(db, return_id, slug, c["category"], c["source_type"])
+        return await self.run_db(insert, write=True)
+
+    @staticmethod
+    def _stories_one(db, iid, slug, category, kind):
+        item = dict(db.execute("""SELECT id,url,title,body AS text,author,published,collected_at,story_key
+                               FROM news_items WHERE id=?""", (iid,)).fetchone())
+        return {**item, "channel_slug": slug, "source_type": kind, "section": category, "summary": item["text"][:260],
+                "ai_generated": False, "generated_at": "", "status": "source"}

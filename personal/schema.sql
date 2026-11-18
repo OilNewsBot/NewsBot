@@ -69,3 +69,26 @@ CREATE TABLE IF NOT EXISTS personal_notifications (
 );
 CREATE INDEX IF NOT EXISTS personal_notifications_owner ON personal_notifications(user_id, id);
 INSERT OR IGNORE INTO personal_schema_versions(version) VALUES (1);
+
+-- Direct messages sent to the publishing bot stay in an owner-only inbox.
+CREATE TABLE IF NOT EXISTS personal_telegram_pairing (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    challenge_hash TEXT NOT NULL UNIQUE,
+    expires_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS personal_telegram_accounts (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    telegram_id INTEGER NOT NULL UNIQUE,
+    linked_at INTEGER NOT NULL,
+    linked_message_id INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS personal_telegram_inbox (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES personal_telegram_accounts(user_id) ON DELETE CASCADE,
+    message_id INTEGER NOT NULL,
+    body TEXT NOT NULL,
+    published_at TEXT NOT NULL,
+    UNIQUE(user_id, message_id)
+);
+CREATE INDEX IF NOT EXISTS personal_telegram_inbox_user ON personal_telegram_inbox(user_id, id);
+INSERT OR IGNORE INTO personal_schema_versions(version) VALUES (2);

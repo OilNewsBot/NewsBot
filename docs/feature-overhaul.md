@@ -1,45 +1,52 @@
-# Newsstream feature overhaul
+# Newsstream channel and demo guide
 
-Newsstream supports news-based trading across Energy, Tech, Healthcare and Industrials. Home opens the public directory. Readers can already expand publisher stories, open a shareable channel page and sign in to My Sources. The branch includes an earlier footer and duplicate-navigation repair. Work proceeds one approved part at a time on `feature-overhaul`.
+## Find and follow channels
 
-## Implementation sequence
+Home opens the sector directory. Discover lists public channels across sources. Choose a sort order to compare names, categories or click totals. Open a channel dropdown to see its activity and recent stories, or open the channel page for the full discussion. New and Trending use basic ordering for this demo. Following collects updates for the current account.
 
-| Part | Deliverable | Acceptance check |
-| --- | --- | --- |
-| 1 | Finish layout and shared navigation on Home, category pages, channel pages and My Sources. | Each view has one main navigation. Collapsing the desktop sidebar releases space and the choice survives reload. On a phone, selecting a destination closes the drawer, and dismissing it with Escape returns focus to the toggle. At 375, 720 and 1280 pixels, readers can scroll to the final item, expand a story and follow its publisher link without an overlay covering it. |
-| 2 | Verify the four-sector home and its seeded channels. | Each sector opens at least two genuine publisher feeds with dates and source links. Saved editions survive upstream outages. Editorial picks are labeled, with top-rated rankings introduced once votes exist. |
-| 3 | Introduce the unified public channel and item schema, and test the shared deployment. | RSS, X profile and community channels use the same channel page and feed contract. An X profile offers an official embed and direct profile link. Two devices open the same saved channel after a service restart. |
-| 4 | Add publishing, Discover, subscriptions and Following. | One account publishes a channel. Another discovers and follows it, sees its updates after a fresh login, then unsubscribes. Private history and connector credentials stay owner-scoped. |
-| 5 | Add RSS-first automatic summaries. | Duplicate deliveries generate one summary per revision. A material correction updates its cited summary. When budget or retries run out, readers still see the dated source text. |
-| 6 | Add community posts, threads and recommendations. | Users can post a title, description and optional source, discuss an article or shared X link, and recommend a channel once per account. Counts and rankings reflect recorded votes. |
-| 7 | Rehearse the shared 48-hour demo. | Two accounts on different devices can publish, discover, follow and reply. Exercise a restart, an unavailable feed and an exhausted AI budget. |
-| 8 | Extend authorized X ingestion and generalized trading in separately approved increments. | Eligible structured posts use the same summary worker. A channel with actual signals can later show hypothetical performance with explicit price, timing, fees and sizing assumptions. |
+## Publish and discuss
 
-Part 3 establishes shared hosting early because subscriptions and discussion need a common database across devices. The demo can proceed independently of optional X data access and paper performance.
+Sign in and open My Sources. Choose the channel type, give it a name and description, and select its sector. A channel URL can be shared with a different browser or device. Followers see new public items. Each account can recommend a channel and participate in its discussions.
 
-## Data and summarization decisions
+| Channel type | Public source and private controls |
+| --- | --- |
+| RSS | Supply a public RSS, Atom or RDF URL. Changes and source links are saved on the server. |
+| Community | Publish an original title and description, with an optional source link. |
+| X | A public profile can use an official timeline embed. For authorized data access, use a personal provider connection and select the post to share. |
+| Telegram | A public message can be embedded from its post URL. For private material, pair your Telegram account and send or forward eligible text to the dedicated bot. Review what will be public and choose an owned destination channel. |
 
-- **Channels and sources.** Use additive SQLite migrations for public channels, source identities and channel membership. Record creator, sector, slug, type, description and visibility. Collect a distinct public RSS feed once across subscribers. Publishing from My Sources requires an explicit choice of public metadata.
-- **Items.** Store original title and text, publisher or user byline, original URL or thread link, source-local identity, publication and collection times, content revision and processing status. Preserve separate source references when several channels carry the same story.
-- **Jobs and summaries.** Persist content and pending work together. Deduplicate by source ID and stable item identity. Cache by substantive revision, model and prompt version. Start with one small server-configured model producing attributed summaries from RSS text. Store the generation timestamp and evidence links, and label AI copy. Group related items when a new fact or correction changes the story. Bound concurrency, retries and daily spend and keep the last successful edition available.
-- **Public X and community channels.** The embed is a display feature. Only authorized provider data or legitimately user-supplied content is eligible for backend summaries. A shared link alone can start a discussion. Community submissions carry an authenticated author and use the same public item and discussion model.
-- **Deployment.** The demo uses one persistent backend and one collection worker, with account-specific subscriptions, comments and unique channel votes in SQLite. The Tauri app also supports local use.
+## Run the shared demo
 
-## Run the public directory for demo days
+Run `python3 scripts/bootstrap.py` in a Linux or macOS checkout, or `python scripts/bootstrap.py` on Windows with Ubuntu/WSL. Use one server for all devices. Put the HTTPS reverse proxy in front of that service. Keep the process and its database volume available throughout the demo.
 
-In the bootstrapped Ubuntu checkout, start the demo with `NEWSSTREAM_DEMO_RSS=1 jac run` and open `http://127.0.0.1:8000/`. Click a channel name or description to expand its latest stories. Each story includes a summary, publication date and link to the publisher.
+```sh
+jac run
+```
 
-The service opens immediately with a saved edition and checks public RSS feeds on startup and hourly. Each channel shows the date of its last successful snapshot. If a publisher is unavailable, its stories and snapshot date stay available. The service stores successful refreshes in `directory-rss.json` beside its configured database and reuses that file after a restart.
+The default listener is `127.0.0.1:8000`. Set `NEWSSTREAM_HOST` and `NEWSSTREAM_PORT` if the host needs a different bind address or port. Point `NEWSSTREAM_DB_PATH` at the persistent SQLite database. Use the same `NEWSBOT_CONNECTION_KEY` across restarts if using encrypted private X connections. Set a random `NEWSBOT_ADMIN_TOKEN` in the server environment before exposing the service. Forward the original HTTPS scheme and host from the trusted reverse proxy so cookie and origin checks work correctly.
 
-Visitors and operators can run this mode without X, Telegram, LLM or SSH keys. SSH is an operator option for managing a remote server. The default service address is local to the demo machine. Sharing a public URL across devices requires a hosted instance.
+### Publisher refresh and AI
 
-### Multi-topic publishers
+The bundled edition contains dated stories from three dedicated publisher channels per sector plus a multi-topic feed. Public RSS refresh runs automatically. To skip refreshing just the bundled feeds, set `NEWSSTREAM_DEMO_RSS=0`. Disable public RSS networking with `NEWSSTREAM_PUBLIC_RSS=0` for offline verification. The last successful edition remains readable through upstream outages.
 
-The New York Times Top Stories is a public RSS publisher. Each article is classified from its headline and summary. A publisher can appear in several forums, with up to three matching stories in each. Its shared channel URL opens the full recent edition. Stories with no clear sector fit go to General News.
+To enable RSS summaries, supply the server-side `ANTHROPIC_API_KEY`. Set `NEWSSTREAM_SUMMARY_MODEL` to override the small model slot. `NEWSSTREAM_SUMMARY_DAILY_LIMIT` caps daily request reservations, including a possible JSON retry. `NEWSSTREAM_SUMMARY_PROVIDER=disabled` turns off hosted summaries. The default eligible source is RSS. Set `NEWSSTREAM_SUMMARY_SOURCES=rss,x,community` to include explicitly published provider-supplied X text and original community posts. Embed views and Telegram inbox messages do not enter the model worker. See each story's source links for the original reporting.
 
-The key-free demo runs a small local text classifier fitted to the labeled examples in `db/forum_training.json`. If the server has an Anthropic API key, a feed refresh also sends new articles to the configured `TRIAGE_MODEL` in one batch per publisher. Valid model assignments are saved with the edition and reused. An unavailable model or an invalid label leaves the local assignment in place.
+For a local or hosted Chat Completions-compatible model, set
+`NEWSSTREAM_SUMMARY_PROVIDER=openai-compatible`, `NEWSSTREAM_SUMMARY_BASE_URL`
+to the operator's API base (for example `http://127.0.0.1:11434/v1`) and
+`NEWSSTREAM_SUMMARY_MODEL` to an installed model on that server. Supply
+`NEWSSTREAM_SUMMARY_API_KEY` if the endpoint requires authentication. The
+backend sends eligible public item text to this endpoint.
 
-To include another public multi-topic RSS feed, add it to the `publishers` array in `db/directory_seed.json` with a unique slug, publisher name, description, feed URL and a dated starter edition. The hourly refresh handles it automatically.
+### Telegram account pairing
+
+Create a dedicated Telegram bot for Newsstream, keep its bot token on the operator's machine, and set `NEWSSTREAM_TELEGRAM_BOT_USERNAME` and `NEWSSTREAM_TELEGRAM_WEBHOOK_SECRET` in the server environment. Use a random URL-safe secret of at least 32 characters. Register the bot's HTTPS webhook with Telegram's `setWebhook`, setting `url` to `https://YOUR_HOST/api/telegram/updates`, `secret_token` to the same secret and `allowed_updates` to `["message"]`. Use a dedicated bot so another service does not consume its updates. [Telegram Bot API](https://core.telegram.org/bots/api#setwebhook)
+
+In My Sources, open the pairing link and start the bot in your own Telegram account. Send it the message you want to review. Use a private chat with the bot. Telegram's forwarding permissions still apply. Discover readers see the material you choose to publish. The bot does not sign into your Telegram account or import a group's history. Public embeds require a publicly viewable post. [Telegram post widget](https://core.telegram.org/widgets/post)
+
+## Verify the demo
+
+Use two separate browser profiles. Publish a community channel with the first, then discover, follow, recommend and comment from the second. Open the channel dropdown, inspect its click count and switch sort order. Restart the service and confirm the channel, following state and discussion persist. Use the built-in offline tests for provider failure and retry behavior. A real provider handshake requires that provider's credentials and a public Telegram webhook requires an HTTPS host.
 
 ## Directory assets
 

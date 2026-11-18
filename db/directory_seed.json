@@ -60,6 +60,33 @@
               "summary": "MIT researchers discussed technologies moving into service today, alongside longer-term work in nuclear energy and quantum computing."
             }
           ]
+        },
+        {
+          "slug": "utility-dive",
+          "name": "Utility Dive",
+          "publisher": "Utility Dive",
+          "description": "Electric utilities, grid investment and power markets.",
+          "feed_url": "https://www.utilitydive.com/feeds/news/",
+          "headlines": [
+            {
+              "title": "Data center slowdown would raise risks for utility investments",
+              "url": "https://www.utilitydive.com/news/data-center-slowdown-raises-risks-for-utility-investments/874924/",
+              "published": "2026-11-17T18:10:00+00:00",
+              "summary": "Orennia flags planned data-center projects in Texas, Ohio and Georgia as particularly exposed to a slowdown."
+            },
+            {
+              "title": "Most states fail ‘community power’ test, advocacy group says",
+              "url": "https://www.utilitydive.com/news/most-states-fail-community-power-test-advocacy-group-says/874915/",
+              "published": "2026-11-17T16:43:41+00:00",
+              "summary": "The Institute for Local Self-Reliance grades state policies for local energy control and virtual power plants."
+            },
+            {
+              "title": "Batteries included: A practical checklist for storage owners, operators to boost reliability",
+              "url": "https://www.utilitydive.com/news/battery-storage-markets-ercot-xpansiv/873451/",
+              "published": "2026-11-17T15:44:48+00:00",
+              "summary": "A guest contributor outlines how storage operators can use telemetry and escalation procedures to respond to grid conditions."
+            }
+          ]
         }
       ]
     },
@@ -119,6 +146,33 @@
               "url": "https://blog.cloudflare.com/adapting-to-ai-penetration-testing-orchestrators/",
               "published": "2026-11-13T19:26:07+00:00",
               "summary": "Cloudflare reports on automated testing against exposed services and describes defensive changes for infrastructure teams."
+            }
+          ]
+        },
+        {
+          "slug": "the-register",
+          "name": "The Register",
+          "publisher": "The Register",
+          "description": "Reporting on enterprise computing, software and the semiconductor industry.",
+          "feed_url": "https://www.theregister.com/headlines.atom",
+          "headlines": [
+            {
+              "title": "Satya sorry for SaaS-y SNAFU - look over there, more AI!",
+              "url": "https://www.theregister.com/ai-and-ml/2026/11/17/satya-sorry-for-saas-y-snafu-look-over-there-more-ai/5310594",
+              "published": "2026-11-17T21:44:58+00:00",
+              "summary": "The Register reports on Microsoft’s Copilot announcements and comments from Satya Nadella at Ignite."
+            },
+            {
+              "title": "Jensen Huang thrilled to be spending time with family, but will retake leadership burden if Nvidia asks",
+              "url": "https://www.theregister.com/systems/2026/11/17/jensen-huang-thrilled-to-be-spending-time-with-family-but-will-retake-leadership-burden-if-nvidia-asks/5310585",
+              "published": "2026-11-17T21:15:42+00:00",
+              "summary": "The Register covers comments about Nvidia leadership during the company’s earnings call."
+            },
+            {
+              "title": "Python parallel debugging comes to HPC thanks to TotalView upgrade",
+              "url": "https://www.theregister.com/devops/2026/11/17/python-parallel-debugging-comes-to-hpc-thanks-to-totalview-upgrade/5310564",
+              "published": "2026-11-17T20:14:31+00:00",
+              "summary": "The latest TotalView release adds Python to its parallel debugging support for high-performance computing."
             }
           ]
         }
@@ -182,6 +236,33 @@
               "summary": "A documentary follows MIT researchers studying endometriosis and efforts to develop treatments for the condition."
             }
           ]
+        },
+        {
+          "slug": "healthcare-dive",
+          "name": "Healthcare Dive",
+          "publisher": "Healthcare Dive",
+          "description": "Hospitals, care delivery and the business of healthcare.",
+          "feed_url": "https://www.healthcaredive.com/feeds/news/",
+          "headlines": [
+            {
+              "title": "Mayo Clinic taps AI, strategy leader as CEO",
+              "url": "https://www.healthcaredive.com/news/mayo-clinic-taps-ai-strategy-leader-as-ceo/874909/",
+              "published": "2026-11-17T16:13:18+00:00",
+              "summary": "Mayo Clinic selected its AI and strategy leader, Dr. Matthew Callstrom, to become chief executive next year."
+            },
+            {
+              "title": "‘Selling and marketing snake oil’: The debate over compounded GLP-1s",
+              "url": "https://www.healthcaredive.com/news/compounded-glp-1s-telehealth-debate-snake-oil-fda/874840/",
+              "published": "2026-11-17T15:51:55+00:00",
+              "summary": "Conference speakers debated access, cost and safety concerns around compounded GLP-1 medications."
+            },
+            {
+              "title": "Updated HIPAA privacy law sets rules for sharing health data with apps",
+              "url": "https://www.healthcaredive.com/news/updated-hipaa-privacy-law-sets-rules-for-sharing-health-data-with-apps/874845/",
+              "published": "2026-11-17T15:38:55+00:00",
+              "summary": "The report examines updated health-record sharing rules and the access improvements HHS expects."
+            }
+          ]
         }
       ]
     },
@@ -241,6 +322,33 @@
               "url": "https://www.nasa.gov/general/max-power-nasas-inaugural-aerospace-expo-ignites-americas-future/",
               "published": "2026-11-09T16:07:10+00:00",
               "summary": "The multi-day expo at Kennedy Space Center drew thousands to see NASA’s work in aviation, space and technology."
+            }
+          ]
+        },
+        {
+          "slug": "manufacturing-dive",
+          "name": "Manufacturing Dive",
+          "publisher": "Manufacturing Dive",
+          "description": "Manufacturing investment, production, policy and workforce news.",
+          "feed_url": "https://www.manufacturingdive.com/feeds/news/",
+          "headlines": [
+            {
+              "title": "How an engineering firm help design an energetics facility for DOD",
+              "url": "https://www.manufacturingdive.com/news/burns-mcdonnell-engineering-energetics-ammunition-plant-missouri/874658/",
+              "published": "2026-11-17T16:39:43+00:00",
+              "summary": "Burns & McDonnell is working with the Army Corps of Engineers on planning and design at Lake City."
+            },
+            {
+              "title": "DOC final rule places export controls on chips, related equipment",
+              "url": "https://www.manufacturingdive.com/news/new-interim-rule-export-controls-advanced-semiconductors/874869/",
+              "published": "2026-11-17T16:37:00+00:00",
+              "summary": "The Commerce Department rule addresses remote computing arrangements that could circumvent existing export restrictions."
+            },
+            {
+              "title": "New American Manufacturing Renaissance founder dispels the ‘skills gap’",
+              "url": "https://www.manufacturingdive.com/news/drew-crowe-mfg-workforce-skill-courage-gap/874387/",
+              "published": "2026-11-16T15:52:00+00:00",
+              "summary": "Drew Crowe discusses how manufacturers recruit workers and the role he sees for AI in industry."
             }
           ]
         }

@@ -35,7 +35,7 @@ test "the public snapshot has dated headlines and unique channel addresses" {
                     if c["slug"] != publisher["slug"]
                 ];
                 if category["slug"] != "general" {
-                    assert len(dedicated) == 2;
+                    assert len(dedicated) >= 3;
                     image = await client.get(category["image_url"]);
                     assert image.status_code == 200;
                 }

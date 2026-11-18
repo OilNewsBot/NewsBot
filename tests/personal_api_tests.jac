@@ -13,6 +13,7 @@ import from db.repo { Repo, Row }
 import from personal.store { PersonalStore }
 import from personal.providers { ProviderError }
 import from personal.api { install_personal_routes, personal_events }
+import from personal.publishing { install_publishing_routes }
 import from tests.helpers { make_settings }
 
 glob ALICE: dict[str, str] = {"Cookie": "session=alice-session"},
@@ -711,6 +712,259 @@ test "personal source resolution cannot apply an old credential result after rek
                         == "latest-race-key";
                     assert (await personal_store.get_connection(uid, cid))["status"]
                         == "configured";
+                }
+            }
+        }
+    }
+    asyncio.run(run());
+}
+
+obj SelectedShares {
+    has posts: list[Row] = [];
+
+    async def publish_selected(
+        slug: str,
+        owner: int,
+        author: str,
+        title: str,
+        text: str,
+        url: str,
+        external: str,
+        published: str,
+        kind: str
+    ) -> Row {
+        row = {
+            "slug": slug,
+            "author": author,
+            "title": title,
+            "text": text,
+            "url": url,
+            "kind": kind
+        };
+        self.posts.append(row);
+        return row;
+    }
+}
+
+test "Telegram pairing keeps forwarded content private until its owner selects an excerpt" {
+    async def run {
+        secret = "test-only-webhook-credential-000000";
+        with patch.dict(
+            os.environ,
+            {
+                "NEWSSTREAM_TELEGRAM_BOT_USERNAME": "newsstream_test_bot",
+                "NEWSSTREAM_TELEGRAM_WEBHOOK_SECRET": secret
+            }
+        ) {
+            async with api_fixture() as fixture {
+                catalog = SelectedShares(posts=[]);
+                install_publishing_routes(
+                    fixture.app, fixture.repo, fixture.personal, catalog
+                );
+                client = httpx.AsyncClient(
+                    transport=httpx.ASGITransport(app=fixture.app),
+                    base_url="http://test"
+                );
+                async with client {
+                    assert (await client.post("/api/me/telegram/pair")).status_code
+                        == 401;
+                    assert (
+                        await client.post(
+                            "/api/me/telegram/pair",
+                            headers={** ALICE, "origin": "https://elsewhere.test"}
+                        )
+                    ).status_code
+                        == 403;
+                    pair = await client.post("/api/me/telegram/pair", headers=ALICE);
+                    assert pair.status_code == 200 , pair.text;
+                    token = pair.json()["url"].split("?start=")[1];
+                    msg: Row = {
+                        "chat": {"type": "private", "id": 123},
+                        "from": {"id": 123, "is_bot": False},
+                        "message_id": 5,
+                        "date": 1700000000,
+                        "text": "/start " + token
+                    };
+                    headers = {"X-Telegram-Bot-Api-Secret-Token": secret};
+                    endpoint = "/api/telegram/updates";
+                    assert (
+                        await client.post(endpoint, json={"message": msg})
+                    ).status_code
+                        == 403;
+                    assert (
+                        await client.post(
+                            endpoint, json={"message": msg}, headers=headers
+                        )
+                    ).status_code
+                        == 200;
+                    msg.update(
+                        {
+                            "message_id": 6,
+                            "text": "Disclose these results. Private chat details.",
+                            "forward_origin": {
+                                "type": "hidden_user",
+                                "sender_user_name": "Sensitive name",
+                                "date": 1699999999
+                            }
+                        }
+                    );
+                    await client.post(endpoint, json={"message": msg}, headers=headers);
+                    await client.post(endpoint, json={"message": msg}, headers=headers);
+                    await client.post(
+                        endpoint,
+                        json={
+                            "message": {
+                                ** msg,
+                                "has_protected_content": True,
+                                "message_id": 7
+                            }
+                        },
+                        headers=headers
+                    );
+                    await client.post(
+                        endpoint,
+                        json={
+                            "message": {
+                                ** msg,
+                                "chat": {"type": "group", "id": -222},
+                                "message_id": 8
+                            }
+                        },
+                        headers=headers
+                    );
+                    mine: Row = (
+                        await client.get("/api/me/telegram", headers=ALICE)
+                    ).json();
+                    assert mine["linked"] and len(mine["items"]) == 1;
+                    assert not catalog.posts;
+                    assert "Sensitive name" not in json.dumps(mine);
+                    theirs: Row = (
+                        await client.get("/api/me/telegram", headers=BOB)
+                    ).json();
+                    assert not theirs["linked"] and not theirs["items"];
+                    selected: Row = {
+                        "provider": "telegram",
+                        "id": mine["items"][0]["id"],
+                        "slug": "my-updates",
+                        "title": "Results",
+                        "excerpt": "Disclose these results.",
+                        "confirmed": True
+                    };
+                    assert (
+                        await client.post(
+                            "/api/me/share-item", headers=BOB, json=selected
+                        )
+                    ).status_code
+                        == 404;
+                    assert (
+                        await client.post(
+                            "/api/me/share-item",
+                            headers=ALICE,
+                            json={** selected, "confirmed": False}
+                        )
+                    ).status_code
+                        == 422;
+                    assert (
+                        await client.post(
+                            "/api/me/share-item",
+                            headers=ALICE,
+                            json={** selected, "excerpt": "invented"}
+                        )
+                    ).status_code
+                        == 422;
+                    response = await client.post(
+                        "/api/me/share-item", headers=ALICE, json=selected
+                    );
+                    assert response.status_code == 200 , response.text;
+                    assert catalog.posts
+                        == [
+                            {
+                                "slug": "my-updates",
+                                "author": "alice",
+                                "title": "Results",
+                                "text": "Disclose these results.",
+                                "url": "",
+                                "kind": "telegram"
+                            }
+                        ];
+                    assert (
+                        await client.delete("/api/me/telegram", headers=ALICE)
+                    ).status_code
+                        == 200;
+                    assert not (
+                        await client.get("/api/me/telegram", headers=ALICE)
+                    ).json()["items"];
+                    await client.post(endpoint, json={"message": msg}, headers=headers);
+                    assert not (
+                        await client.get("/api/me/telegram", headers=ALICE)
+                    ).json()["items"];
+                }
+            }
+        }
+    }
+    asyncio.run(run());
+}
+
+test "sharing a connected X item uses the verified source and account owner" {
+    async def run {
+        key = base64.urlsafe_b64encode(bytes(range(32))).decode();
+        with patch.dict(os.environ, {"NEWSBOT_CONNECTION_KEY": key}) {
+            async with api_fixture() as fixture {
+                catalog = SelectedShares(posts=[]);
+                install_publishing_routes(
+                    fixture.app, fixture.repo, fixture.personal, catalog
+                );
+                store: PersonalStore = fixture.personal;
+                alice = int(fixture.users["alice"]);
+                conn = await store.create_connection(
+                    alice, "x", "Private connection label", "fixture-key"
+                );
+                source = await store.create_source(
+                    alice,
+                    int(conn["id"]),
+                    "123",
+                    "Private display label",
+                    "https://x.com/markets"
+                );
+                post: Row = {
+                    "external_id": "555",
+                    "title": "Press release",
+                    "text": "A revised earnings release.",
+                    "url": "https://x.com/markets/status/555",
+                    "posted_at": "2026-01-01T00:00:00+00:00"
+                };
+                await store.persist_batch(int(source["id"]), [post], "cursor");
+                items = await store.feed(alice);
+                body: Row = {
+                    "id": items[0]["id"],
+                    "provider": "x",
+                    "slug": "my-reports",
+                    "confirmed": True
+                };
+                client = httpx.AsyncClient(
+                    transport=httpx.ASGITransport(app=fixture.app),
+                    base_url="http://test"
+                );
+                async with client {
+                    assert (
+                        await client.post("/api/me/share-item", headers=BOB, json=body)
+                    ).status_code
+                        == 404;
+                    response = await client.post(
+                        "/api/me/share-item", headers=ALICE, json=body
+                    );
+                    assert response.status_code == 200 , response.text;
+                    assert catalog.posts[0]["author"] == "markets";
+                    assert catalog.posts[0]["text"] == post["text"];
+                    assert catalog.posts[0]["url"] == post["url"];
+                    assert "Private" not in json.dumps(catalog.posts);
+                    await store.delete_source(alice, int(source["id"]));
+                    assert (
+                        await client.post(
+                            "/api/me/share-item", headers=ALICE, json=body
+                        )
+                    ).status_code
+                        == 404;
                 }
             }
         }

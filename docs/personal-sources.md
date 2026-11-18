@@ -1,4 +1,4 @@
-# Personal sources, first release
+# My Sources
 
 Open **My Sources** (`/sources`) and sign in with a Newsstream account. Add an RSS
 connection or a TwitterAPI.io connection, then add feeds or X handles/profile
@@ -7,7 +7,7 @@ The page works in the website and the existing desktop webview.
 
 RSS supports public RSS 2.0, Atom and RDF feeds. X uses TwitterAPI.io REST polling
 with the user's own API key. This is a TwitterAPI.io connection, not X OAuth.
-The first release checks RSS no more often than every five minutes and X no more
+The personal collector checks RSS no more often than every five minutes and X no more
 often than every minute; polling, backoff and available request budget affect
 actual latency. There is one in-process personal worker per backend instance.
 Run one server worker against a database; distributed worker leases are not
@@ -37,10 +37,11 @@ Unmuting or resuming does not replay earlier alerts. Removing a source/connectio
 hides its items and cancels future eligible delivery; stored history is retained
 in the private database tables. A future retention/deletion policy can purge it.
 
-The shared market-event and trade-suggestion services use a separate dataset.
-Personal source posts never enter the shared classifier, summaries, SSE stream or Expo
-mobile worker. Account-specific phone pairing/push and personal Telegram sessions
-are subsequent releases. Personal alerts in this release are web/desktop alerts.
+The shared market-event service uses a separate dataset. Public publishing is
+an explicit action. An owner can use My Sources to publish a public RSS URL,
+an embedded source or a community channel, and select an authorized X item or
+a paired Telegram inbox message for publication. Private connector credentials
+and inbox history remain account-scoped. See the [publishing guide](feature-overhaul.md).
 
 ## Server setup
 

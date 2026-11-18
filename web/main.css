@@ -278,6 +278,11 @@ details.extras > summary:hover { color: var(--text); }
 }
 
 /* Trading Insights — minimalist financial dashboard */
+.app-layout > .auth-panel.auth-panel-compact {
+    position: static;
+    width: fit-content;
+    margin: 12px clamp(16px, 3vw, 32px) 0 auto;
+}
 
 .trading {
     color: #f0f5f3;

@@ -2,8 +2,7 @@
 
 import "./sources.css";
 import from react { useEffect }
-import from .auth { AuthPanel }
-import from .navigation { Navigation }
+import from .publishing { PublishingPanel }
 
 # These values belong to this mounted page, never to persistent browser storage.
 # Epoch checks discard responses begun by a previous account or unmounted page.
@@ -783,6 +782,12 @@ def:pub SourcesPage -> JsxElement {
                     </div>
                 </div>
             } else {
+                <PublishingPanel
+                    key={user.user_id}
+                    sources={sources}
+                    feed={feed}
+                    request={personal_request}
+                />
                 <div className="ps-overview">
                     <div className="ps-stat">
                         <span className="ps-stat-icon">

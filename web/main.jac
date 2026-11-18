@@ -400,7 +400,6 @@ def LockedPage -> JsxElement {
             {"Sign in to manage your sources and read your personal feed."}
         </p>
         <AuthPanel/>
-        <a href="/">Browse forums</a>
     </main>
 }
 
@@ -458,7 +457,11 @@ def Workspace -> JsxElement {
             </main>;
     }
     if session == "out" {
-        return <LockedPage/>;
+        return
+            <div className="app-layout">
+                <Navigation active="sources"/>
+                <LockedPage/>
+            </div>;
     }
     return
         <div className="app-layout">

@@ -43,6 +43,8 @@ import from pipeline.trade { MAX_HOLD_MINUTES, MAX_PORTFOLIO_SHARE, Trader }
 import from personal.store { PersonalStore }
 import from personal.api { install_personal_routes }
 import from personal.worker { PersonalWorker }
+import from personal.publishing { install_publishing_routes }
+import from publicnews.integration { install_catalog_routes, make_catalog, run_catalog }
 
 glob log: logging.Logger = logging.getLogger("newsstream.app");
 
@@ -152,6 +154,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         )
     );
     directory.load();
+    catalog = make_catalog(settings, directory, llm);
     prices = PriceFeed(settings);
     trader = Trader(settings, repo, llm, prices);
     pipeline = Pipeline(settings, repo, llm, bus, trader=trader);
@@ -176,16 +179,13 @@ def create_app(settings: Settings | None = None) -> FastAPI {
             }
         }
         await personal.connect();
+        await catalog.start();
         tasks: list[asyncio.Task[None]] = [
             asyncio.create_task(pipeline.run(), name="pipeline"),
             asyncio.create_task(pipeline.stale_sweeper(), name="stale-sweeper"),
-            asyncio.create_task(personal_worker.run(), name="personal-sources")
+            asyncio.create_task(personal_worker.run(), name="personal-sources"),
+            asyncio.create_task(run_catalog(catalog), name="public-news")
         ];
-        if os.environ.get("NEWSSTREAM_DEMO_RSS") == "1" {
-            tasks.append(
-                asyncio.create_task(directory.run(), name="public-directory-rss")
-            );
-        }
         if settings.x_api_enabled and settings.x_bearer_token {
             await _resolve_x_accounts(settings, repo, x_api);
         }
@@ -213,6 +213,9 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     app = FastAPI(title="newsstream", lifespan=lifespan);
     install_mobile(app, repo);
     install_personal_routes(app, repo, personal);
+    install_catalog_routes(app, repo, catalog);
+    install_publishing_routes(app, repo, personal, catalog);
+    setattr(app.state, "catalog", catalog);
     setattr(app.state, "personal", personal);
     setattr(app.state, "pipeline", pipeline);
     setattr(app.state, "repo", repo);
@@ -220,9 +223,9 @@ def create_app(settings: Settings | None = None) -> FastAPI {
 
     @app.post("/register")
     async def register(data: dict[str, str]) -> dict[str, str | int] {
-        if not data["username"].strip()
-            or not data["email"].strip()
-            or len(data["password"]) < 12 {
+        if not data.get("username", "").strip()
+            or not data.get("email", "").strip()
+            or len(data.get("password", "")) < 12 {
             raise HTTPException(
                 status_code=400,
                 detail="Username and email are required; password must be at least 12 characters"
@@ -241,6 +244,9 @@ def create_app(settings: Settings | None = None) -> FastAPI {
 
         password_hash = hash_password(data["password"]);
         user_id = await repo.create_user(username, email, password_hash);
+        if not user_id {
+            raise HTTPException(409, "Username or email is already registered");
+        }
 
         return {"message": "Registration successful", "user_id": user_id};
     }
@@ -349,6 +355,9 @@ def create_app(settings: Settings | None = None) -> FastAPI {
 
     @app.get("/api/directory")
     async def public_directory -> Row {
+        if catalog.ready {
+            return await catalog.editorial_view();
+        }
         return directory.view();
     }
 
@@ -374,6 +383,8 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     }
 
     @app.get("/sources")
+    @app.get("/discover")
+    @app.get("/following")
     async def workspace_page -> Response {
         return await index();
     }
@@ -447,7 +458,8 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     # ---------- trading page (docs/spec.md Â§16) ----------
 
     @app.get("/portfolio")
-    async def get_portfolio -> Json {
+    async def get_portfolio(request: Request) -> Json {
+        await require_admin(request);
         trading = settings.trading;
         return {
             "portfolio": await repo.get_portfolio(),
@@ -461,7 +473,8 @@ def create_app(settings: Settings | None = None) -> FastAPI {
 
     """Manual entry: the app has no brokerage link."""
     @app.put("/portfolio")
-    async def put_portfolio(body: Json) -> Json {
+    async def put_portfolio(body: Json, request: Request) -> Json {
+        await require_admin(request);
         value = 0.0;
         cash = 0.0;
         level = "";

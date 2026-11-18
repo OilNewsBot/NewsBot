@@ -1,25 +1,13 @@
 Newsstream product concept
 
-Newsstream helps readers and traders follow developments across Energy, Tech,
-Healthcare and Industrials. A regulatory decision, an earnings revision or a
-change in manufacturing capacity can matter to different readers. Readers
-choose sectors and channels, inspect the original source and discuss what the
-news could mean for the affected companies and instruments.
+Newsstream brings news, discussion and market context together across Energy, Tech,
+Healthcare and Industrials. A reader can find channels, inspect the evidence for
+a story and follow the people and publishers whose updates they value.
 
-Readers can browse public publisher channels, publish their own channels and
-subscribe to other curators. The directory starts with genuine RSS stories.
-The planned shared feed also supports community posts and public X profiles.
-X profiles use official embedded timelines. Authorized structured data or
-user-supplied text is required for automated summaries.
+Public RSS, X profiles, Telegram channels and community posts share the same
+directory, channel pages and subscription model. Connecting a personal source
+does not publish its contents. Owners choose what to share and can distinguish
+reported facts, their interpretation and AI-generated summaries.
 
-A story can collect multiple reports, confirmations and corrections. Keep
-the original links visible, distinguish reporting from interpretation, and
-label AI summaries. Readers should be able to acknowledge alerts and avoid
-repeat notifications about the same development.
-
-Channels that publish explicit trading signals may later show hypothetical
-performance with their entry, exit and sizing assumptions. The initial demo
-focuses on shared channels, reliable news updates and discussion.
-
-See docs/spec.md for product requirements and docs/feature-overhaul.md for
-the sequence and acceptance criteria.
+The product specification lives in docs/spec.md. The channel and demo guide is
+docs/feature-overhaul.md.

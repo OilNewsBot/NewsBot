@@ -222,7 +222,10 @@ def load_settings(
         prices[str(model)] = (float(p["input"]), float(p["output"]));
     }
 
-    raw_db = Path(str(server.get("db_path", "data/newsstream.db")));
+    raw_db = Path(
+        os.environ.get("NEWSSTREAM_DB_PATH")
+            or str(server.get("db_path", "data/newsstream.db"))
+    );
     resolved_db = db_path or (raw_db if raw_db.is_absolute() else ROOT / raw_db);
 
     return Settings(
@@ -251,8 +254,8 @@ def load_settings(
         x_push_interval=float(x_push.get("interval_seconds", 10)),
         ui_max_stacked=int(ui.get("max_stacked", 5)),
         stale_after_hours=int(ui.get("stale_after_hours", 24)),
-        host=str(server.get("host", "127.0.0.1")),
-        port=int(server.get("port", 8000)),
+        host=os.environ.get("NEWSSTREAM_HOST") or str(server.get("host", "127.0.0.1")),
+        port=int(os.environ.get("NEWSSTREAM_PORT") or server.get("port", 8000)),
         db_path=resolved_db,
         trade_model=os.environ.get("TRADE_MODEL") or DEFAULT_TRADE_MODEL,
         trading=_trading(cfg.get("trading")),

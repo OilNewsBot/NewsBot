@@ -1,98 +1,21 @@
-# Current NewsBot / Newsstream project
+# Newsstream implementation map
 
-Newsstream opens on a public directory of news forums. Readers browse channels
-by category, expand recent headlines and share channel links. My Sources is the
-signed-in personal workspace. The public catalog covers Energy, Tech, Healthcare
-and Industrials. A separate backend classifies market events and stores trade
-suggestions. The project uses **Jac 0.37.25**. The [roadmap](feature-overhaul.md)
-tracks the launch work.
+Newsstream serves a public news directory for Energy, Tech, Healthcare and Industrials. The same backend handles channel publishing, private source management, discussion and subscriptions for every browser connected to it. The [channel and demo guide](feature-overhaul.md) describes setup and usage.
 
-## Code map
-
-| Area | Implementation |
+| Area | Entry points and responsibilities |
 | --- | --- |
-| Entry and service | `main.jac` calls `app.jac`: FastAPI, uvicorn, asynchronous adapter/pipeline tasks |
-| Configuration | `config.jac` loads `.env` and `config.yaml` into Settings; model defaults and spend estimates live here |
-| Ingestion | `adapters/base.jac` defines normalized posts; Telegram, TwitterAPI.io push, and official X polling have separate adapters |
-| Processing | `pipeline/runner.jac` persists, classifies, deduplicates/clusters, and notifies; the other pipeline modules implement those steps |
-| Model boundary | `pipeline/llm.jac` wraps Anthropic, JSON parsing/retry, failure tracking, logging, and cassette record/replay |
-| Public channels | `db/directory.jac` loads saved RSS editions. `pipeline/forum_routing.jac` assigns sectors, and `web/directory.jac` renders the directory. |
-| Personal sources | `personal/` handles account-owned RSS and provider connections, collection, storage and delivery. |
-| Trading | `pipeline/trade.jac` can generate a suggestion for a qualifying event. `pipeline/prices.jac` fetches quotes for supported instruments. Cross-sector signal generation is planned. |
-| Persistence | `db/schema.sql` and `db/repo.jac`, SQLite through aiosqlite |
-| Browser | `web/main.jac` and `web/main.css`, built by `jac build web` into `.jac/client/web/dist/index.html` |
-| Desktop | `desktop/` is a Tauri window that starts `jac run`, shows `/`, and stops the service on quit; see its README |
-| Replay | `replay.jac` sends fixture posts to a running service's `/ingest` endpoint (admin token from `NEWSBOT_ADMIN_TOKEN` when the server sets one) |
-| Fake tweets | `fake_tweets.jac` (`jac run fake_tweets`) runs an isolated service on a database copy, feeds it five significant test tweets through a fake twitterapi.io, and reports each outcome; `--remote <url>` instead queues them on a running server's `/ingest` (hosted demo) |
-| Verification | Jac tests under `tests/`; Python collaboration tests under `scripts/tests/`; one combined CI entry point |
+| Service | `main.jac` starts `app.jac`, which assembles FastAPI, cookie sessions, the web client and asynchronous workers. |
+| Public channel catalog | `publicnews/` stores channels, story revisions, comments, click counts, subscriptions and recommendations in SQLite. It serves public reads and account-scoped writes. |
+| Initial edition | `db/directory_seed.json` provides the dated publisher edition and source URLs. `db/directory.jac` loads prior saved editions and supports the editorial directory contract. |
+| RSS and summaries | The public collector reuses the bounded fetcher and parser in `personal/providers.jac`. Public processing persists articles before summary generation. The separate `pipeline/forum_routing.jac` assigns sectors to multi-topic articles. |
+| Private sources | `personal/` manages account-owned connections and delivery. `personal/publishing.jac` bridges explicitly selected material to a public channel. |
+| Interface | `web/main.jac` selects the page. `web/directory.jac`, `web/navigation.jac` and `web/sources.jac` provide browsing and publishing. `jac build web` emits the assets served by FastAPI. |
+| Market events and trading | `adapters/` and `pipeline/` implement market classification, clustering, notifications, quotes and suggestions. `db/repo.jac` stores these records and users/sessions. |
+| Desktop and mobile | `desktop/` runs the web app in Tauri with a local backend. `mobile/` consumes market-event notifications through Expo. |
+| Verification | `python3 scripts/check.py` runs the offline gate. Jac tests live in `tests/` and helper tests in `scripts/tests/`. |
 
-```text
-Telegram / X → normalized post → persist → classify → cluster → notification
-                                   ↓          ↓          ↓          ↓
-                                 SQLite   decisions    events    SSE → UI
-```
+## Operation
 
-Each worktree gets its own relative runtime database and build output. The
-default database is `data/newsstream.db`; the default server is `127.0.0.1:8000`.
+The supported topology is one FastAPI worker and persistent local SQLite storage. An HTTPS reverse proxy can give multiple devices a common address. Start the service with its working directory, model settings and secrets under the operator's control. Existing deployments can retain their database when adding public channel and private publishing tables.
 
-## Behavior to preserve
-
-- Persist raw input before model work; duplicate `(source, source_post_id)` inputs
-  do not produce duplicate processing.
-- Rubric scoring determines materiality. Near-threshold posts use the review
-  model; accepted posts proceed to event clustering.
-- Clustering produces `NEW_EVENT`, `UPDATE`, or `DUPLICATE`. Duplicates remain
-  auditable but do not create another notification.
-- Failure paths surface visible error/unfiltered information according to the
-  spec rather than silently losing input.
-- Stable account IDs identify sources; handles are display/configuration data.
-- Official X polling respects its configured daily budget; third-party push
-  and Telegram have their own adapter lifecycle/status.
-- The browser receives notifications over SSE and backfills on reconnect.
-
-## Configuration and local state
-
-`config.yaml` contains accounts/channels, thresholds, rubric weights, adapter
-options, UI settings, and server settings (`host`, `port`, `db_path`). `.env`
-contains credentials and optional `TRIAGE_MODEL`/`REVIEW_MODEL` overrides. Secrets
-are ignored by Git. The source integration defaults to Telegram plus third-party
-X push, with official X polling disabled unless configured.
-
-Live operation can consume provider credits or create vendor-side subscriptions
-and rules. For routine development leave keys absent. Coding-agent subscriptions
-are separate from the application's Anthropic API credentials. Existing README
-prices/model IDs are historical project assumptions; verify provider documentation
-when making changes rather than presenting them as current pricing.
-
-## Tests and replay
-
-`tests/adapters_tests.jac`, `classify_tests.jac`, and `dedup_tests.jac` include
-scripted StubLLM logic tests and cassette-backed model behavior cases.
-`tests/helpers.jac` uses a temporary database and pins the threshold for fixtures.
-Fixtures contain reconstructed wording; [their README](../tests/fixtures/README.md)
-explains provenance. They are not verbatim archived platform posts.
-
-`python3 scripts/check.py` runs Python tooling tests, `jac fmt --check` with explicit source paths, `jac check`,
-`jac test`, and `jac build web`. It masks live credentials and model overrides,
-uses serial cassette replay, and rejects missing/empty cassette data. Plain
-`jac test` can record missing model responses when a key is present; use the
-wrapper for normal checks. Cassette regeneration is a separate intentional,
-serial operation with reviewed fixture/prompt changes.
-
-`jac run replay -- tests/fixtures/` exercises a running server, not the test
-harness. By default it rewrites timestamps to the present, which changes model
-prompt keys. Do not assume that turning on cassette mode makes every arbitrary
-UI replay hit recorded responses. Without credentials, expect failure/unfiltered
-paths instead of claiming a live classification demonstration.
-
-## Current boundaries and follow-up areas
-
-This is a local single-process service. In-process SSE queues are not a distributed
-message bus. `schema.sql` uses create-if-absent statements; existing databases do
-not gain altered columns automatically, so schema evolution needs a migration
-plan. The app builds a missing/stale UI on startup and returns 503 if the page
-cannot be built. Preserve the pinned runtime's documented import workarounds.
-
-The current test files focus on adapters/classification/clustering. Full browser
-interaction and live integration behavior need additional checks when those
-areas change. See the [roadmap](feature-overhaul.md) for shared hosting, public subscriptions, discussion and generalized trading signals.
+Use a separate checkout or a temporary database for tests. Do not put real credentials, Telegram session files or runtime databases into Git. The [API contracts](contracts.md) describe the distinction between public, account-owned and administrative operations.
