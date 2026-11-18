@@ -92,6 +92,7 @@ class Catalog:
         self.path = Path(path)
         self.edition = edition
         self.editorial_slugs = {}
+        self.x_accounts = {}
         self.model = model
         self.ai_enabled = bool(model)
         self.summary_sources = frozenset(summary_sources.lower().replace(" ", "").split(",")) & {"rss", "x", "community"}
@@ -119,6 +120,7 @@ class Catalog:
             seed = self.edition
             existing = self._seed_channels(seed)
             editorial_slugs = {}
+            x_accounts = {}
             for category, entry, mixed in existing:
                 # An older user channel can already own a newly introduced default's slug.
                 slug = entry["slug"]
@@ -137,17 +139,49 @@ class Catalog:
                     (slug, entry["name"], entry["description"], category,
                      seed["curator"], source, address, entry.get("mode", kind), seed["captured_at"]))
                 self._add_tags(db, slug, category, entry.get("tags", []))
-                if inserted.rowcount:
+                if kind == "x" and entry.get("platform_account_id"):
+                    x_accounts[entry["platform_account_id"]] = (source, category)
+                if inserted.rowcount or kind == "x":
                     for story in entry["headlines"]:
-                        self._item(db, source, story["url"], story["url"], story["title"],
+                        external = story["url"]
+                        captured = seed["captured_at"]
+                        if kind == "x":
+                            external = external.rsplit("/", 1)[-1]
+                            # Never replace a full provider delivery with the shorter saved edition.
+                            if db.execute("SELECT 1 FROM news_items WHERE source_id=? AND external_id=?",
+                                          (source, digest(external))).fetchone():
+                                continue
+                            captured = entry.get("checked_at", captured)
+                        self._item(db, source, external, story["url"], story["title"],
                                    story["summary"], entry["publisher"], story["published"],
-                                   story.get("section", category), False, seed["captured_at"], notify=False)
+                                   story.get("section", category), False, captured, notify=False)
                     if entry.get("checked_at"):
                         db.execute("UPDATE news_sources SET checked_at=? WHERE id=?",
                                    (entry["checked_at"], source))
-            return editorial_slugs
-        self.editorial_slugs = await self.run_db(initialize, write=True)
+            return editorial_slugs, x_accounts
+        self.editorial_slugs, self.x_accounts = await self.run_db(initialize, write=True)
         self.ready = True
+
+    async def record_public_x(self, post):
+        """Publish an operator adapter delivery to its verified editorial account."""
+        target = self.x_accounts.get(post.account_id)
+        if not target or post.source != "x" or post.is_reply or not re.fullmatch(r"[0-9]+", post.source_post_id):
+            return
+        if not re.fullmatch(r"[A-Za-z0-9_]{1,15}", post.account_handle):
+            return
+        source, category = target
+        author = "@" + post.account_handle
+        body = post.text.strip()
+        if not body:
+            return
+        title = body.splitlines()[0]
+        if len(title) > 140:
+            title = title[:139].rstrip() + "…"
+        url = f"https://x.com/{post.account_handle}/status/{post.source_post_id}"
+        def save(db):
+            self._item(db, source, post.source_post_id, url, title, body, author,
+                       post.posted_at.isoformat(), category, True, post.received_at.isoformat())
+        await self.run_db(save, write=True)
 
     @staticmethod
     def _add_tags(db, slug, primary, tags):
@@ -353,7 +387,7 @@ class Catalog:
     async def following(self, uid):
         def read(db):
             selected = self._categories(db, uid)
-            channels = self._channels(db, uid, following=True, limit=50, selected=selected)
+            channels = self._channels(db, uid, following=True, limit=200, selected=selected)
             groups = {}
             for channel in channels:
                 for item in channel["headlines"]:

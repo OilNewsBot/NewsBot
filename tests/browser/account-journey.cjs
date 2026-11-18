@@ -22,7 +22,7 @@ async function exercise() {
 
         await page.goto(origin + "/discover");
         const preview = page.locator(".channel-disclosure").first();
-        await preview.locator("summary").click();
+        await preview.locator(":scope > summary").click();
         await preview.getByRole("link", {name: /Open channel/}).click();
         const channel = new URL(page.url()).pathname;
         await page.getByRole("link", {name: "Sign in to follow", exact: true}).click();
@@ -73,6 +73,24 @@ async function exercise() {
         await page.getByRole("button", {name: "Log in", exact: true}).click();
         await page.waitForURL(origin + "/");
         await logout.waitFor();
+        const created = await page.request.post(origin + "/api/channels", {data: {
+            name, description: "Browser publishing check", category: "tech", source_type: "community"
+        }});
+        assert.equal(created.status(), 201);
+        const {channel: published} = await created.json();
+        await page.goto(origin + "/channels/" + published.slug);
+        await page.getByText("Write a post", {exact: true}).click();
+        await page.getByLabel("Title", {exact: true}).fill("Publisher announcement");
+        const publish = page.getByRole("button", {name: "Publish post"});
+        assert.equal(await publish.isDisabled(), true);
+        const source = "https://example.org/announcement";
+        await page.getByRole("textbox", {name: /^Source link/}).fill(source);
+        await publish.click();
+        const headline = page.getByRole("link", {name: "Publisher announcement", exact: true});
+        await headline.waitFor();
+        await page.reload();
+        await headline.waitFor();
+        assert.equal(await headline.getAttribute("href"), source);
         assert.deepEqual(pageErrors, []);
     } finally {
         await browser.close();
