@@ -37,8 +37,8 @@ Unmuting or resuming does not replay earlier alerts. Removing a source/connectio
 hides its items and cancels future eligible delivery; stored history is retained
 in the private database tables. A future retention/deletion policy can purge it.
 
-The legacy Oil feed and Trading page use their original shared dataset. Personal
-source posts never enter their classifier, event summaries, SSE stream or Expo
+The shared market-event and trade-suggestion services use a separate dataset.
+Personal source posts never enter the shared classifier, summaries, SSE stream or Expo
 mobile worker. Account-specific phone pairing/push and personal Telegram sessions
 are subsequent releases. Personal alerts in this release are web/desktop alerts.
 

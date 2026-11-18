@@ -1,7 +1,7 @@
 [project]
 name = "newsstream"
 version = "0.1.0"
-description = "Agentic financial news monitor: watches OSINT accounts, classifies materiality for crude oil, surfaces events in seconds"
+description = "News and market intelligence across Energy, Tech, Healthcare and Industrials"
 default-app = "server"
 
 # `jac run` starts the FastAPI service (app.jac). `jac build web` compiles the

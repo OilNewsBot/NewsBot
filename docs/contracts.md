@@ -47,7 +47,7 @@ null on the relevant paths. Do not assume every notification is classified.
 | `GET /categories/{slug}`, `GET /channels/{slug}` | Shareable public views. Each channel row expands to show recent stories, summaries, dates and publisher links. |
 | `GET /api/directory` | Public editorial catalog seeded from `db/directory_seed.json`. Headlines include plain-text summaries. With `NEWSSTREAM_DEMO_RSS=1`, successful hourly refreshes add a per-channel `checked_at` timestamp and persist the latest stories across restarts. |
 | Multi-topic publisher entries | `publishers` contains each publisher's full recent edition (up to 24 stories). Its canonical slug can also appear in several categories, each showing up to three headlines assigned to that category's slug. Each routed headline carries its `section` and `routed_by` value. |
-| `GET /oil`, `GET /trading` | Redirect old workspace bookmarks to the public forum home. |
+| Retired workspace bookmarks | Redirect to `/`. The public navigation opens the directory and My Sources. |
 | `GET /stream` | SSE `event: notification`, `id: <notification_id>`, `data: <card JSON>`; heartbeat comments |
 | `GET /notifications?since=N` | Array of stored cards after the notification ID, in ascending order (repository limit applies) |
 | `GET /feed` | Object containing `events` |
@@ -58,7 +58,7 @@ null on the relevant paths. Do not assume every notification is classified.
 | `GET /portfolio` | `portfolio` (row or null), `enabled`, `max_share`, `max_hold_minutes`, `aggressiveness` levels, `contracts` per ticker |
 | `PUT /portfolio` | JSON `portfolio_value`, `available_cash`, `aggressiveness`, `max_hold_minutes`; 422 when invalid; returns the saved row |
 | `GET /suggestions` | Object containing `suggestions`, newest first, each a `trade_suggestions` row plus `event_title` |
-| `GET /prices?ticker=WTI[&start=ISO&end=ISO]` | `ticker`, `symbol`, `last`, `bars` (`t` epoch seconds, `c` close), 1-minute; latest trading day or the given window; 502 when the feed fails |
+| `GET /prices?ticker=<configured ticker>[&start=ISO&end=ISO]` | `ticker`, `symbol`, `last`, `bars` (`t` epoch seconds, `c` close), 1-minute; latest trading day or the given window; 502 when the feed fails |
 
 The browser deduplicates on `notification_id` and requests backfill on reconnect.
 SSE IDs are notification IDs, not post IDs or event IDs. When adding a field,
@@ -67,7 +67,7 @@ the producer and tests. For breaking changes, sequence dependent PRs explicitly.
 
 ## Personal source API
 
-Personal source records are isolated from the legacy shared oil feed. See
+Personal source records are isolated from the shared market-event feed. See
 [Personal sources](personal-sources.md) for setup, delivery semantics and limits.
 Every `/api/me/*` route derives ownership from the session cookie; no caller
 `user_id` is accepted. Mutations reject cross-origin browser requests.

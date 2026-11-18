@@ -2,8 +2,9 @@
 
 Newsstream opens on a public directory of news forums. Readers browse channels
 by category, expand recent headlines and share channel links. My Sources is the
-signed-in personal workspace. The service also contains the earlier oil-market
-pipeline. The project uses **Jac 0.37.25**. The [forum roadmap](feature-overhaul.md)
+signed-in personal workspace. The public catalog covers Energy, Tech, Healthcare
+and Industrials. A separate backend classifies market events and stores trade
+suggestions. The project uses **Jac 0.37.25**. The [roadmap](feature-overhaul.md)
 tracks the launch work.
 
 ## Code map
@@ -15,7 +16,9 @@ tracks the launch work.
 | Ingestion | `adapters/base.jac` defines normalized posts; Telegram, TwitterAPI.io push, and official X polling have separate adapters |
 | Processing | `pipeline/runner.jac` persists, classifies, deduplicates/clusters, and notifies; the other pipeline modules implement those steps |
 | Model boundary | `pipeline/llm.jac` wraps Anthropic, JSON parsing/retry, failure tracking, logging, and cassette record/replay |
-| Trading | `pipeline/trade.jac` suggests a WTI/RBOB trade after each `NEW_EVENT` (background task); `pipeline/prices.jac` reads Yahoo Finance 1-minute prices; the former trading UI is retired (historical spec §16) |
+| Public channels | `db/directory.jac` loads saved RSS editions. `pipeline/forum_routing.jac` assigns sectors, and `web/directory.jac` renders the directory. |
+| Personal sources | `personal/` handles account-owned RSS and provider connections, collection, storage and delivery. |
+| Trading | `pipeline/trade.jac` can generate a suggestion for a qualifying event. `pipeline/prices.jac` fetches quotes for supported instruments. Cross-sector signal generation is planned. |
 | Persistence | `db/schema.sql` and `db/repo.jac`, SQLite through aiosqlite |
 | Browser | `web/main.jac` and `web/main.css`, built by `jac build web` into `.jac/client/web/dist/index.html` |
 | Desktop | `desktop/` is a Tauri window that starts `jac run`, shows `/`, and stops the service on quit; see its README |
@@ -92,6 +95,4 @@ cannot be built. Preserve the pinned runtime's documented import workarounds.
 
 The current test files focus on adapters/classification/clustering. Full browser
 interaction and live integration behavior need additional checks when those
-areas change. Product latency figures in the spec are targets, not measurements
-verified by this setup. Multiple markets, discovery, and other future features
-remain roadmap items unless explicitly requested.
+areas change. See the [roadmap](feature-overhaul.md) for shared hosting, public subscriptions, discussion and generalized trading signals.

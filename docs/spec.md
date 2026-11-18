@@ -1,4 +1,4 @@
-# Newsstream — Agentic Financial News Monitor
+# Newsstream product specification
 
 This is the shared product specification for NewsBot (the app is named Newsstream).
 Read the relevant sections before changing behavior. AGENTS.md and
@@ -15,55 +15,42 @@ for current interfaces. Fixture wording is reconstructed; see
 
 ## 1. Purpose
 
-Trading P&L in event-driven markets (crude oil first) depends on learning about
-events minutes before the wire services carry them. Those minutes are currently
-won by OSINT accounts on X and Telegram, and lost by traders who have to scroll
-for them. Newsstream watches a curated list of accounts, decides which posts
-are *materially* relevant to the user's markets, deduplicates them into events,
-and surfaces them in a local web UI within seconds of publication.
+Newsstream helps readers follow market-moving news across Energy, Tech,
+Healthcare and Industrials. A reader can follow a sector, a publisher or a
+community and trace a story back to the evidence behind it. Trading analysis
+starts with the event and the instruments it could affect. For example, a
+clinical trial result and a change in aircraft production have different
+sources, affected companies and time horizons.
 
-The intelligence is in three places, in priority order:
+## 2. Launch scope
 
-1. **Materiality classification** — is this post something the market will move on?
-2. **Event deduplication** — is this the same event I already surfaced, and if so,
-   does this post *change* the picture enough to surface again?
-3. **Source discovery** — (v3, not v1) find accounts worth watching.
+The shared demo should let readers browse genuine dated stories, publish
+channels, follow other curators and discuss updates. RSS is the first automatic
+summary source. Public X channels display official profile timelines and accept
+shared post links. Community channels host authored posts with optional sources.
 
-The bottleneck is not intelligence. It is **data access latency**. Every design
-decision below is made in service of getting the post into the classifier fast.
-
-## 2. v1 scope
-
-**In scope**
-
-- One market: crude oil futures (WTI/Brent). The set of post categories is fixed and listed in the Classification section.
-- Curated account list (seed list in §5). No automatic discovery.
-- Ingest from Telegram (free, push) and from X via whichever adapter the user
-  configures (see §4). Adapters are pluggable behind one interface.
-- Classify every new top-level post with a rubric-scored LLM call.
-- Cluster into events; surface new events and material updates only.
-- Local FastAPI service + single-page frontend with a stacked notification tray.
-- Persist everything in SQLite so the user can audit what was and wasn't surfaced.
-
-**Explicitly out of scope for v1**
-
-- OS-level popups. In-window only.
-- Account discovery / "agent swarm." User curates the list.
-- Multiple markets. The data model supports it; the UI and prompts don't need to.
-- Trustworthiness scoring. Surface regardless of source reliability; show the
-  source tier as metadata only (§7).
-- Mobile.
+The feature branch already serves a public sector directory, shareable channel
+pages and signed-in My Sources. Public publishing, subscriptions, threads,
+ratings and the shared summary engine are planned increments. Generalized
+trading signals and hypothetical performance have their own later scope.
+See the [implementation roadmap](feature-overhaul.md) for acceptance criteria.
 
 ## 3. Architecture
 
-```
- [Telegram adapter] ─┐
- [X adapter]        ─┼─► ingest queue ─► normalize ─► classifier ─► dedup/cluster ─► notify ─► SSE ─► browser
- [RSS/other]        ─┘                     │              │              │
-                                           └──────── SQLite (posts, events, decisions) ────────┘
+The current public directory reads a saved edition and can refresh from RSS.
+Personal collectors persist to owner-scoped SQLite tables. The existing market
+monitor has a separate path from configured adapters through classification,
+event clustering and notifications. The target public path is:
+
+```text
+RSS / community / authorized provider data
+    → normalize and persist → deduplicate → summarize eligible revisions → channel feed
 ```
 
-- **Language:** Jac (ported from Python 3.12 on 2026-10-07, see §14). The
+X embeds render on the channel page. Structured inputs for processing come
+from an authorized provider or eligible text a user intentionally supplies.
+
+- **Language:** Jac (ported from Python 3.12 on 2026-10-07). The
   `jac` binary manages the environment: `jac install`, `jac run`, `jac test`,
   `jac check`. Python libraries are imported from Jac directly.
 - **Service:** FastAPI + uvicorn. One process, asyncio. Adapters run as tasks.
@@ -72,8 +59,7 @@ decision below is made in service of getting the post into the classifier fast.
   compiled by `jac build web` into a single self-contained `index.html` that
   FastAPI serves. Server-Sent Events at `/stream`. The service rebuilds the
   page at startup when it is missing or stale.
-- **LLM:** Anthropic Messages API via the official Python SDK. Two model slots,
-  configurable by env var (see §9). Do not hardcode model strings anywhere
+- **LLM:** Anthropic Messages API via the official Python SDK. Configurable model slots (see §9). Do not hardcode model strings anywhere
   except `config.jac`.
 - **Config:** `.env` for secrets, `config.yaml` for accounts/thresholds/categories.
   `jac.toml` declares the three apps (`server`, `web`, `replay`) and pins the
@@ -117,36 +103,18 @@ newsstream/
   .env.example
 ```
 
-## 4. Data sources and the latency problem
+## 4. Data sources
 
-Read this section before touching adapters. It is the reason the project
-succeeds or fails.
+Public RSS collection uses the existing bounded fetcher and parser. Fetch a
+distinct feed once for its subscribers and retain the last successful edition
+through publisher outages. Community posts carry a title, body, author, sector
+and optional source link. A public X channel can display an official timeline
+without visitor credentials. Viewing an embed or sharing a URL does not enqueue
+post text for processing.
 
-### The constraint
-
-- X's official API (as of Feb 2026) is **pay-per-use for new signups**; the
-  legacy Basic/Pro tiers are closed. **Filtered stream (push) is Enterprise-only.**
-  Everything self-serve is **polling**, billed per post read, with a 24h dedup
-  where re-reading the same post in a UTC day is charged once.
-- Therefore poll interval = latency floor, and cost scales with 1/interval.
-  Eight accounts at a 30s interval is ~23k reads/day. Do the math in the README
-  for the user's chosen interval before they turn it on.
-- Verify current pricing at https://developer.x.com before writing cost estimates.
-
-### Adapter strategy (ordered by preference)
-
-1. **Telegram (`adapters/telegram.jac`)** — free, push-based via Bot API long-poll
-   or `telethon` (MTProto). Several seed accounts mirror to Telegram channels.
-   This should be the *first* adapter built and the one used in tests.
-   The user must supply the channel usernames; do not guess them.
-2. **Third-party X push feed (`adapters/x_push.jac`)** — WebSocket services exist
-   that track N accounts for a flat monthly fee with no per-read cap. Build this
-   behind the same interface. Leave the vendor pluggable; the user picks one.
-3. **Official X API (`adapters/x_api.jac`)** — pay-per-use polling. Build it, but
-   make the poll interval and daily read budget explicit config with a hard
-   stop when the budget is exhausted (log loudly, do not silently go dark).
-   Use `GET /2/users/:id/tweets` with `since_id`, `exclude=replies`, and
-   `expansions=referenced_tweets.id` so quote tweets arrive with quoted text.
+Existing operators can configure Telegram, third-party X push and budgeted
+official X polling for the separate event monitor. Preserve stable account
+identity, checkpoints and daily limits when extending an authorized adapter.
 
 ### Adapter interface
 
@@ -186,28 +154,17 @@ Rules every adapter must obey:
 - **Record `received_at`.** `received_at - posted_at` is the latency metric.
   Log it per post; show p50/p95 in the UI footer.
 
-## 5. Seed accounts (crude oil)
+## 5. Seed channels
 
-Resolve these to IDs at first run and store in the DB. Handles below are the
-user's initial list; do not treat them as stable.
-
-| Handle | Notes |
-|---|---|
-| @FaytuksNetwork | Breaking geopolitical; also on Telegram |
-| @HormuzLetter | Hormuz-specific |
-| @MoloWarMonitor | Conflict monitor |
-| @TankerTrackers | Tanker tracking, satellite-based; fastest on strikes at sea |
-| @Osint613 | OSINT |
-| @GavMcCracken | Analysis |
-| @UK_MTO | UK Maritime Trade Operations — semi-official incident reports |
-| @MenchOsint | OSINT |
-
-Source tier (metadata only, never filters): `official` (UK_MTO, CENTCOM-type),
-`tracker` (TankerTrackers), `osint` (the rest). Store in `config.yaml`.
+Start with genuine, dated publisher stories and two editorial RSS picks in
+each of the four sectors. The bundled catalog and source URLs live in
+`db/directory_seed.json`. Multi-topic publishers can appear in several sectors.
+General News holds articles without a clear sector fit. Label editorial picks
+as such until users' recommendations support a ranking.
 
 ## 6. Pipeline
 
-For each `NormalizedPost` arriving from any adapter:
+The existing event monitor processes each adapter `NormalizedPost` as follows. Public directory items and personal feeds currently follow separate paths.
 
 1. **Persist raw** to `posts` immediately (before any LLM call). Never lose a post
    to a downstream failure.
@@ -231,60 +188,21 @@ while classification is in flight).
 An LLM's self-reported "95% confident" is a stylistic output, not a calibrated
 probability. Thresholding on it produces unpredictable behavior. Instead the
 model scores against a **rubric the user controls**, and the threshold is on the
-rubric score. The user can still set the threshold (default 70/100).
+rubric score. The user can still set the threshold in the monitor configuration.
 
-### Rubric (crude oil)
+### Sector relevance and evidence
 
-The classifier returns integer sub-scores; `materiality_score` is their weighted
-sum. Weights live in `config.yaml` so the user can tune without touching prompts.
+Score market alerts for novelty, specificity, source proximity and plausible
+impact on the affected market. A regulator's published decision may change a
+company's outlook. A second report repeating that decision adds a reference,
+while a subsequent correction to its scope can warrant a new alert.
 
-| Sub-score | Range | What it measures | Default weight |
-|---|---|---|---|
-| `event_not_commentary` | 0–10 | Is this a *new fact* (strike, seizure, mine, closure, statement by a principal) vs. analysis/opinion/recap? | 3.0 |
-| `flow_impact` | 0–10 | Does it plausibly change physical barrels moving (Hormuz, Bab el-Mandeb, Kharg, Fujairah, Yanbu, Cushing, SPR, OPEC+)? | 3.0 |
-| `primary_source` | 0–10 | Is the account reporting first-hand / from tracking data, vs. re-posting a wire? | 1.5 |
-| `specificity` | 0–10 | Named vessel/location/time vs. vague "reports of" | 1.5 |
-| `novelty_prior` | 0–10 | Based only on the post text, does this look like something not already widely known? (Dedup does the real check; this is a cheap prior.) | 1.0 |
-
-`materiality_score = round(sum(sub * weight) / sum(weights) * 10)` → 0–100.
-
-### Categories (exactly one)
-
-`STRIKE_MILITARY` · `SHIPPING_INCIDENT` · `CHOKEPOINT_STATUS` · `OFFICIAL_STATEMENT`
-· `INFRASTRUCTURE` · `SANCTIONS_POLICY` · `SUPPLY_DATA` · `DIPLOMACY` · `OTHER`
-
-### Prompt
-
-System prompt (store in `pipeline/prompts/classify_crude.md`; version it):
-
-```
-You are a materiality filter for a crude oil futures trader. You will be given
-one social media post (and, if present, the text it quotes). Score it against
-the rubric below and return ONLY a JSON object. No prose.
-
-The trader cares about events that change physical oil flows or the perceived
-risk to them in the Persian Gulf, Strait of Hormuz, Gulf of Oman, Red Sea /
-Bab el-Mandeb, and at US hubs (Cushing, Gulf Coast, SPR). Statements by
-principals (US, Iran, IRGC, CENTCOM, Israel, Saudi Arabia, UAE, OPEC+,
-Houthis) count as events. Analysis, recaps, memes, and engagement bait do not.
-
-Rubric: <rubric table rendered here from config>
-
-Categories: <list>
-
-Return:
-{
-  "sub_scores": {"event_not_commentary": int, "flow_impact": int,
-                 "primary_source": int, "specificity": int, "novelty_prior": int},
-  "category": "<one of the categories>",
-  "one_line": "<≤ 20 words, what happened, for the notification card>",
-  "entities": {"vessels": [], "locations": [], "actors": []},
-  "reasoning": "<≤ 40 words>"
-}
-```
-
-User message: the post text, quoted text (if any), account handle, source tier,
-and `posted_at`. Nothing else.
+The existing monitor stores a weighted `materiality_score` on a 0–100 scale,
+one event category, a short description, entities and reasoning. Consult
+`config.yaml` and `pipeline/prompts/` for the implemented weights, fields and
+allowed labels. Sector assignment for public articles uses the separate
+directory router. An item can appear in the public feed regardless of whether
+it qualifies for a market alert.
 
 ### Model routing
 
@@ -301,9 +219,7 @@ and `posted_at`. Nothing else.
 
 ## 8. Deduplication and event clustering
 
-"Already Surfaced" is a list of **events**, not posts. Three posts about the
-same tanker strike are one event; a denial or casualty count is an update to
-that event; a fourth "confirmed" repost is a duplicate.
+Group reports about the same event. Two accounts reporting the same earnings release share an event. A corrected revenue figure is an update. A repost of the original release is a duplicate.
 
 ### Data model
 
@@ -311,7 +227,7 @@ that event; a fourth "confirmed" repost is a duplicate.
   entities_json, status)` — `status` in `open | stale`.
 - `event_posts(event_id, post_id, role)` — `role` in `origin | update | duplicate`.
 - An event goes `stale` after 24h with no updates and is no longer a dedup
-  candidate (a new strike two days later is a new event even in the same place).
+  candidate (a subsequent development can open a new event).
 
 ### Procedure
 
@@ -332,8 +248,7 @@ For a post that passed the threshold:
 ```
 
 Instruction to the model: an UPDATE is a post that changes the *picture* —
-confirmation by an official source, denial, casualties, vessel identified,
-scale revised, location corrected. A DUPLICATE restates what the event summary
+confirmation by an official source, a denial, a revised figure or a correction. A DUPLICATE restates what the event summary
 already contains, in any wording. When in doubt between UPDATE and DUPLICATE,
 choose DUPLICATE (the user has the link and can read the thread).
 
@@ -360,39 +275,16 @@ X_BEARER_TOKEN=        # official API, optional
 X_PUSH_API_KEY=        # third-party feed, optional
 ```
 
-`config.yaml` (user-editable, commit the example):
-
-```yaml
-markets:
-  crude_oil:
-    threshold: 70
-    rubric_weights:
-      event_not_commentary: 3.0
-      flow_impact: 3.0
-      primary_source: 1.5
-      specificity: 1.5
-      novelty_prior: 1.0
-accounts:
-  - handle: TankerTrackers
-    source: x
-    tier: tracker
-  - handle: UK_MTO
-    source: x
-    tier: official
-  # ...
-telegram_channels: []      # user fills in
-x_api:
-  poll_interval_seconds: 60
-  daily_read_budget: 5000  # hard stop; log and pause when hit
-ui:
-  max_stacked: 5
-  stale_after_hours: 24
-```
+The active market rubric, thresholds, accounts, platform read budgets, UI
+settings and supported trading instruments are defined in `config.yaml`.
+Additional sector prompts and sample market settings exist. Running alerts and
+trade suggestions across all four sectors still requires implementation.
 
 ## 10. Frontend behavior
 
-Single page, dark theme, written in Jac (`web/main.jac`, compiled to React by
-`jac build web`; styles in `web/main.css`). Requirements:
+Home is the public sector directory. Category and channel links support direct entry. My Sources requires a session. Discover and Following are planned destinations. Part 1 covers the shared navigation, collapsible sidebar and bottom-of-page access on existing views.
+
+The existing event-notification client defines the following behavior for consumers of the shared monitor:
 
 - **Tray** at top-right stacks up to `ui.max_stacked` cards; older cards
   collapse into a "+N more" pill. Newest on top.
@@ -420,12 +312,10 @@ Single page, dark theme, written in Jac (`web/main.jac`, compiled to React by
 
 ## 11. Testing
 
-Build `tests/fixtures/` from **real posts from the first two weeks of
-September 2026** — the US strikes on Iranian tankers near Kharg (Sept 5, 8),
-the Saudi VLCC strikes near Khasab (Aug 31), the Houthi Jazan refinery attack
-(Sept 8), IRGC "abandon your vessels" warning (Sept 8), UKMTO incident reports.
-Include, for each event: the first OSINT post, a wire-service repost hours
-later, an official confirmation, a denial, and an unrelated analysis post.
+Use the historical event sequences in `tests/fixtures/` to verify first
+reports, duplicates, confirmations, corrections and unrelated commentary.
+The [fixture notes](../tests/fixtures/README.md) document their provenance.
+Exercise new sector behavior with representative inputs from that sector.
 
 Required tests:
 
@@ -456,93 +346,43 @@ deterministically after the first recording.
 - Log at INFO one line per post: `received | classified score=.. cat=.. |
   dedup=.. | latency=..s`. Debug logs include prompts/responses.
 
-## 13. Roadmap (do not build in v1)
+## 13. Roadmap
 
-- **v2:** multiple markets with per-market rubrics and thresholds; OS-level
-  notifications; Bluesky and Truth Social adapters; user feedback buttons
-  ("shouldn't have surfaced" / "missed this") logged for prompt tuning.
-- **v3:** account discovery — given the seed list and the market, search for
-  accounts that (a) were first to post on past surfaced events, (b) are quoted
-  by seed accounts, and propose them for the user to approve. Periodic
-  re-scoring of accounts by how often their posts became `origin` posts.
+The [feature overhaul](feature-overhaul.md) orders the work and gives each
+increment a review point. Public RSS summaries and community discussion are
+launch priorities. Authorized structured X ingestion is optional.
 
-## 14. OPEN questions (decide with the user before building)
+## 14. Design decisions
 
-- Which Telegram channels mirror the seed accounts? User to supply.
-- ~~Which X source for v1: official pay-per-use polling, or a third-party push
-  feed?~~ **DECIDED 2026-09-10:** TwitterAPI.io push feed is the default X
-  source (`adapters/x_push.jac`); official X API polling is a budget-capped
-  fallback (`x_api.enabled: false` until needed). Costs for both in README.
-- Should `UPDATE` notifications re-enter the tray, or only annotate the
-  existing feed entry? Default: re-enter tray, smaller card.
-- **DECIDED 2026-10-07:** the codebase is Jac. The backend is a module-for-module
-  port that keeps FastAPI, SQLite and the Anthropic SDK (same endpoints, schema,
-  prompts and cassette); the frontend is rewritten as a Jac client, which
-  replaces the earlier "vanilla JS, no build step" rule in §3 and §10.
+Use one channel and item model across sources. Preserve source references,
+collection and publication timestamps, and the distinction between an
+editorial excerpt, authored post and AI-generated summary. Keep model/provider
+settings and credentials on the server. Existing event UPDATE notifications
+can re-enter the tray as smaller cards.
 
-## 15. Definition of done for v1
+## 15. Demo acceptance
 
-- `jac run` starts the service; `http://localhost:8000` shows the UI.
-- Telegram adapter live against at least one channel; X adapter working with
-  the user's chosen source.
-- Fixture replay produces the expected surfaced/suppressed set; test suite
-  green offline.
-- Measured p95 latency from `posted_at` to card render under 90 s on the
-  Telegram path (dominated by platform delivery) and under `poll_interval + 5 s`
-  on the X polling path.
+Two users on separate devices can use one hosted backend to publish,
+discover, follow and discuss a channel. A corrected story can update its
+cited summary. Repeated delivery produces no duplicate summary charge.
+After a publisher or model outage, readers can still open the latest saved
+edition and its source links. The full offline check covers existing behavior.
 
-## 16. Trading page (added 2026-10-31)
+## 16. News-based trading
 
-`/trading` ("Newsstream - Trading") turns new stories into **speculative,
-short-term momentum trade suggestions** on WTI crude (`WTI`) or RBOB gasoline
-(`RBOB`) futures. Suggestions only: the app never places orders and has no
-brokerage link.
+Trading analysis should identify the event, the affected instrument, the
+reason it matters, and the period over which the idea applies. An ordinary
+news item can remain a story without a signal. Every explicit trading signal
+should retain its source links and distinguish the reported facts from the
+author's or model's interpretation.
 
-- **Portfolio** is typed in by hand (Robinhood has no official API for stock or
-  futures accounts): portfolio size, available cash, aggressiveness
-  (`low`/`medium`/`high`), and time horizon (maximum hold, up to 120 minutes).
-  Stored in the one-row `portfolio` table. With no portfolio saved, no
-  suggestion is attempted and no model call is made.
-- **Trigger:** after a `NEW_EVENT` card is published, in a background task, so
-  news delivery is never delayed. Never on `UPDATE`, `DUPLICATE`, `UNFILTERED`,
-  classifier-error cards, or a `NEW_EVENT` that only exists because dedup was
-  unavailable.
-- **Direction** comes from one model call (`TRADE_MODEL` slot, prompt
-  `pipeline/prompts/trade_suggest.md`), first matching rule wins:
-  refinery-capacity attack → long RBOB; attack on tankers/pipelines/storage →
-  long WTI; non-US product export ban (China, Russia) → long RBOB; significant
-  US–Iran peace progress → short WTI; significant Ukraine–Russia peace progress
-  → short RBOB; other news likely to stymie oil production (Gulf Coast weather
-  disasters, strikes on Middle East or Russian oil fields) → long WTI; unclear,
-  minor, or two-sided news → no trade.
-- **Holding time** follows how quickly the news could reverse (the model picks
-  a tier; minutes are configurable under `trading.hold_minutes`):
-  `transient` 15 (a struck tanker; hard cap under 20), `uncertain` 60 (default
-  middle ground, e.g. a struck pipeline/refinery), `moderate` 90 (peace talks),
-  `structural` 120 (e.g. a two-month export ban). Never more than 2 hours or
-  the user's time horizon.
-- **Size** is in whole contracts by notional value (contracts × price ×
-  contract size): at most ⅓ of the portfolio and at most available cash, times
-  the aggressiveness share (`low` 0.25, `medium` 0.5, `high` 1.0). If one
-  contract does not fit, there is no suggestion. Contracts are configurable
-  under `trading.contracts`; defaults are micro WTI (`MCL`, 100 bbl) and RBOB
-  (`RB`, 42,000 gal).
-- **Prices:** Yahoo Finance's public chart API (`CL=F`, `RB=F`), 1-minute
-  closes, no key, about 10 minutes delayed and unofficial. Sizing uses its
-  latest quote. 1-minute history reaches back about 30 days.
-- **Storage:** `trade_suggestions` keeps id, entry time, ticker, side,
-  contract and count, notional, hold minutes, closeout time, reference price,
-  tier, rule, rationale, model, and the event/notification/post it came from.
-- **Page:** portfolio form; a 1-minute chart of one local calendar day (WTI by
-  default, toggle to RBOB; a day selector for today and the six days before
-  it; today refreshes every minute); today's suggestions; past suggestions
-  (closeout before the start of today, local time). Clicking a suggestion
-  switches the chart to its ticker and entry day, shades the hold, and marks
-  it with circles: long entry green, short entry red, long closeout red, short
-  closeout green. A suggestion older than the selector's seven days gets its
-  own day chip while picked.
-- **Demo suggestions:** hand-entered rows in `db/demo_seed.json` (model
-  `manual demo entry`, no linked event) are added to each machine's database
-  at startup while `config.yaml` has `demo.seed_suggestions: true`, at most
-  once per row (matched on entry time, ticker, side and model). A suggestion
-  without an event shows its rationale under the row instead of a title.
+The existing backend stores a shared portfolio, quotes and suggestions for a
+limited instrument set. It schedules a suggestion after an eligible new event
+and requires a saved portfolio. Duplicate, unfiltered and failed classifications
+do not generate suggestions. See [contracts](contracts.md) for the current
+endpoints and `pipeline/trade.jac` for sizing, trigger and hold rules.
+
+Generalized signal support across sectors is future work. For channels that
+actually publish signals, a later paper-performance view can report hypothetical
+results using stated entry, exit, sizing, fees, slippage and missing-price
+assumptions. Part 1 covers navigation and layout only.

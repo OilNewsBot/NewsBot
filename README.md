@@ -1,10 +1,11 @@
 # Newsstream
 
-Agentic financial news monitor for event-driven crude oil trading. Watches a
-curated list of OSINT accounts (Telegram + X), classifies each post's
-materiality with a rubric-scored LLM call, clusters posts into events, and
-surfaces new events / material updates in a local web UI within seconds.
-Spec: [project specification](docs/spec.md).
+Newsstream brings together news for traders following Energy, Tech, Healthcare
+and Industrials. Browse the public sector directory, open a publisher's
+recent stories or sign in to My Sources to follow personal feeds. Channel
+publishing, discussion and generalized trading signals are on the
+[implementation roadmap](docs/feature-overhaul.md). See the
+[product specification](docs/spec.md) for the channel and feed design.
 
 ## Build with your agent
 
@@ -51,8 +52,7 @@ so **your system Python version, conda, and venvs don't matter** — don't
 
 ```bash
 jac install                  # REQUIRED: Python + npm packages into .jac/
-cp .env.example .env         # fill in ANTHROPIC_API_KEY (models are pre-set)
-jac test                     # sanity check: all tests pass offline
+python3 scripts/check.py     # offline tests and web build
 jac run                      # http://localhost:8000
 ```
 
@@ -60,15 +60,14 @@ jac run                      # http://localhost:8000
 changes) before `jac check`, `jac test` or `jac run` will work. If something
 fails, see [Troubleshooting](#troubleshooting-install).
 
-With no platform credentials the adapters idle (footer shows why) — exercise
-the whole pipeline and UI with the fixture replay:
+The public directory opens with bundled publisher stories. To refresh public RSS
+feeds on startup and hourly, run `NEWSSTREAM_DEMO_RSS=1 jac run` in Ubuntu or
+macOS. RSS needs no API key. See the [demo guide](docs/feature-overhaul.md#run-the-public-directory-for-demo-days)
+for caching and the [My Sources guide](docs/personal-sources.md) for private feeds.
 
-```bash
-jac run                                # terminal 1
-jac run replay -- tests/fixtures/      # terminal 2, 10x speed
-```
+## Optional event-monitor adapters
 
-## Data sources (decided 2026-09-10; docs/spec.md §14)
+The following settings apply to the separate market-event backend.
 
 **Defaults: Telegram + TwitterAPI.io push. Fallback: official X API,
 budget-capped.** Running the fallback alongside push is safe — posts

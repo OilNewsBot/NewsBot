@@ -1,15 +1,29 @@
-# Newsstream forum roadmap
+# Newsstream feature overhaul
 
-Work in small parts on `feature-overhaul`. Part 1 passed review checks. Part 2 is deferred. Part 3 uses a saved RSS snapshot so browsing works independently of publisher availability. Confirm the next part before starting it.
+Newsstream supports news-based trading across Energy, Tech, Healthcare and Industrials. Home opens the public directory. Readers can already expand publisher stories, open a shareable channel page and sign in to My Sources. The branch includes an earlier footer and duplicate-navigation repair. Work proceeds one approved part at a time on `feature-overhaul`.
+
+## Implementation sequence
 
 | Part | Deliverable | Acceptance check |
 | --- | --- | --- |
-| 1 | Repair the feed footer and duplicate navigation. | News Feed, Trading Insights and My Sources each show one navigation. At desktop, narrow-window and phone widths, a reader can scroll to the last feed item, expand its updates, use its links and open System status below it. |
-| 2 | Add a retractable sidebar. | On desktop, collapsing the sidebar expands the content area and the choice persists. On a phone, the drawer closes after navigation and returns focus to its toggle when dismissed. |
-| 3 | Make Home a public directory for Energy, Tech, Healthcare and Industrials. | A signed-out visitor can browse two editorial picks per category, expand the latest three headlines and share a channel link. Home lists one category per row at every width. Old oil and trading bookmarks open Home. |
-| 4 | Publish and subscribe to channels. | From My Sources, a user can preview one RSS feed and publish it with a title, description, category and curator byline. A second account finds it in Discover, subscribes and sees its news in Following after signing in again. Private sources require an explicit publish action. |
-| 5 | Add forum threads and channel recommendations. | Each headline links to the original publisher and has a thread for replies. Each account can recommend a channel once. Category rankings show real vote counts. Discover lists new channels in publication order. |
-| 6 | Prepare the shared 48-hour demo. | Two devices on one hosted service can publish, discover, subscribe and reply. Seeded RSS channels retain their latest headlines across restarts and upstream outages. The core experience works without X, Telegram or LLM credentials. |
+| 1 | Finish layout and shared navigation on Home, category pages, channel pages and My Sources. | Each view has one main navigation. Collapsing the desktop sidebar releases space and the choice survives reload. On a phone, selecting a destination closes the drawer, and dismissing it with Escape returns focus to the toggle. At 375, 720 and 1280 pixels, readers can scroll to the final item, expand a story and follow its publisher link without an overlay covering it. |
+| 2 | Verify the four-sector home and its seeded channels. | Each sector opens at least two genuine publisher feeds with dates and source links. Saved editions survive upstream outages. Editorial picks are labeled, with top-rated rankings introduced once votes exist. |
+| 3 | Introduce the unified public channel and item schema, and test the shared deployment. | RSS, X profile and community channels use the same channel page and feed contract. An X profile offers an official embed and direct profile link. Two devices open the same saved channel after a service restart. |
+| 4 | Add publishing, Discover, subscriptions and Following. | One account publishes a channel. Another discovers and follows it, sees its updates after a fresh login, then unsubscribes. Private history and connector credentials stay owner-scoped. |
+| 5 | Add RSS-first automatic summaries. | Duplicate deliveries generate one summary per revision. A material correction updates its cited summary. When budget or retries run out, readers still see the dated source text. |
+| 6 | Add community posts, threads and recommendations. | Users can post a title, description and optional source, discuss an article or shared X link, and recommend a channel once per account. Counts and rankings reflect recorded votes. |
+| 7 | Rehearse the shared 48-hour demo. | Two accounts on different devices can publish, discover, follow and reply. Exercise a restart, an unavailable feed and an exhausted AI budget. |
+| 8 | Extend authorized X ingestion and generalized trading in separately approved increments. | Eligible structured posts use the same summary worker. A channel with actual signals can later show hypothetical performance with explicit price, timing, fees and sizing assumptions. |
+
+Part 3 establishes shared hosting early because subscriptions and discussion need a common database across devices. The demo can proceed independently of optional X data access and paper performance.
+
+## Data and summarization decisions
+
+- **Channels and sources.** Use additive SQLite migrations for public channels, source identities and channel membership. Record creator, sector, slug, type, description and visibility. Collect a distinct public RSS feed once across subscribers. Publishing from My Sources requires an explicit choice of public metadata.
+- **Items.** Store original title and text, publisher or user byline, original URL or thread link, source-local identity, publication and collection times, content revision and processing status. Preserve separate source references when several channels carry the same story.
+- **Jobs and summaries.** Persist content and pending work together. Deduplicate by source ID and stable item identity. Cache by substantive revision, model and prompt version. Start with one small server-configured model producing attributed summaries from RSS text. Store the generation timestamp and evidence links, and label AI copy. Group related items when a new fact or correction changes the story. Bound concurrency, retries and daily spend and keep the last successful edition available.
+- **Public X and community channels.** The embed is a display feature. Only authorized provider data or legitimately user-supplied content is eligible for backend summaries. A shared link alone can start a discussion. Community submissions carry an authenticated author and use the same public item and discussion model.
+- **Deployment.** The demo uses one persistent backend and one collection worker, with account-specific subscriptions, comments and unique channel votes in SQLite. The Tauri app also supports local use.
 
 ## Run the public directory for demo days
 

@@ -1,73 +1,25 @@
-Conceptual Spec For Agentic Financial Newsstream
+Newsstream product concept
 
-Purpose/Motivation:
+Newsstream helps readers and traders follow developments across Energy, Tech,
+Healthcare and Industrials. A regulatory decision, an earnings revision or a
+change in manufacturing capacity can matter to different readers. Readers
+choose sectors and channels, inspect the original source and discuss what the
+news could mean for the affected companies and instruments.
 
-Trading success can depend heavily on time-sensitive news. Oil trading is a good example of this. Publicly-traded oil futures contracts have (and will continue to) swing wildly in price in the few minutes after news is released, as traders react to developments in the strait of Hormuz. Houthi activity, Iran announcements, US announcements, and more all influence the price chart. For the rest of this spec, we will be using oil trading as the foundational usecase, but in principle the Agentic Financial Newsstream should be capable of performing similar functions for other types of investing (broader commodities/equities/crypto/etc.)
+Readers can browse public publisher channels, publish their own channels and
+subscribe to other curators. The directory starts with genuine RSS stories.
+The planned shared feed also supports community posts and public X profiles.
+X profiles use official embedded timelines. Authorized structured data or
+user-supplied text is required for automated summaries.
 
-While mainstream trusted sources report on Hormuz and the Middle East, they are often slow at surfacing events that the market will react to. For example, when US-allied oil vessels were damaged by Iranian projectiles, this news was first broken by semiofficial OSINT analysts on twitter - many hours before the story appeared in trusted publications. Similarly, when the US struck five Iranian oil tankers, Twitter accounts were earliest to break the news.
+A story can collect multiple reports, confirmations and corrections. Keep
+the original links visible, distinguish reporting from interpretation, and
+label AI summaries. Readers should be able to acknowledge alerts and avoid
+repeat notifications about the same development.
 
-In circumstances where information is flowing from a non-traditional source, a trader can be late to learn crucial facts (and therefore become vulnerable to losses/missed opportunities). As a trader with 100k+ in profits from oil futures, I often spend multiple hours scrolling/refreshing twitter in a day, checking various accounts for news. This worked at a cost. It naturally follows to build an agentic software that preserves the benefits of constant finance twitter scrolling but removes the cost.
+Channels that publish explicit trading signals may later show hypothetical
+performance with their entry, exit and sizing assumptions. The initial demo
+focuses on shared channels, reliable news updates and discussion.
 
-Tentative Product Implementations/Features
-
-This section is likely to need revisions and additions. The list of product features described is not meant to be exhaustive. However, at a very bare-bones level, the software should:
-
-Hold a rolling list of relevant twitter accounts/social media pages. (Start with just twitter for simplicity).
-
-Where does this list of social media pages come from?
-
-Answer: When the user first downloads the software, they input the investment sectors they’re interested in and (optionally) input a list of social media accounts. If the user inputs a list of accounts, an agentic system compiles other major accounts operating in a similar space.
-
-With or without an initial list of accounts, the agentic system searches twitter for accounts that have been known to release news that may be relevant for the user’s stated sectors of interest.
-
-Here the intelligence of the agent swarm is very important. Determining contextually through a fluid process whether or not a twitter account is “relevant” to an investment sector is what makes the system better than a simple keyword search.
-
-The search for twitter accounts can begin as a one-time setup action, although a more mature version of the software would handle updating and revising the list of accounts every few weeks or months.
-
-Once the list is populated, twitter api checks attached to high-speed LLMS are deployed to monitor those accounts for posts. Every new post will be subjected to the following filtering process:
-
-Could the post have a major effect on the user’s listed investment sectors? If no: no need to do anything
-
-If yes, then:
-
-sort the post into the best-fitting investment category (exactly one category, multiple is too complex)
-
-Surface it to the user through an in-app or onscreen popup depending on preference
-
-Add the contents of the post (most commonly the news it broke) as an entry into a list of “already surfaced” events.
-
-Also, for every post, check if the contents have already appeared in the “Already Surfaced” list, such that the user doesn’t get redundant notifications. (This is another way the intelligent agentic system shows superiority over those dumber notification systems that rely on keyword filtering and simpler algorithms).
-
-Users should have an easy and intuitive way to signal that they’ve encountered a notification. (Click). And, if there are multiple notifs, they should not clog up the screen but ‘stack’ in a limited area.
-
-Post notifications should include a link to the tweet so users can scroll comments; posts that are themselves comments should never be surfaced to the user as notifications, even if they’re from an account on the list.
-
-System should determine relevancy using a usefulness metric, i.e., an agent takes some pre-built list of criteria and scores the post according to the criteria. “This post about new Houthi attacks on a Saudi Arabian oil facility receives a score of 88!” The user should be able to set their threshold for being notified, but with a reasonable default of 70 or so.
-
-System should surface notifications of posts regardless of ‘trustworthiness’ - allow user to interpret for themselves the certainty of the information they find. (Also, if the user provided the accounts themself, this is obviously a non issue).
-
-Challenges I’m unsure about include: How to deal with it when a twitter account deletes or changes its @. How to handle quote tweets. How to maximize rapid info flow and intelligence of agents without overheating the device running the service - maybe not a problem if there are few (<20) accounts?
-
-Initial software:
-
-To begin with, I produced a version that is a simple locally-running service with a frontend page in which notifications are surfaced. (No need for universal screen popups yet for my usecase). Optionality for an audio ping when a new news story is surfaced.
-
-Initial investment sector of interest is crude oil
-
-Initial accounts of interest are:
-
-https://x.com/FaytuksNetwork
-
-https://x.com/HormuzLetter
-
-https://x.com/MoloWarMonitor
-
-https://x.com/TankerTrackers
-
-https://x.com/Osint613
-
-https://x.com/GavMcCracken
-
-https://x.com/UK_MTO
-
-https://x.com/MenchOsint
+See docs/spec.md for product requirements and docs/feature-overhaul.md for
+the sequence and acceptance criteria.
