@@ -387,7 +387,7 @@ class Catalog:
     async def following(self, uid):
         def read(db):
             selected = self._categories(db, uid)
-            channels = self._channels(db, uid, following=True, limit=50, selected=selected)
+            channels = self._channels(db, uid, following=True, limit=200, selected=selected)
             groups = {}
             for channel in channels:
                 for item in channel["headlines"]:

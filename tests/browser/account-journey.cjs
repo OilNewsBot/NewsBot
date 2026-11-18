@@ -22,7 +22,7 @@ async function exercise() {
 
         await page.goto(origin + "/discover");
         const preview = page.locator(".channel-disclosure").first();
-        await preview.locator("summary").click();
+        await preview.locator(":scope > summary").click();
         await preview.getByRole("link", {name: /Open channel/}).click();
         const channel = new URL(page.url()).pathname;
         await page.getByRole("link", {name: "Sign in to follow", exact: true}).click();

@@ -71,8 +71,8 @@ obj Repo {
     }
 
     async def _one(sql: str, args: Params = ()) -> Row | None {
-        rows = await self.db.execute_fetchall(sql, args);
-        return dict(rows[0]) if rows else None;
+        rows = await self._all(sql, args);
+        return rows[0] if rows else None;
     }
 
     # -- users ----------------------------------------------------------------
