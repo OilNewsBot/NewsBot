@@ -1,0 +1,48 @@
+{
+  "energy": [
+    "Oil and gas producers cut crude output as OPEC reviews its quota. Refineries face tighter fuel supplies.",
+    "Solar farms, photovoltaic panels and wind turbines deliver renewable power to the electricity grid.",
+    "A utility needs new transmission lines and battery storage to meet electric power demand.",
+    "Nuclear power plants and reactors produce electricity as coal plants retire.",
+    "Natural gas pipelines and LNG exports change the price of heating fuel.",
+    "Drought cuts hydroelectric generation while utilities restart fossil fuel plants.",
+    "Offshore drilling, shale wells and petroleum reserves expand oil production."
+  ],
+  "tech": [
+    "Software developers patch a Java vulnerability after a cyberattack exposes customer accounts.",
+    "Apple restores iCloud, Apple Pay and other online services after a digital outage.",
+    "Artificial intelligence labs train a language model. AI chips and data centers compete for computing capacity.",
+    "Nvidia designs processors and semiconductors for computers. Chipmakers build advanced chips.",
+    "Cloud computing networks, DNS servers and internet platforms recover from a security breach.",
+    "A startup releases a smartphone app and a developer toolkit for mobile devices.",
+    "Social media platforms and search engines change how their algorithms rank posts."
+  ],
+  "healthcare": [
+    "A measles outbreak leads to vaccination clinics as public health officials track infections.",
+    "Hospitals and nurses care for patients with heart disease, diabetes and cancer.",
+    "A drugmaker reports clinical trial results and seeks FDA approval for a new treatment.",
+    "Medicare and Medicaid insurance coverage affects hospital bills and access to medical care.",
+    "Scientists study viruses, disease transmission, immunization and vaccine effectiveness.",
+    "A medical device detects early symptoms and helps doctors diagnose patients.",
+    "Mental health researchers evaluate a therapy for depression in a clinical study."
+  ],
+  "industrials": [
+    "Aircraft manufacturers and aerospace suppliers deliver engines and airplanes to airlines.",
+    "Automakers retool assembly lines while factories expand industrial production and manufacturing.",
+    "Railroads, trucking companies and ports report freight delays and shipping container shortages.",
+    "Machinery makers install industrial robots and machine tools in steel mills.",
+    "Construction contractors order heavy equipment to build bridges and railway infrastructure.",
+    "Logistics firms move cargo through warehouses as a dockworkers strike disrupts supply chains.",
+    "A shipbuilder opens a shipyard to make vessels and transport equipment."
+  ],
+  "general": [
+    "Voters decide a national election. Congress debates party leadership, policy and campaign spending.",
+    "Diplomats discuss peace negotiations as a military conflict continues overseas.",
+    "Actors and directors attend a film festival while an author releases a new novel.",
+    "A football team wins its championship and fans celebrate a playoff victory.",
+    "A court hears arguments on immigration law as the government announces a border policy.",
+    "A chef opens a restaurant and shares a recipe. Travelers visit museums and parks.",
+    "Schools and universities debate curriculum and the cost of a college education.",
+    "World leaders discuss trade, tariffs and diplomatic relations at an international summit. Export negotiations affect the talks."
+  ]
+}

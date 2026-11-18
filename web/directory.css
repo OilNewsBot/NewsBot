@@ -94,3 +94,4 @@
     .category-count { font-size: 12px; }
     .category-arrow { display: none; }
 }
+.directory-headlines a.story-section { display: inline-block; color: var(--accent); font-size: 13px; text-transform: capitalize; }

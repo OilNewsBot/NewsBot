@@ -27,6 +27,7 @@ import from adapters.x_api { XApiAdapter }
 import from adapters.x_push { XPushAdapter }
 import from config { ROOT, Settings, load_settings }
 import from db.directory { PublicDirectory }
+import from pipeline.forum_routing { ForumRouter }
 import from db.repo { Repo, Row, load_demo_suggestions }
 import from pipeline.llm { LLMClient }
 import from pipeline.notify { Bus }
@@ -107,7 +108,7 @@ async def _guarded(adapter: SourceAdapter, work: Awaitable[None]) {
     }
 }
 
-"""Resolve configured handles to stable IDs once and store both (§4)."""
+"""Resolve configured handles to stable IDs once and store both (Â§4)."""
 async def _resolve_x_accounts(settings: Settings, repo: Repo, x_api: XApiAdapter) {
     known_handles = {str(a["handle"]).lower() for a in await repo.get_accounts("x")};
     for acct in settings.accounts {
@@ -132,12 +133,20 @@ async def _resolve_x_accounts(settings: Settings, repo: Repo, x_api: XApiAdapter
 def create_app(settings: Settings | None = None) -> FastAPI {
     settings = settings or load_settings();
     repo = Repo(settings.db_path);
-    directory = PublicDirectory(settings.db_path.parent / "directory-rss.json");
-    directory.load();
     personal = PersonalStore(settings.db_path);
     personal_worker = PersonalWorker(personal);
     bus = Bus();
     llm = LLMClient(settings.anthropic_api_key, repo);
+    directory = PublicDirectory(
+        cache=settings.db_path.parent / "directory-rss.json",
+        router=ForumRouter(
+            LLMClient(settings.anthropic_api_key, repo)
+                if settings.anthropic_api_key
+                else None,
+            settings.triage_model
+        )
+    );
+    directory.load();
     prices = PriceFeed(settings);
     trader = Trader(settings, repo, llm, prices);
     pipeline = Pipeline(settings, repo, llm, bus, trader=trader);
@@ -335,7 +344,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
 
     @app.get("/api/directory")
     async def public_directory -> Row {
-        return directory.catalog;
+        return directory.view();
     }
 
     @app.get("/directory-images/{sector}.jpg")
@@ -430,7 +439,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         };
     }
 
-    # ---------- trading page (docs/spec.md §16) ----------
+    # ---------- trading page (docs/spec.md Â§16) ----------
 
     @app.get("/portfolio")
     async def get_portfolio -> Json {

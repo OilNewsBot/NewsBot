@@ -245,6 +245,58 @@
           ]
         }
       ]
+    },
+    {
+      "slug": "general",
+      "name": "General News",
+      "channels": []
+    }
+  ],
+  "publishers": [
+    {
+      "slug": "new-york-times",
+      "name": "The New York Times",
+      "publisher": "The New York Times",
+      "description": "Top stories from the Times, covering U.S. and international news across subjects.",
+      "feed_url": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+      "headlines": [
+        {
+          "title": "A.I. Helps Find Major Security Bug in Java, a Software Platform Vital to the Internet",
+          "url": "https://www.nytimes.com/2026/11/17/us/politics/ai-security-bug-java.html",
+          "published": "2026-11-18T00:06:19+00:00",
+          "summary": "Researchers used AI to identify a security flaw in Java, software used on many internet services."
+        },
+        {
+          "title": "26 More Measles Cases in New York, but Outbreak Appears to Be Easing",
+          "url": "https://www.nytimes.com/2026/11/17/nyregion/new-york-state-measles-outbreak.html",
+          "published": "2026-11-17T23:51:50+00:00",
+          "summary": "New York recorded additional measles infections while the pace of the outbreak showed signs of slowing."
+        },
+        {
+          "title": "For Democrats, a Leadership Fight Is Marring an Electoral Triumph",
+          "url": "https://www.nytimes.com/2026/11/17/us/politics/democrats-leadership-battle-schumer-van-hollen.html",
+          "published": "2026-11-17T23:23:41+00:00",
+          "summary": "An internal contest over party leadership followed Democrats’ midterm election gains."
+        },
+        {
+          "title": "Apple Addresses Outages Affecting Apple Pay, iCloud and Apps",
+          "url": "https://www.nytimes.com/2026/11/17/technology/apple-down-outage-issues.html",
+          "published": "2026-11-17T23:17:38+00:00",
+          "summary": "Apple reported service interruptions across several products, including its payment and cloud services."
+        },
+        {
+          "title": "With House Democratic Majority Still Growing, Recounts Are Starting in Closest Races",
+          "url": "https://www.nytimes.com/2026/11/17/us/elections/recounts-house-races-north-carolina-minnesota.html",
+          "published": "2026-11-17T21:11:19+00:00",
+          "summary": "Several close House contests went to recounts as the balance of seats continued to change."
+        },
+        {
+          "title": "U.S. Loses Its Measles Elimination Status, a Historic Setback for American Health",
+          "url": "https://www.nytimes.com/2026/11/17/well/us-measles-elimination-status.html",
+          "published": "2026-11-17T20:52:05+00:00",
+          "summary": "The loss of measles elimination status marks a reversal for U.S. public health officials."
+        }
+      ]
     }
   ]
 }

@@ -8,7 +8,8 @@ obj Headline {
     has title: str,
         url: str,
         published: str,
-        summary: str;
+        summary: str,
+        section: str | None = None;
 }
 
 obj Channel {
@@ -30,7 +31,8 @@ obj Category {
 obj Directory {
     has captured_at: str,
         curator: str,
-        categories: list[Category];
+        categories: list[Category],
+        publishers: list[Channel];
 }
 
 def display_date(iso: str) -> str {
@@ -56,6 +58,11 @@ def Headlines(channel: Channel) -> JsxElement {
                         {display_date(item.published)}
                     </time>
                 </span>
+                {if item.section {
+                    <a className="story-section" href={"/categories/" + item.section}>
+                        {"General News" if item.section == "general" else item.section}
+                    </a>
+                }}
             </li>
         }}
     </ul>
@@ -141,6 +148,28 @@ def ChannelRow(channel: Channel, captured: str) -> JsxElement {
     </li>
 }
 
+def ChannelPage(
+    channel: Channel, data: Directory, back_url: str, back_label: str
+) -> JsxElement {
+    return
+        <main className="directory directory-reading">
+            <a className="directory-back" href={back_url}>{"← " + back_label}</a>
+            <header className="directory-heading">
+                <h1>{channel.name}</h1>
+                <p>{"Curated by " + data.curator}</p>
+            </header>
+            <p className="directory-deck">{channel.description}</p>
+            <ShareChannel slug={channel.slug}/>
+            <section className="channel-card">
+                <h2>Latest headlines</h2>
+                <span className="directory-byline">
+                    {"Snapshot " + display_date(channel.checked_at or data.captured_at)}
+                </span>
+                <Headlines channel={channel}/>
+            </section>
+        </main>;
+}
+
 def DirectoryContent(data: Directory, path: str) -> JsxElement {
     if path == "/" {
         return
@@ -155,6 +184,17 @@ def DirectoryContent(data: Directory, path: str) -> JsxElement {
                     }}
                 </ul>
             </main>;
+    }
+    for publisher in data.publishers {
+        if path == "/channels/" + publisher.slug {
+            return
+                <ChannelPage
+                    channel={publisher}
+                    data={data}
+                    back_url="/"
+                    back_label="All forums"
+                />;
+        }
     }
     for category in data.categories {
         if path == "/categories/" + category.slug {
@@ -179,35 +219,12 @@ def DirectoryContent(data: Directory, path: str) -> JsxElement {
         for channel in category.channels {
             if path == "/channels/" + channel.slug {
                 return
-                    <main className="directory directory-reading">
-                        <a
-                            className="directory-back"
-                            href={"/categories/" + category.slug}
-                        >
-                            {"← " + category.name}
-                        </a>
-                        <header className="directory-heading">
-                            <h1>{channel.name}</h1>
-                            <p>
-                                {"Curated by "
-                                    + data.curator
-                                    + " · Featured in "
-                                    + category.name}
-                            </p>
-                        </header>
-                        <p className="directory-deck">{channel.description}</p>
-                        <ShareChannel slug={channel.slug}/>
-                        <section className="channel-card">
-                            <h2>Latest headlines</h2>
-                            <span className="directory-byline">
-                                {"Snapshot "
-                                    + display_date(
-                                        channel.checked_at or data.captured_at
-                                    )}
-                            </span>
-                            <Headlines channel={channel}/>
-                        </section>
-                    </main>;
+                    <ChannelPage
+                        channel={channel}
+                        data={data}
+                        back_url={"/categories/" + category.slug}
+                        back_label={category.name}
+                    />;
             }
         }
     }

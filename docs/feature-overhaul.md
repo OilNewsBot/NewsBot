@@ -19,6 +19,14 @@ The service opens immediately with a saved edition and checks public RSS feeds o
 
 Visitors and operators can run this mode without X, Telegram, LLM or SSH keys. SSH is an operator option for managing a remote server. The default service address is local to the demo machine. Sharing a public URL across devices requires a hosted instance.
 
+### Multi-topic publishers
+
+The New York Times Top Stories is a public RSS publisher. Each article is classified from its headline and summary. A publisher can appear in several forums, with up to three matching stories in each. Its shared channel URL opens the full recent edition. Stories with no clear sector fit go to General News.
+
+The key-free demo runs a small local text classifier fitted to the labeled examples in `db/forum_training.json`. If the server has an Anthropic API key, a feed refresh also sends new articles to the configured `TRIAGE_MODEL` in one batch per publisher. Valid model assignments are saved with the edition and reused. An unavailable model or an invalid label leaves the local assignment in place.
+
+To include another public multi-topic RSS feed, add it to the `publishers` array in `db/directory_seed.json` with a unique slug, publisher name, description, feed URL and a dated starter edition. The hourly refresh handles it automatically.
+
 ## Directory assets
 
 The bundled edition in `db/directory_seed.json` includes publisher URLs, dates and editorial summaries. New stories use short excerpts from the publisher feed. The sector photographs are illustrative and are stored locally.

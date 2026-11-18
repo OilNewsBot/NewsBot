@@ -11,12 +11,13 @@ import from tempfile { NamedTemporaryFile }
 import from urllib.parse { urlsplit }
 import from config { ROOT }
 import from db.repo { Row }
+import from pipeline.forum_routing { ForumRouter }
 import from personal.providers { ProviderError, fetch_feed, parse_feed }
 
 glob log = logging.getLogger("newsstream.directory");
 
 def latest_stories(
-    items: list[Row], previous: list[Row], checked: str, feed_url: str
+    items: list[Row], previous: list[Row], checked: str, feed_url: str, limit: int = 3
 ) -> list[Row] {
     by_url = {story["url"]: story for story in previous};
     found = False;
@@ -44,6 +45,7 @@ def latest_stories(
             summary = textwrap.shorten(str(item["text"]), width=260, placeholder="…");
         }
         by_url[url] = {
+            ** (old if old.get("title") == item["title"] else {}),
             "url": url,
             "title": item["title"],
             "published": date,
@@ -53,12 +55,44 @@ def latest_stories(
     if not found {
         return [];
     }
-    return sorted(by_url.values(), key=itemgetter("published"), reverse=True)[:3];
+    return sorted(by_url.values(), key=itemgetter("published"), reverse=True)[:limit];
 }
 
 obj PublicDirectory {
     has cache: Path,
-        catalog: Row = {};
+        catalog: Row = {},
+        router: ForumRouter = ForumRouter();
+
+    def sections -> list[str] {
+        return [section["slug"] for section in self.catalog["categories"]];
+    }
+
+    def channels -> list[Row] {
+        return [
+            channel for category in self.catalog["categories"]
+            for channel in category["channels"]
+        ]
+            + self.catalog.get("publishers", []);
+    }
+
+    def view -> Row {
+        categories: list[Row] = [];
+        for category in self.catalog["categories"] {
+            channels = list(category["channels"]);
+            for publisher in self.catalog.get("publishers", []) {
+                matches = [
+                    story
+                    for story in publisher["headlines"]
+                    if story.get("section") == category["slug"]
+                ];
+                if matches {
+                    channels.append({** publisher, "headlines": matches[:3]});
+                }
+            }
+            categories.append({** category, "channels": channels});
+        }
+        return {** self.catalog, "categories": categories};
+    }
 
     def load -> None {
         self.catalog = json.loads(
@@ -66,20 +100,26 @@ obj PublicDirectory {
         );
         try {
             saved = json.loads(self.cache.read_text(encoding="utf-8"));
-            for category in self.catalog["categories"] {
-                for channel in category["channels"] {
-                    edition = saved.get(channel["feed_url"]);
-                    if not isinstance(edition, dict) {
-                        continue;
-                    }
-                    stories = edition.get("headlines");
-                    checked = str(edition.get("checked_at") or "");
-                    if checked < self.catalog["captured_at"]
-                        or not isinstance(stories, list)
-                        or not (1 <= len(stories) <= 3) {
-                        continue;
-                    }
-                    if all(
+        } except FileNotFoundError {
+            saved = {};
+        } except (OSError, ValueError) as e {
+            log.warning("Could not load the saved RSS directory: %s", e);
+            saved = {};
+        }
+        publishers = self.catalog.get("publishers", []);
+        sections = self.sections();
+        for channel in self.channels() {
+            edition = saved.get(channel["feed_url"])
+                if isinstance(saved, dict)
+                else None;
+            if isinstance(edition, dict) {
+                stories = edition.get("headlines");
+                checked = str(edition.get("checked_at") or "");
+                limit = 24 if channel in publishers else 3;
+                if checked >= self.catalog["captured_at"]
+                    and isinstance(stories, list)
+                    and 1 <= len(stories) <= limit
+                    and all(
                         isinstance(story, dict)
                             and all(
                                 isinstance(story.get(field), str)
@@ -87,14 +127,12 @@ obj PublicDirectory {
                             )
                             and story["url"].startswith("https://") for story in stories
                     ) {
-                        channel.update({"checked_at": checked, "headlines": stories});
-                    }
+                    channel.update({"checked_at": checked, "headlines": stories});
                 }
             }
-        } except FileNotFoundError {
-            return;
-        } except (OSError, ValueError, AttributeError) as e {
-            log.warning("Could not load the saved RSS directory: %s", e);
+            if channel in publishers {
+                self.router.assign_local(channel["headlines"], sections);
+            }
         }
     }
 
@@ -103,8 +141,8 @@ obj PublicDirectory {
             channel["feed_url"]: {
                 "checked_at": channel["checked_at"],
                 "headlines": channel["headlines"]
-            } for category in self.catalog["categories"]
-            for channel in category["channels"]
+            }
+            for channel in self.channels()
             if channel.get("checked_at")
         };
         self.cache.parent.mkdir(parents=True, exist_ok=True);
@@ -124,28 +162,36 @@ obj PublicDirectory {
 
     async def refresh(fetcher: any = fetch_feed) -> None {
         updated = False;
-        for category in self.catalog["categories"] {
-            for channel in category["channels"] {
-                try {
-                    (body, _, base) = await fetcher(channel["feed_url"]);
-                    (_, items) = parse_feed(body, base);
-                    checked = datetime.now(UTC).isoformat();
-                    stories = latest_stories(
-                        items, channel["headlines"], checked, base
-                    );
-                    if stories {
-                        channel.update({"checked_at": checked, "headlines": stories});
-                        updated = True;
+        publishers = self.catalog.get("publishers", []);
+        for channel in self.channels() {
+            mixed = channel in publishers;
+            try {
+                (body, _, base) = await fetcher(channel["feed_url"]);
+                (_, items) = parse_feed(body, base);
+                checked = datetime.now(UTC).isoformat();
+                stories = latest_stories(
+                    items, channel["headlines"], checked, base, 24 if mixed else 3
+                );
+                if stories {
+                    if mixed {
+                        self.router.assign_local(stories, self.sections());
                     }
-                } except (ProviderError, OSError) as e {
-                    log.warning(
-                        "Keeping saved headlines for %s: %s", channel["slug"], e
-                    );
+                    channel.update({"checked_at": checked, "headlines": stories});
+                    updated = True;
                 }
+            } except (ProviderError, OSError) as e {
+                log.warning("Keeping saved headlines for %s: %s", channel["slug"], e);
             }
         }
         if updated {
             self.save();
+        }
+        # New articles and local assignments are durable before any hosted call.
+        for publisher in publishers {
+            if publisher.get("checked_at")
+                and await self.router.review(publisher["headlines"], self.sections()) {
+                self.save();
+            }
         }
     }
 
