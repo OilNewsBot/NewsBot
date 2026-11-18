@@ -65,8 +65,11 @@ test("worker fetches navigations without caching and leaves API and SSE alone", 
     assert.equal(page.status, 503);
     const html = await page.text();
     assert.match(html, /NewsDrop is offline/);
-    const original = "https://example.test/following?sector=energy";
-    assert.equal(new URL(html.match(/href="([^"]*)"/)[1], original).href, original);
+    const retry = html.match(/<button[^>]*onclick="([^"]+)"[^>]*>Try again<\/button>/);
+    assert.ok(retry);
+    let reloaded = false;
+    vm.runInNewContext(retry[1], { location: { reload: () => { reloaded = true; } } });
+    assert.equal(reloaded, true);
 });
 
 test("worker shows a generic notice and rechecks ownership when clicked", async () => {
