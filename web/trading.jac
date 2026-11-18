@@ -26,6 +26,7 @@ obj Suggestion {
         structure: str,
         rule: str,
         rationale: str,
+        model: str,
         event_title: str | None;
 }
 
@@ -280,6 +281,9 @@ def SuggestionRow(
         title={s.rationale}
     >
         <span className="dim">{"#" + str(s.id)}</span>
+        {if s.model == "manual demo entry" {
+            <strong>Manual demo</strong>
+        }}
         <span>{when(s.created_at)}</span>
         <span className="tick">{s.ticker}</span>
         <span className={"side " + s.side}>{s.side.upper()}</span>
@@ -508,12 +512,12 @@ def:pub TradingPage -> JsxElement {
             <div>
                 <h1>Trading Insights</h1>
                 <p className="dim">
-                    {"Explore oil-market charts, review AI-generated trade ideas, and manage your simulated portfolio inputs."}
+                    {"Explore oil-market charts and review trade suggestions."}
                 </p>
             </div>
         </div>
         <p className="dim disclaimer">
-            Speculative suggestions only, made by a model from breaking news. Nothing is traded for you. Each one is meant to be closed within 2 hours.
+            Suggestions are speculative, with a maximum hold of two hours. Newsstream does not place orders.
         </p>
         <section className="panel">
             <div className="chart-head">
@@ -579,8 +583,15 @@ def:pub TradingPage -> JsxElement {
             }}
         </section>
         <section className="panel">
-            <h2>Portfolio</h2>
-            <form className="portfolio" onSubmit={save_portfolio}>
+            <h2>Shared simulated portfolio</h2>
+            <p id="portfolio-sharing">
+                Everyone using this Newsstream server can view and change these figures. Use simulated balances.
+            </p>
+            <form
+                className="portfolio"
+                onSubmit={save_portfolio}
+                aria-describedby="portfolio-sharing"
+            >
                 <label>
                     {"Portfolio size ($)"}
                     <input
@@ -633,14 +644,13 @@ def:pub TradingPage -> JsxElement {
                 }}
             </form>
             <p className="dim small">
-                {"Typed in by hand from your Robinhood app; not linked to your account. "
-                    + "Size: whole contracts worth at most ⅓ of the portfolio and no more than "
+                {"Whole contracts worth at most ⅓ of the portfolio and no more than "
                     + "available cash, scaled by aggressiveness. "
                     + sizing}
             </p>
             {if not hasPortfolio {
                 <p className="warn-text">
-                    Enter your portfolio to start getting suggestions.
+                    Enter simulated balances to start getting suggestions.
                 </p>
             }}
         </section>
