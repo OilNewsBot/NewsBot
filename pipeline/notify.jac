@@ -66,11 +66,16 @@ def build_card(
     };
 }
 
-async def notify(repo: Repo, bus: Bus, card: Json) -> int {
+async def save_card(repo: Repo, card: Json) -> int {
     nid = await repo.insert_notification(
         str(card["kind"]), int(card["post_id"]), card.get("event_id"), card
     );
     card["notification_id"] = nid;
+    return nid;
+}
+
+async def notify(repo: Repo, bus: Bus, card: Json) -> int {
+    nid = await save_card(repo, card);
     bus.publish(card);
     log.info(
         "surfaced | kind=%s post=%s event=%s",

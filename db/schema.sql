@@ -28,6 +28,24 @@ CREATE TABLE IF NOT EXISTS posts (
     media_urls     TEXT NOT NULL DEFAULT '[]',
     UNIQUE (source, source_post_id)
 );
+-- Older Bot API rows used Telegram's negative marked channel ID. Keep those
+-- keys and their foreign-key references while deduplicating canonical writes.
+DROP TRIGGER IF EXISTS prevent_telegram_transport_duplicate;
+CREATE TRIGGER IF NOT EXISTS ignore_legacy_telegram_duplicate
+BEFORE INSERT ON posts
+WHEN NEW.source='telegram' AND NEW.account_id <> ''
+     AND NEW.account_id NOT GLOB '*[^0-9]*'
+     AND substr(NEW.source_post_id,1,length(NEW.account_id)+1)=NEW.account_id||':'
+BEGIN
+    SELECT RAISE(IGNORE)
+    WHERE EXISTS (
+        SELECT 1 FROM posts WHERE source='telegram' AND source_post_id IN (
+            '-100'||NEW.source_post_id,
+            CAST(-1000000000000-CAST(NEW.account_id AS INTEGER) AS TEXT)||
+                substr(NEW.source_post_id,length(NEW.account_id)+1)
+        )
+    );
+END;
 CREATE INDEX IF NOT EXISTS idx_posts_received ON posts (received_at);
 
 -- One row per classifier run (triage and, near the threshold, review).
@@ -144,3 +162,25 @@ CREATE TABLE IF NOT EXISTS trade_suggestions (
     post_id         INTEGER REFERENCES posts (id)
 );
 CREATE INDEX IF NOT EXISTS idx_trade_suggestions_created ON trade_suggestions (created_at);
+
+-- Accepting a raw post and queuing its classification are one SQLite operation.
+CREATE TABLE IF NOT EXISTS pipeline_pending (
+    post_id INTEGER PRIMARY KEY REFERENCES posts(id),
+    retry_at REAL NOT NULL DEFAULT 0
+);
+CREATE TRIGGER IF NOT EXISTS queue_ingested_post AFTER INSERT ON posts
+BEGIN
+    INSERT INTO pipeline_pending(post_id) VALUES (NEW.id);
+END;
+
+-- Recover raw inputs stranded before the durable queue was introduced.
+CREATE TABLE IF NOT EXISTS pipeline_migrations (version INTEGER PRIMARY KEY);
+BEGIN IMMEDIATE;
+INSERT OR IGNORE INTO pipeline_pending(post_id)
+SELECT p.id FROM posts p
+WHERE NOT EXISTS (SELECT 1 FROM pipeline_migrations WHERE version=1)
+  AND NOT EXISTS (SELECT 1 FROM decisions d WHERE d.post_id=p.id AND d.is_final=1)
+  AND NOT EXISTS (SELECT 1 FROM event_posts e WHERE e.post_id=p.id)
+  AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.post_id=p.id);
+INSERT OR IGNORE INTO pipeline_migrations VALUES (1);
+COMMIT;

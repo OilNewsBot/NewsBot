@@ -1,6 +1,7 @@
 """SQLite repository. One aiosqlite connection, WAL mode, all times UTC ISO8601."""
 
 import json;
+import contextlib;
 import aiosqlite;
 import from datetime { UTC, datetime, timedelta }
 import from pathlib { Path }
@@ -32,7 +33,8 @@ def iso(dt: datetime) -> str {
 
 obj Repo {
     has db_path: Path | str,
-        _db: aiosqlite.Connection | None = None;
+        _db: aiosqlite.Connection | None = None,
+        _in_result_transaction: bool = False;
 
     has db: aiosqlite.Connection {
         getter -> aiosqlite.Connection {
@@ -150,31 +152,45 @@ obj Repo {
 
     """Persist a NormalizedPost. Returns row id, or None if already seen."""
     async def insert_post(p: NormalizedPost) -> int | None {
-        try {
-            cur = await self._run(
-                """INSERT INTO posts (source, source_post_id, account_id, account_handle, tier,
-                                      url, text, quoted_text, is_reply, posted_at, received_at, media_urls)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    p.source,
-                    p.source_post_id,
-                    p.account_id,
-                    p.account_handle,
-                    p.tier,
-                    p.url,
-                    p.text,
-                    p.quoted_text,
-                    int(p.is_reply),
-                    iso(p.posted_at),
-                    iso(p.received_at),
-                    json.dumps(p.media_urls)
-                )
-            );
-        } except aiosqlite.IntegrityError {
-            return None;
-        }
+        cur = await self._run(
+            """INSERT INTO posts (source, source_post_id, account_id, account_handle, tier,
+                                  url, text, quoted_text, is_reply, posted_at, received_at, media_urls)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(source, source_post_id) DO NOTHING""",
+            (
+                p.source,
+                p.source_post_id,
+                p.account_id,
+                p.account_handle,
+                p.tier,
+                p.url,
+                p.text,
+                p.quoted_text,
+                int(p.is_reply),
+                iso(p.posted_at),
+                iso(p.received_at),
+                json.dumps(p.media_urls)
+            )
+        );
         await self.db.commit();
-        return cur.lastrowid;
+        return cur.lastrowid if cur.rowcount else None;
+    }
+
+    """Use a private connection to commit output and dequeue together. Model
+    calls always finish before this short transaction starts."""
+    @contextlib.asynccontextmanager
+    async def result_transaction -> AsyncIterator[Repo] {
+        async with aiosqlite.connect(self.db_path) as connection {
+            connection.row_factory = aiosqlite.Row;
+            await connection.execute("BEGIN IMMEDIATE");
+            yield Repo(self.db_path, connection, True);
+            await connection.commit();
+        }
+    }
+
+    async def _commit_result {
+        if not self._in_result_transaction {
+            await self.db.commit();
+        }
     }
 
     async def get_post(post_id: int) -> Row | None {
@@ -216,7 +232,7 @@ obj Repo {
                 iso(utcnow())
             )
         );
-        await self.db.commit();
+        await self._commit_result();
         return cur.lastrowid or 0;
     }
 
@@ -231,7 +247,7 @@ obj Repo {
                VALUES (?, ?, ?, ?, 'open', ?, ?)""",
             (category, title, summary, json.dumps(entities), now, now)
         );
-        await self.db.commit();
+        await self._commit_result();
         return cur.lastrowid or 0;
     }
 
@@ -239,9 +255,32 @@ obj Repo {
         return await self._one("SELECT * FROM events WHERE id = ?", (event_id, ));
     }
 
+    """Queue unfinished legacy outputs exactly once, using the configured cutoff."""
+    async def recover_partial_results(threshold: int) {
+        async with self.result_transaction() as writer {
+            marker = await writer._run(
+                "INSERT OR IGNORE INTO pipeline_migrations(version) VALUES(2)"
+            );
+            if marker.rowcount {
+                await writer._run(
+                    """INSERT OR IGNORE INTO pipeline_pending(post_id)
+                       SELECT d.post_id FROM decisions d
+                       LEFT JOIN event_posts ep ON ep.post_id=d.post_id
+                       LEFT JOIN notifications n ON n.post_id=d.post_id
+                       WHERE d.is_final=1 AND d.materiality_score IS NOT NULL
+                         AND n.id IS NULL
+                         AND ((ep.event_id IS NULL AND d.materiality_score>=?)
+                              OR ep.role IN ('origin','update'))""",
+                    (threshold, )
+                );
+            }
+        }
+    }
+
     async def open_events_since(cutoff: datetime) -> list[Row] {
         return await self._all(
             """SELECT * FROM events WHERE status = 'open' AND last_updated_at >= ?
+                 AND EXISTS (SELECT 1 FROM event_posts ep WHERE ep.event_id=events.id)
                ORDER BY last_updated_at DESC""",
             (iso(cutoff), )
         );
@@ -261,7 +300,7 @@ obj Repo {
                 (summary, iso(utcnow()), event_id)
             );
         }
-        await self.db.commit();
+        await self._commit_result();
     }
 
     async def mark_stale_events(older_than_hours: int) -> int {
@@ -279,7 +318,7 @@ obj Repo {
             "INSERT OR IGNORE INTO event_posts (event_id, post_id, role) VALUES (?, ?, ?)",
             (event_id, post_id, role)
         );
-        await self.db.commit();
+        await self._commit_result();
     }
 
     # -- notifications --------------------------------------------------------
@@ -291,7 +330,7 @@ obj Repo {
             "INSERT INTO notifications (kind, post_id, event_id, payload, created_at) VALUES (?, ?, ?, ?, ?)",
             (kind, post_id, event_id, json.dumps(payload), iso(utcnow()))
         );
-        await self.db.commit();
+        await self._commit_result();
         return cur.lastrowid or 0;
     }
 
