@@ -1,6 +1,6 @@
 # Newsstream forum roadmap
 
-Work in small parts on `feature-overhaul`. Part 1 is ready for product review when the desktop preview and layout checks pass. Confirm the next part before starting it.
+Work in small parts on `feature-overhaul`. Part 1 passed review checks. Part 2 is deferred. Part 3 uses a saved RSS snapshot so browsing works independently of publisher availability. Confirm the next part before starting it.
 
 | Part | Deliverable | Acceptance check |
 | --- | --- | --- |
@@ -11,3 +11,14 @@ Work in small parts on `feature-overhaul`. Part 1 is ready for product review wh
 | 5 | Add forum threads and channel recommendations. | Each headline links to the original publisher and has a thread for replies. Each account can recommend a channel once. Category rankings show real vote counts. Discover lists new channels in publication order. |
 | 6 | Show 14-day paper performance for channels with timestamped trade signals. | Readers can trace each simulated result to its published signal and see the entry, exit, sizing, cost assumptions and trade count. Open trades, missing prices, insufficient history and historical replays are identified separately. |
 | 7 | Prepare the shared 48-hour demo. | Two devices on one hosted service can publish, discover, subscribe and reply. Seeded RSS channels retain their latest headlines across restarts and upstream outages. The core experience works without X, Telegram or LLM credentials. |
+
+## Directory assets
+
+The publisher feed URLs, article links, publication times and snapshot timestamp are in `db/directory_seed.json`. Refresh that snapshot before the hosted demo. The sector photographs are illustrative and are stored locally.
+
+| Category | Photograph |
+| --- | --- |
+| Energy | [NASA Kennedy Space Center, Solar Farm at KSC](https://images.nasa.gov/details/KSC-20210405-PH-NAS01_0001) |
+| Tech | [NASA/JPL-Caltech, InSight’s Second Microchip](https://images.nasa.gov/details/PIA22206) |
+| Healthcare | [NASA Johnson Space Center, Moon Microscope](https://images.nasa.gov/details/jsc2022e083574) |
+| Industrials | [NASA/Charles Beason, friction stir welding](https://images.nasa.gov/details/MSFC-1701231) |

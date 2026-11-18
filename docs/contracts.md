@@ -43,7 +43,10 @@ null on the relevant paths. Do not assume every notification is classified.
 
 | Endpoint | Current response/behavior |
 | --- | --- |
-| `GET /` | Built UI, or 503 when unavailable |
+| `GET /` | Public channel directory, or 503 when the built UI is unavailable |
+| `GET /categories/{slug}`, `GET /channels/{slug}` | Shareable public category and channel views. Each channel has three dated, attributed links. |
+| `GET /api/directory` | Read-only editorial snapshot from `db/directory_seed.json` with capture time, curator, categories, channels, feed URLs and headlines. No credentials or personal sources are read. |
+| `GET /oil` | The existing oil monitor UI checks the visitor's session before mounting. |
 | `GET /stream` | SSE `event: notification`, `id: <notification_id>`, `data: <card JSON>`; heartbeat comments |
 | `GET /notifications?since=N` | Array of stored cards after the notification ID, in ascending order (repository limit applies) |
 | `GET /feed` | Object containing `events` |

@@ -12,6 +12,7 @@ import from react { useEffect }
 import from .auth { AuthPanel, SESSION_EVENT }
 import from .trading { TradingPage }
 import from .sources { SourcesPage }
+import from .directory { DirectoryPage }
 import "./navigation.css";
 import from .navigation { Navigation }
 
@@ -390,23 +391,31 @@ def banner_text(s: Status | None) -> str {
 
 # ---------- the pages ----------
 
-"""Shown instead of every page until the visitor signs in."""
+"""Sign-in gate for the oil monitor, trading and personal sources."""
 def LockedPage -> JsxElement {
     <main className="locked">
         <div className="titlebar">
-            <h1>newsstream — crude oil</h1>
+            <h1>Newsstream</h1>
         </div>
         <p className="locked-note">
             {"🔒 Sign in to see the feeds, trading view and your sources."}
         </p>
         <AuthPanel/>
+        <a href="/">Browse public channels</a>
     </main>
 }
 
-"""The service serves this one page at /, /trading and /sources; pick the
-view by path. Every view stays locked behind sign-in: no page mounts (so
-nothing is fetched or streamed) until /me confirms a session."""
 def:pub app -> JsxElement {
+    win: any = window;
+    path = str(win.location.pathname);
+    if path in ["/oil", "/trading", "/sources"] {
+        return <Workspace/>;
+    }
+    return <DirectoryPage path={path}/>;
+}
+
+"""Private views begin fetching only after the service confirms a session."""
+def Workspace -> JsxElement {
     has session: str = "checking";  # checking | in | out
 
     async def check_session {
@@ -699,7 +708,7 @@ def NewsPage -> JsxElement {
             <div className="titlebar news-header">
                 <div>
                     <div className="news-eyebrow">MARKET INTELLIGENCE</div>
-                    <h1>News Feed</h1>
+                    <h1>Crude Oil Monitor</h1>
                     <p className="dim">
                         {"Breaking Oil-Market News & Real-Time Event Alerts"}
                     </p>

@@ -3,10 +3,17 @@
 def:pub Navigation(active: str) -> JsxElement {
     return
         <nav className="site-nav" aria-label="Main navigation">
-            <a href="/" className="site-nav-brand">{"◉ NewsStream"}</a>
+            <a
+                href="/"
+                className="site-nav-brand"
+                aria-label="Newsstream home"
+                aria-current={"page" if active == "home" else None}
+            >
+                {"◉ NewsStream"}
+            </a>
             <div className="site-nav-links">
                 <a
-                    href="/"
+                    href="/oil"
                     className={"site-nav-link active"
                         if active == "news"
                         else "site-nav-link"}
@@ -29,7 +36,7 @@ def:pub Navigation(active: str) -> JsxElement {
                         </svg>
                     </span>
                     <span className="site-nav-copy">
-                        <strong>{"News Feed"}</strong>
+                        <strong>{"Crude Oil Monitor"}</strong>
                         <small>{"Live news and alerts"}</small>
                     </span>
                 </a>

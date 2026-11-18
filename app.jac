@@ -324,14 +324,32 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         return FileResponse(UI_INDEX, headers={"Cache-Control": "no-cache"});
     }
 
-    """The trading page is the same single-page UI; it picks the view by path."""
-    @app.get("/trading")
-    async def trading_page -> Response {
+    @app.get("/api/directory")
+    async def public_directory -> Response {
+        return FileResponse(
+            ROOT / "db" / "directory_seed.json", media_type="application/json"
+        );
+    }
+
+    @app.get("/directory-images/{sector}.jpg")
+    async def sector_image(sector: str) -> Response {
+        image = UI_SOURCE / "directory-images" / (sector + ".jpg");
+        if not sector.isalpha() or not image.is_file() {
+            raise HTTPException(status_code=404, detail="Unknown sector image");
+        }
+        return FileResponse(image, media_type="image/jpeg");
+    }
+
+    @app.get("/categories/{slug}")
+    @app.get("/channels/{slug}")
+    async def directory_page(slug: str) -> Response {
         return await index();
     }
 
+    @app.get("/oil")
+    @app.get("/trading")
     @app.get("/sources")
-    async def sources_page -> Response {
+    async def workspace_page -> Response {
         return await index();
     }
 

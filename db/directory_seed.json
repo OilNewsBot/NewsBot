@@ -1,0 +1,222 @@
+{
+  "captured_at": "2026-11-18T00:23:50+00:00",
+  "curator": "Newsstream editors",
+  "categories": [
+    {
+      "slug": "energy",
+      "name": "Energy",
+      "channels": [
+        {
+          "slug": "today-in-energy",
+          "name": "Today in Energy",
+          "publisher": "U.S. Energy Information Administration",
+          "description": "Oil, electricity and fuel markets through the lens of U.S. energy data.",
+          "feed_url": "https://www.eia.gov/rss/todayinenergy.xml",
+          "headlines": [
+            {
+              "title": "How does EIA account for small differences between energy supply and demand data?",
+              "url": "https://www.eia.gov/todayinenergy/detail.php?id=68464",
+              "published": "2026-11-17T14:00:00+00:00"
+            },
+            {
+              "title": "Hydropower generation in the Southwest fell to record lows this summer",
+              "url": "https://www.eia.gov/todayinenergy/detail.php?id=68445",
+              "published": "2026-11-13T14:00:00+00:00"
+            },
+            {
+              "title": "EIA forecasts Alaskan crude oil production to grow 13% in 2027",
+              "url": "https://www.eia.gov/todayinenergy/detail.php?id=68444",
+              "published": "2026-11-12T14:00:00+00:00"
+            }
+          ]
+        },
+        {
+          "slug": "energy-research",
+          "name": "Energy Research",
+          "publisher": "MIT News",
+          "description": "Reporting on the people and technology changing how energy is produced and stored.",
+          "feed_url": "https://news.mit.edu/rss/topic/energy",
+          "headlines": [
+            {
+              "title": "Addressing nuclear challenges, from radiation detection to power in space",
+              "url": "https://news.mit.edu/2026/addressing-nuclear-challenges-jake-hecla-1112",
+              "published": "2026-11-12T22:10:00+00:00"
+            },
+            {
+              "title": "Energy, prosperity, emissions, and innovation: A decarbonization progress report",
+              "url": "https://news.mit.edu/2026/energy-prosperity-emissions-innovation-decarbonization-progress-report-1112",
+              "published": "2026-11-12T21:30:00+00:00"
+            },
+            {
+              "title": "Powering up for a pivotal moment",
+              "url": "https://news.mit.edu/2026/powering-up-for-pivotal-moment-1102",
+              "published": "2026-11-02T19:55:00+00:00"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "tech",
+      "name": "Tech",
+      "channels": [
+        {
+          "slug": "github-changelog",
+          "name": "GitHub Changelog",
+          "publisher": "GitHub",
+          "description": "Product releases and platform changes for people who build software.",
+          "feed_url": "https://github.blog/changelog/feed/",
+          "headlines": [
+            {
+              "title": "OpenAI’s GPT-6.2 Astra and GPT-6.2 Sol now available",
+              "url": "https://github.blog/changelog/2026-11-17-openais-gpt-6-2-astra-and-gpt-6-2-sol-now-available",
+              "published": "2026-11-17T20:20:29+00:00"
+            },
+            {
+              "title": "GitHub Copilot Fusion updates: more availability, benchmarks, and models",
+              "url": "https://github.blog/changelog/2026-11-17-github-copilot-fusion-updates-more-availability-benchmarks-and-models",
+              "published": "2026-11-17T18:04:48+00:00"
+            },
+            {
+              "title": "GitHub Copilot app, Microsoft Ignite releases",
+              "url": "https://github.blog/changelog/2026-11-17-github-copilot-app-microsoft-ignite-releases",
+              "published": "2026-11-17T18:03:42+00:00"
+            }
+          ]
+        },
+        {
+          "slug": "cloudflare-engineering",
+          "name": "Cloudflare Engineering",
+          "publisher": "Cloudflare",
+          "description": "Engineering reports on networks, infrastructure and the web.",
+          "feed_url": "https://blog.cloudflare.com/rss/",
+          "headlines": [
+            {
+              "title": "Quad9’s withdrawal from France: A canary in the coal mine",
+              "url": "https://blog.cloudflare.com/quad9-withdrawal-from-france/",
+              "published": "2026-11-17T20:24:27+00:00"
+            },
+            {
+              "title": "Kitesurf is now open source",
+              "url": "https://blog.cloudflare.com/kitesurf-open-source/",
+              "published": "2026-11-13T20:20:21+00:00"
+            },
+            {
+              "title": "Adapting to AI penetration testing orchestrators: The Modern Security Model",
+              "url": "https://blog.cloudflare.com/adapting-to-ai-penetration-testing-orchestrators/",
+              "published": "2026-11-13T19:26:07+00:00"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "healthcare",
+      "name": "Healthcare",
+      "channels": [
+        {
+          "slug": "fda-announcements",
+          "name": "FDA Announcements",
+          "publisher": "U.S. Food and Drug Administration",
+          "description": "Agency announcements on medicines, devices and public health.",
+          "feed_url": "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/press-releases/rss.xml",
+          "headlines": [
+            {
+              "title": "FDA Launches the Global Reliance Disclosure Program to Expand Patient Access to Medicines Worldwide",
+              "url": "https://www.fda.gov/news-events/press-announcements/fda-launches-global-reliance-disclosure-program-expand-patient-access-medicines-worldwide",
+              "published": "2026-11-17T20:32:16+00:00"
+            },
+            {
+              "title": "FDA Approves First Drug Shown to Help Patients with Infantile-Onset Niemann-Pick Disease Type C Live Longer",
+              "url": "https://www.fda.gov/news-events/press-announcements/fda-approves-first-drug-shown-help-patients-infantile-onset-niemann-pick-disease-type-c-live-longer",
+              "published": "2026-11-17T19:15:22+00:00"
+            },
+            {
+              "title": "FDA Approves First Factor Xla Inhibitor to Help Prevent Stroke in Certain Adults at High Risk",
+              "url": "https://www.fda.gov/news-events/press-announcements/fda-approves-first-factor-xla-inhibitor-help-prevent-stroke-certain-adults-high-risk",
+              "published": "2026-11-09T22:15:46+00:00"
+            }
+          ]
+        },
+        {
+          "slug": "health-sciences",
+          "name": "Health Sciences",
+          "publisher": "MIT News",
+          "description": "Medical technologies and research from the lab to the clinic.",
+          "feed_url": "https://news.mit.edu/rss/topic/health-sciences-and-technology",
+          "headlines": [
+            {
+              "title": "Waves that clear waste from the brain during sleep are impaired in older adults",
+              "url": "https://news.mit.edu/2026/waste-clearing-waves-in-brain-during-sleep-are-impaired-in-older-adults-1113",
+              "published": "2026-11-13T10:00:00+00:00"
+            },
+            {
+              "title": "MIT-led team receives funding to develop a wearable monitor for early disease detection",
+              "url": "https://news.mit.edu/2026/mit-led-team-receives-funding-for-early-disease-detection-wearable-monitor-1104",
+              "published": "2026-11-04T05:00:00+00:00"
+            },
+            {
+              "title": "Featured video: Changing the conversation about endometriosis",
+              "url": "https://news.mit.edu/2026/featured-video-changing-conversation-about-endometriosis-1103",
+              "published": "2026-11-03T21:00:00+00:00"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "industrials",
+      "name": "Industrials",
+      "channels": [
+        {
+          "slug": "mechanical-engineering",
+          "name": "Mechanical Engineering",
+          "publisher": "MIT News",
+          "description": "Machines, robotics and new approaches to industrial production.",
+          "feed_url": "https://news.mit.edu/rss/topic/mechanical-engineering",
+          "headlines": [
+            {
+              "title": "MIT School of Engineering faculty and staff receive awards in summer 2026",
+              "url": "https://news.mit.edu/2026/mit-engineering-faculty-staff-receive-awards-summer-2026-1116",
+              "published": "2026-11-16T20:45:00+00:00"
+            },
+            {
+              "title": "Inspired by networks found in nature, engineers design stronger, more resilient “metamaterials”",
+              "url": "https://news.mit.edu/2026/engineers-design-stronger-resilient-nature-inspired-metamaterials-1111",
+              "published": "2026-11-11T16:00:00+00:00"
+            },
+            {
+              "title": "School of Engineering welcomes new faculty in 2026",
+              "url": "https://news.mit.edu/2026/school-engineering-welcomes-new-faculty-1110",
+              "published": "2026-11-10T22:00:00+00:00"
+            }
+          ]
+        },
+        {
+          "slug": "flight-research",
+          "name": "Flight Research",
+          "publisher": "NASA",
+          "description": "Flight tests and new technologies for civil aviation.",
+          "feed_url": "https://www.nasa.gov/aeronautics/feed/",
+          "headlines": [
+            {
+              "title": "NASA to Conduct Low-Altitude Flights Over Texas Farmland",
+              "url": "https://www.nasa.gov/general/nasa-to-conduct-low-altitude-flights-over-texas-farmland/",
+              "published": "2026-11-17T17:12:20+00:00"
+            },
+            {
+              "title": "Through NASA’s Lens: Capturing Space Shuttle Endeavour’s Move to LA",
+              "url": "https://www.nasa.gov/centers-and-facilities/armstrong/through-nasas-lens-capturing-space-shuttle-endeavours-move-to-la/",
+              "published": "2026-11-12T13:00:00+00:00"
+            },
+            {
+              "title": "MAX POWER: NASA’s Inaugural Aerospace Expo Ignites America’s Future",
+              "url": "https://www.nasa.gov/general/max-power-nasas-inaugural-aerospace-expo-ignites-americas-future/",
+              "published": "2026-11-09T16:07:10+00:00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
