@@ -7,7 +7,7 @@ does not change NewsBot itself. When you open the app, it:
 2. Shows a "Starting NewsBot…" screen until the server answers.
 3. Shows the same page you would see at http://127.0.0.1:8000, in its own window.
 4. Stops the server when you quit the app (⌘Q on Mac, or close the window). If
-   a server was already running before you opened the app, the app uses it and
+   a NewsBot server was already running before you opened the app, the app uses it and
    leaves it running.
 
 On Windows, Jac only runs inside Ubuntu in WSL (see
@@ -181,12 +181,14 @@ at `data/desktop-server.log` in the NewsBot folder.
 
 | Message | Fix |
 | --- | --- |
+| "The configured port did not return NewsBot" | Check the local service or choose another port in config.yaml. The desktop app checks the NewsBot OpenAPI schema before opening a local service. |
+| "Invalid NewsBot server address" | Check that NEWSBOT_URL includes the http:// or https:// scheme, or correct the local server address in config.yaml. |
+| "Cannot reach the NewsBot server" | Restore the connection or restart the remote server. Leave the desktop window open and it will reconnect automatically. |
 | "Could not run jac" | Run `python3 scripts/bootstrap.py` in the NewsBot folder |
 | "WSL could not open …" (Windows) | Install Ubuntu in WSL, or set `NEWSBOT_WSL_DISTRO` to your distribution's name |
 | "jac: command not found" in the log (Windows) | Run `python scripts/bootstrap.py` from PowerShell, which installs jac in WSL |
 | "NewsBot stopped while starting" | Read the log; try `jac run` in the NewsBot folder to see the same error |
 | "NewsBot folder not found" | Rebuild the app, or set `NEWSBOT_ROOT` as shown above |
-| Window shows some other website | Another program uses port 8000, and the app connected to it. Stop that program, or change `server.port` in `config.yaml` |
 
 ## GitHub: pull requests and issues from the Terminal
 
