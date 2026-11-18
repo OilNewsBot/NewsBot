@@ -9,6 +9,7 @@ Channel usernames come from config.yaml `telegram_channels`; never guessed.
 
 import asyncio;
 import logging;
+import time;
 import httpx;
 import from datetime { UTC, datetime }
 import from adapters.base { AdapterStatus, Json, NormalizedPost, Sink, SourceAdapter }
@@ -152,14 +153,47 @@ obj TelegramAdapter(SourceAdapter) {
         await client.run_until_disconnected();
     }
 
-    async def _run_bot(sink: Sink) {
+    async def _run_bot(sink: Sink, *, http: httpx.AsyncClient | None = None) {
         base = f"https://api.telegram.org/bot{self.settings.telegram_bot_token}";
         offset = 0;
         self.status.state = "live";
         self.status.detail = "bot API long-poll";
-        http = httpx.AsyncClient(timeout=70);
+        http = http or httpx.AsyncClient(timeout=70);
         async with http {
+            channels: dict[str, str] = {};
+            tiers: dict[str, str] = {};
+            retry_at = 0.0;
             while True {
+                if time.monotonic() >= retry_at {
+                    # Resolve once so a renamed channel keeps its identity.
+                    for ch in self.settings.telegram_channels {
+                        name = ch.channel
+                            if ch.channel.lstrip("-").isdigit()
+                            else "@" + ch.channel.lstrip("@");
+                        if name in channels {
+                            continue;
+                        }
+                        try {
+                            resolved = await http.get(
+                                f"{base}/getChat", params={"chat_id": name}
+                            );
+                            resolved.raise_for_status();
+                            channels[name] = str(resolved.json()["result"]["id"]);
+                            tiers[channels[name]] = ch.tier;
+                        } except (httpx.HTTPError, KeyError, ValueError) {
+                            log.warning(
+                                "Could not resolve configured Telegram channel %s", name
+                            );
+                        }
+                    }
+                    retry_at = time.monotonic() + 60;
+                }
+                if not channels {
+                    self.status.state = "reconnecting";
+                    self.status.detail = "No configured Telegram channels resolved";
+                    await asyncio.sleep(5);
+                    continue;
+                }
                 try {
                     r = await http.get(
                         f"{base}/getUpdates",
@@ -173,15 +207,24 @@ obj TelegramAdapter(SourceAdapter) {
                     self.status.state = "live";
                     for update in r.json().get("result", []) {
                         offset = int(update["update_id"]) + 1;
-                        post = bot_update_to_post(update);
-                        if post {
-                            await sink(post);
+                        chat_id = str(
+                            ((update.get("channel_post") or {}).get("chat") or {}).get(
+                                "id", ""
+                            )
+                        );
+                        if chat_id in tiers {
+                            post = bot_update_to_post(update);
+                            if post {
+                                post.tier = tiers[chat_id];
+                                await sink(post);
+                            }
                         }
                     }
                 } except (httpx.HTTPError, KeyError, ValueError) as e {
                     self.status.state = "reconnecting";
-                    self.status.detail = str(e)[:120];
-                    log.warning("telegram bot poll error, retrying in 5s: %s", e);
+                    # HTTP errors can contain the bot token in the request URL.
+                    self.status.detail = "Bot polling failed: " + type(e).__name__;
+                    log.warning("%s; retrying in 5s", self.status.detail);
                     await asyncio.sleep(5);
                 }
             }

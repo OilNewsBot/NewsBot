@@ -80,6 +80,8 @@ The forum keeps `/oil` and `/trading` bookmarks pointed at Home. Its navigation 
 
 Adapters send `NormalizedPost` records to the asynchronous pipeline. The storage deduplication key is `(source, source_post_id)`. Each record includes the stable `account_id`, current `account_handle`, `tier`, `url`, `text`, optional `quoted_text`, `media_urls`, `is_reply`, and UTC-aware `posted_at` and `received_at`. The adapters filter replies during normal collection. The pipeline persists posts before classification, clusters accepted developments, stores the notification, then broadcasts its `notification_id` on the in-process event bus.
 
+The official X collector reserves reads before account lookups and timeline requests. It limits each page to the available daily allowance and pauses when fewer than five reads remain for a timeline request. The first poll takes one recent page. Later polls retain pagination progress across restarts and deliver the complete collected window oldest first before advancing the account checkpoint. Telegram Bot collection resolves configured channels to stable chat IDs and forwards posts only from those channels.
+
 | Endpoint | Behavior |
 | --- | --- |
 | `GET /stream`, `GET /notifications?since=N` | Live market SSE cards use event type `notification` and the stored notification ID as the SSE ID, with heartbeat comments between events. Reconnect by fetching stored cards after the last notification ID in ascending order. |
