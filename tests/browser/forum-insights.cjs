@@ -118,6 +118,19 @@ async function check() {
         await toggle.click();
         await drawer.getByRole("button", {name: "Close insights"}).click();
         await drawer.waitFor({state: "hidden"});
+        await page.setViewportSize({width: 1280, height: 800});
+        await page.route("**/api/following/notifications/head", route => route.fulfill({json: {user_id: 8, head: 0}}));
+        const alerts = [1, 2].map(id => ({id, item_id: id, channel_slug: "desk", channel_name: "First desk", title: "Alert " + id}));
+        await page.route("**/api/following/notifications?since=*", route => route.fulfill({json: {
+            user_id: 8, head: 2, notifications: route.request().url().endsWith("since=0") ? alerts : []
+        }}));
+        await page.reload();
+        await page.getByRole("button", {name: /Channel alerts/}).click();
+        await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+        const tray = page.locator(".alerts-popover");
+        await tray.getByRole("link", {name: "Alert 2"}).waitFor();
+        assert.deepEqual(await tray.locator("li a").allTextContents(), ["Alert 2", "Alert 1"]);
+        assert.equal(await tray.locator("li a").first().getAttribute("href"), "/channels/desk#story-2");
         assert.deepEqual(errors, []);
     } finally {
         await browser.close();

@@ -181,7 +181,8 @@ def:pub ChannelAlerts -> JsxElement {
                 }
             }
             if len(fresh) {
-                history.current = (fresh[::-1] + history.current)[:15];
+                fresh.reverse();
+                history.current = (fresh + history.current)[:15];
                 notices = history.current;
             }
             cursor.current = int(result.data.head);
