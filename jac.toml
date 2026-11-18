@@ -26,6 +26,12 @@ entry-point = "replay"
 kind = "cli"
 entry-point = "fake_tweets"
 
+# `jac run fake_tweets2` is the same with five different events, for a second
+# demo run the same day (see fake_tweets2.jac).
+[apps.fake_tweets2]
+kind = "cli"
+entry-point = "fake_tweets2"
+
 # Python packages, used from Jac through plain imports. Pinned to the exact
 # versions the Python edition ran on (its uv.lock), so the port changes the
 # language and not the libraries underneath. Loosen these to upgrade.

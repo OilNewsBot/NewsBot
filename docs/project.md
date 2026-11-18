@@ -20,7 +20,7 @@ this page maps the implementation as inspected for the collaboration setup.
 | Browser | `web/main.jac` and `web/main.css`, built by `jac build web` into `.jac/client/web/dist/index.html` |
 | Desktop | `desktop/` is a Tauri window that starts `jac run`, shows `/`, and stops the service on quit; built with `NEWSBOT_URL` it is a thin client for a remote server (see its README and [demo-hosting.md](demo-hosting.md)) |
 | Replay | `replay.jac` sends fixture posts to a running service's `/ingest` endpoint (admin token from `NEWSBOT_ADMIN_TOKEN` when the server sets one) |
-| Fake tweets | `fake_tweets.jac` (`jac run fake_tweets`) runs an isolated service on a database copy, feeds it five significant test tweets through a fake twitterapi.io, and reports each outcome; `--remote <url>` instead queues them on a running server's `/ingest` (hosted demo) |
+| Fake tweets | `fake_tweets.jac` (`jac run fake_tweets`) runs an isolated service on a database copy, feeds it five significant test tweets through a fake twitterapi.io, and reports each outcome; `--remote <url>` instead queues them on a running server's `/ingest` (hosted demo). `fake_tweets2.jac` sends a second, non-overlapping set; both share `fake_tweets_core.jac` |
 | Verification | Jac tests under `tests/`; Python collaboration tests under `scripts/tests/`; one combined CI entry point |
 
 ```text

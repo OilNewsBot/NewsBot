@@ -48,7 +48,9 @@ jac run fake_tweets -- --remote https://<machine>.<tailnet>.ts.net
 ```
 
 It reads the token from `.env` and sends five scripted tweets when you press
-Enter.
+Enter. Events stay open for 24 hours, so a second run the same day would mostly
+become updates or duplicates; use `jac run fake_tweets2 -- --remote …` for a
+second set of five different events.
 
 Afterwards: `tailscale funnel --bg off`, stop the server, and revoke the demo
 keys.
