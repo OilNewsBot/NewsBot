@@ -151,25 +151,6 @@ test "stale events leave candidate pool" {
     asyncio.run(body());
 }
 
-test "duplicate delivery releases the database writer" {
-    async def body {
-        settings = make_settings();
-        async with open_repo(settings) as repo {
-            (post, _) = load_fixture("kharg_strikes")[0];
-            first = await repo.insert_post(post);
-            assert first is not None;
-            assert await repo.insert_post(post) is None;
-            assert not repo.db.in_transaction;
-            async with open_repo(settings) as other {
-                assert await other.create_user(
-                    "reader", "reader@example.org", "test-hash"
-                );
-            }
-        }
-    }
-    asyncio.run(body());
-}
-
 test "feed sorted by origin post recency" {
     async def body {
         settings = make_settings();

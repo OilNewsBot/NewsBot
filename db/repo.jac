@@ -150,12 +150,17 @@ obj Repo {
 
     # -- posts ----------------------------------------------------------------
 
-    """Persist a NormalizedPost. Returns row id, or None if already seen."""
+    """Persist a NormalizedPost. Returns row id, or None if already seen.
+    A duplicate is not an error: the insert is skipped and the transaction it
+    opened is still committed, so the write lock is released for the other
+    connections (personal store, public catalog). Push feeds redeliver their
+    newest post every check, so an open transaction here would hold it."""
     async def insert_post(p: NormalizedPost) -> int | None {
         cur = await self._run(
             """INSERT INTO posts (source, source_post_id, account_id, account_handle, tier,
                                   url, text, quoted_text, is_reply, posted_at, received_at, media_urls)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(source, source_post_id) DO NOTHING""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT (source, source_post_id) DO NOTHING""",
             (
                 p.source,
                 p.source_post_id,
