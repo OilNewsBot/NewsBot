@@ -38,3 +38,18 @@
 .timeline .brief-card { border:0; padding:5px 0; }
 .timeline .brief-card h1 { margin:10px 0; }
 @media(max-width:620px) { .facet-line { flex-direction:column; gap:3px; } .facet-key { width:auto; } .topic-search label,.topic-search select,.topic-search input { max-width:100%; } }
+
+@media (max-width: 800px) {
+    .topic-directory .topic-selection {
+        position: sticky;
+        top: 8px;
+        z-index: 2;
+        padding: 10px 12px;
+        margin-block: 8px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: 0 4px 12px #0004;
+    }
+    .topic-selection strong { flex-basis: 100%; overflow-wrap: anywhere; }
+}

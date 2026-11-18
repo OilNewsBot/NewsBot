@@ -3,7 +3,7 @@
 import from react { useEffect, useRef }
 import from .auth { SESSION_EVENT }
 import from .public_data { display_date, public_url, request_json, sector_name }
-import from .watches { StoryLabels, WatchButton }
+import from .watches { StoryLabels, WatchButton, has_labels }
 import "./briefing.css";
 
 def SourceLinks(sources: list[any]) -> JsxElement {
@@ -80,7 +80,7 @@ def BriefCard(card: any, watch: any, detail: bool = False) -> JsxElement {
         </div>
         {if detail {
             <StoryLabels labels={card.labels} watch={watch}/>
-        } elif card.labels {
+        } elif has_labels(card.labels) {
             <details className="story-label-details">
                 <summary>Story labels</summary>
                 <StoryLabels labels={card.labels} watch={watch}/>
@@ -95,6 +95,7 @@ def:pub Briefing(watch: any) -> JsxElement {
         receipt: str = "",
         signedOut: bool = False,
         expanded: bool = False,
+        review: bool = False,
         guarded: bool = False,
         loading: bool = True;
     generation: any = useRef(0);
@@ -121,6 +122,7 @@ def:pub Briefing(watch: any) -> JsxElement {
             doc: any = document;
             guarded = doc.visibilityState != "visible";
             expanded = False;
+            review = False;
             edition = result.data;
             signedOut = False;
         } elif result.status == 401 {
@@ -148,6 +150,7 @@ def:pub Briefing(watch: any) -> JsxElement {
             return;
         }
         writing.current = token;
+        receipt = "saving";
         result = await request_json(
             "/api/briefing/seen",
             "POST",
@@ -219,31 +222,22 @@ def:pub Briefing(watch: any) -> JsxElement {
         },
         [edition, loading]
     );
-    useEffect(
-        lambda {
-            if not edition or guarded or receipt == "saved" {
-                return;
-            }
-            version = generation.current;
-            win: any = window;
-            frame = win.requestAnimationFrame(
-                lambda { acknowledge(edition, version); }
-            );
-            return lambda { win.cancelAnimationFrame(frame); };
-        },
-        [edition, guarded]
-    );
+    cards = (edition.previous_cards if review else edition.cards) if edition else [];
     <div>
         {if not signedOut and edition and not guarded {
             <section className="directory home-briefing" aria-label="Your briefing">
                 <header className="directory-heading">
                     <p className="section-marker">Your briefing</p>
                     <h1>
-                        {"Your first briefing"
-                            if edition.first_visit
-                            else "Since your last visit"}
+                        {"Previous briefing"
+                            if review
+                            else (
+                                "Your first briefing"
+                                    if edition.first_visit
+                                    else "Since your last briefing"
+                            )}
                     </h1>
-                    {if edition.since and not edition.first_visit {
+                    {if edition.since and not edition.first_visit and not review {
                         <p>
                             {"New reporting since "
                                 + new(Date, str(edition.since)).toLocaleString()
@@ -255,10 +249,10 @@ def:pub Briefing(watch: any) -> JsxElement {
                         <a href="#sectors">Browse sectors ↓</a>
                     </div>
                 </header>
-                {for card in (edition.cards if expanded else edition.cards[:5]) {
+                {for card in (cards if expanded else cards[:5]) {
                     <BriefCard key={str(card.story_id)} card={card} watch={watch}/>
                 }}
-                {if len(edition.cards) > 5 {
+                {if len(cards) > 5 {
                     <button
                         type="button"
                         aria-expanded={expanded}
@@ -267,29 +261,50 @@ def:pub Briefing(watch: any) -> JsxElement {
                         {"Show fewer stories"
                             if expanded
                             else "Show "
-                                + str(len(edition.cards) - 5)
+                                + str(len(cards) - 5)
                                 + " more in this briefing"}
                     </button>
                 }}
-                {if not len(edition.cards) {
+                {if not len(cards) {
                     <p className="brief-empty">
                         {"Follow channels, topics, or stories to build your briefing."
                             if edition.first_visit
                             else "You're caught up. New developments from your channels and watches will appear here."}
                     </p>
                 }}
-                {if receipt == "failed" {
-                    <p role="status">
-                        Your visit could not be saved.{" "}
+                {if len(edition.previous_cards or []) {
+                    <button
+                        type="button"
+                        aria-expanded={review}
+                        onClick={lambda {
+                            review = not review;
+                            expanded = False;
+                        }}
+                    >
+                        {"Back to current briefing"
+                            if review
+                            else "View previous briefing"}
+                    </button>
+                }}
+                {if not review and len(cards) {
+                    if receipt == "saved" {
+                        <p role="status">Briefing marked as read.</p>
+                    } else {
                         <button
                             type="button"
+                            disabled={receipt == "saving"}
                             onClick={lambda { acknowledge(
                                 edition, generation.current
                             ); }}
                         >
-                            Retry saving visit
+                            {"Saving…"
+                                if receipt == "saving"
+                                else "Mark briefing as read"}
                         </button>
-                    </p>
+                    }
+                }}
+                {if receipt == "failed" {
+                    <p role="alert">Could not save your reading position. Try again.</p>
                 }}
                 {if failed {
                     <p role="alert">{failed}</p>

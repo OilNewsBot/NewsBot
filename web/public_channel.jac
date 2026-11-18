@@ -1,7 +1,7 @@
 """Channel detail, source-specific views, publishing and discussion."""
 
 import from react { useEffect, useRef }
-import from .auth { SESSION_EVENT }
+import from .auth { SESSION_EVENT, sign_in_url }
 import from .public_data {
     count_label,
     display_date,
@@ -140,7 +140,15 @@ def Thread(
                 </button>
             </form>
         } else {
-            <a href="/sources">Sign in to join the discussion</a>
+            <a
+                href={sign_in_url(
+                    "/channels/"
+                        + slug
+                        + ("#discussion-" + str(item_id) if item_id else "#discussion")
+                )}
+            >
+                Sign in to join the discussion
+            </a>
         } }
         {if error {
             <p className="public-error" role="alert">{error}</p>
@@ -229,10 +237,25 @@ def:pub ChannelPage(slug: str, watch: any) -> JsxElement {
         missing: bool = False;
     revision: any = useRef(0);
     counted: any = useRef(False);
+    placed: any = useRef("");
+    win: any = window;
+    doc: any = document;
+    def report_id -> str {
+        anchor = str(win.location.hash).split("-");
+        if len(anchor) == 2
+            and anchor[0] in ["#discussion", "#story"]
+            and new(win.RegExp, "^[1-9][0-9]{0,17}$").test(anchor[1]) {
+            return anchor[1];
+        }
+        return "";
+    }
     async def load {
         revision.current += 1;
         seq = revision.current;
-        result = await request_json("/api/channels/" + slug);
+        iid = report_id();
+        result = await request_json(
+            "/api/channels/" + slug + ("?item=" + iid if iid else "")
+        );
         if revision.current != seq {
             return;
         }
@@ -277,6 +300,42 @@ def:pub ChannelPage(slug: str, watch: any) -> JsxElement {
             };
         },
         [slug]
+    );
+    useEffect(
+        lambda {
+            if not channel {
+                return;
+            }
+            def place {
+                anchor = str(win.location.hash)[1:];
+                if not anchor or anchor == placed.current {
+                    return;
+                }
+                el: any = doc.getElementById(anchor);
+                if not el {
+                    return;
+                }
+                placed.current = anchor;
+                if str(el.tagName) == "DETAILS" {
+                    el.open = True;
+                    el = el.querySelector("summary");
+                }
+                el.scrollIntoView({"block": "center"});
+                el.focus({"preventScroll": True});
+            }
+            place();
+            def changed {
+                placed.current = "";
+                if report_id() and not doc.getElementById(str(win.location.hash)[1:]) {
+                    load();
+                } else {
+                    place();
+                }
+            }
+            win.addEventListener("hashchange", changed);
+            return lambda { win.removeEventListener("hashchange", changed); };
+        },
+        [channel]
     );
     async def modify(field: str, enabled: bool) {
         if busy {
@@ -335,7 +394,7 @@ def:pub ChannelPage(slug: str, watch: any) -> JsxElement {
                     </span>
                 </div>
             </header>
-            <div className="channel-toolbar">
+            <div className="channel-toolbar" id="follow-channel" tabIndex={-1}>
                 {if signed_in {
                     <button
                         type="button"
@@ -373,7 +432,12 @@ def:pub ChannelPage(slug: str, watch: any) -> JsxElement {
                         {"Recommended ✓" if channel.recommended else "Recommend"}
                     </button>
                 } else {
-                    <a className="button-link" href="/sources">Sign in to follow</a>
+                    <a
+                        className="button-link"
+                        href={sign_in_url("/channels/" + slug + "#follow-channel")}
+                    >
+                        Sign in to follow
+                    </a>
                 } }
                 <ShareChannel slug={slug}/>
             </div>
@@ -407,7 +471,10 @@ def:pub ChannelPage(slug: str, watch: any) -> JsxElement {
                 {for item in channel.headlines {
                     <div key={str(item.id)} className="story-with-thread">
                         <Story item={item} watch={watch} full={True}/>
-                        <details className="story-discussion">
+                        <details
+                            className="story-discussion"
+                            id={"discussion-" + str(item.id)}
+                        >
                             <summary>
                                 {"Discussion ("
                                     + str(
@@ -432,7 +499,7 @@ def:pub ChannelPage(slug: str, watch: any) -> JsxElement {
                     </div>
                 }}
             </section>
-            <section className="news-section" id="discussion">
+            <section className="news-section" id="discussion" tabIndex={-1}>
                 <h2>Channel discussion</h2>
                 <Thread
                     comments={comments}

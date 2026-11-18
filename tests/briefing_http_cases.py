@@ -57,7 +57,9 @@ async def check_home(create_app, settings):
             (await alice.put("/api/watches/stories/" + sid, json={"enabled": True})).raise_for_status()
             assert sid in {x["id"] for x in (await alice.get("/api/watches")).json()["stories"]}
             (await ack(alice, board)).raise_for_status()
-            assert not (await alice.get("/api/briefing")).json()["cards"]
+            caught_up = (await alice.get("/api/briefing")).raise_for_status().json()
+            assert not caught_up["cards"] and caught_up["previous_cards"][0]["title"] == item["title"]
+            assert sid not in {c["story_id"] for c in (await bob.get("/api/briefing")).json().get("previous_cards", [])}
             await store.persist_batch(source["id"], [{**item, "title": "New rules approved for chip equipment",
                 "text": "The revised source confirms the rules were approved."}], "cursor3")
             revised = (await alice.get("/api/briefing")).json()
@@ -78,8 +80,10 @@ async def check_home(create_app, settings):
                                      cookies={"session": token}) as alice:
             empty = (await alice.get("/api/briefing")).raise_for_status().json()
             assert not empty["cards"] and not empty["first_visit"]
+            assert empty["previous_cards"][0]["title"] == revised["cards"][0]["title"]
             assert (await alice.get("/api/stories/" + sid)).json()["story"]["followed"]
             assert len((await alice.get("/api/watches")).json()["topics"]) == 1
             await app.state.personal.delete_source(uid, source["id"])
+            assert not (await alice.get("/api/briefing")).json()["previous_cards"]
             assert (await alice.get("/api/stories/" + sid)).status_code == 404
             assert not (await alice.get("/api/watches")).json()["stories"]

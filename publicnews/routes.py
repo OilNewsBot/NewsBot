@@ -29,9 +29,9 @@ def install(app, repo, catalog, require_user, check_origin, personal=None):
         return {"channels": await catalog.channels(await viewer(request))}
 
     @app.get("/api/channels/{slug}")
-    async def detail(slug: str, request: Request, response: Response):
+    async def detail(slug: str, request: Request, response: Response, item: int | None = Query(None, gt=0, lt=2**63)):
         response.headers["Cache-Control"] = "private, no-store"
-        return await catalog.detail(slug, await viewer(request))
+        return await catalog.detail(slug, await viewer(request), item_id=item)
 
     @app.get("/api/following")
     async def following(request: Request, response: Response):

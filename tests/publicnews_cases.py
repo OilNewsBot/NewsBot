@@ -217,6 +217,7 @@ async def sector_regressions():
         alerts = await catalog.notifications(1, 0)
         assert alerts["user_id"] == 1 and len(alerts["notifications"]) == 1
         assert alerts["notifications"][0]["section"] == "utilities" and alerts["head"] == head
+        assert alerts["notifications"][0]["item_id"] == feed["items"][0]["id"]
         assert not (await catalog.notifications(1, head))["notifications"]
         assert len((await catalog.notifications(2, 0))["notifications"]) == 2
         await catalog.toggle(slug, 1, "notifications", False)

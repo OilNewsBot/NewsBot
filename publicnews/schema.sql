@@ -108,3 +108,6 @@ CREATE TABLE IF NOT EXISTS news_brief_visits (
     user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, checkpoint INTEGER,
     offered INTEGER NOT NULL DEFAULT 0, offered_at TEXT, visited_at TEXT
 );
+CREATE TABLE IF NOT EXISTS news_last_briefings (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, card_refs TEXT NOT NULL
+);

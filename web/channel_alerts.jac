@@ -18,6 +18,20 @@ def:pub ChannelAlerts -> JsxElement {
     screen: any = useRef(False);
     history: any = useRef([]);
     popups: any = useRef([]);
+    container: any = useRef(None);
+    trigger: any = useRef(None);
+    unread = len(
+        [
+            n
+            for n in notices
+            if not n.read
+        ]
+    );
+    def alert_url(item: any) -> str {
+        return "/channels/"
+            + str(item.channel_slug)
+            + ("#story-" + str(item.item_id) if item.item_id else "");
+    }
     def clear {
         epoch.current += 1;
         running.current = False;
@@ -46,6 +60,41 @@ def:pub ChannelAlerts -> JsxElement {
             );
         } except Exception {}
     }
+    def mark_read(item: any) {
+        for saved in history.current {
+            if saved.id == item.id {
+                saved.read = True;
+            }
+        }
+        notices = [n for n in history.current];
+        persist();
+    }
+    def close_tray {
+        openTray = False;
+        if trigger.current {
+            trigger.current.focus();
+        }
+    }
+    useEffect(
+        lambda {
+            if not openTray {
+                return;
+            }
+            doc: any = document;
+            keydown = lambda (event: any) { if event.key == "Escape" { close_tray(); }};
+            outside = lambda (event: any) { if container.current
+                and not container.current.contains(event.target) {
+                openTray = False;
+            }};
+            doc.addEventListener("keydown", keydown);
+            doc.addEventListener("pointerdown", outside);
+            return lambda {
+                doc.removeEventListener("keydown", keydown);
+                doc.removeEventListener("pointerdown", outside);
+            };
+        },
+        [openTray]
+    );
     def show_popup(item: any) {
         api: any = globalThis.Notification;  # jac:ignore[E1053]
         doc: any = document;
@@ -65,7 +114,8 @@ def:pub ChannelAlerts -> JsxElement {
                 );
                 popup.onclick = lambda {
                     win.focus();
-                    win.location.href = "/channels/" + str(item.channel_slug);
+                    mark_read(item);
+                    win.location.href = alert_url(item);
                 };
                 if len(popups.current) >= 15 and popups.current[0].close {
                     popups.current[0].close();
@@ -195,13 +245,14 @@ def:pub ChannelAlerts -> JsxElement {
             );
         } except Exception {}
     }
-    <div className="nav-alerts">
+    <div className="nav-alerts" ref={container}>
         {if signedIn {
             <button
                 type="button"
+                ref={trigger}
                 className="site-nav-link alerts-button"
                 title="Channel alerts"
-                aria-label={"Channel alerts (" + str(len(notices)) + ")"}
+                aria-label={"Channel alerts (" + str(unread) + " unread)"}
                 aria-expanded={openTray}
                 onClick={lambda { openTray = not openTray; }}
             >
@@ -217,8 +268,8 @@ def:pub ChannelAlerts -> JsxElement {
                     <path d="M4 17h16l-2-3V9a6 6 0 0 0-12 0v5z M10 20a2 2 0 0 0 4 0"/>
                 </svg>
                 <span className="site-nav-text">Channel alerts</span>
-                {if len(notices) {
-                    <span className="alert-count">{len(notices)}</span>
+                {if unread {
+                    <span className="alert-count">{unread}</span>
                 }}
             </button>
             if openTray {
@@ -228,7 +279,7 @@ def:pub ChannelAlerts -> JsxElement {
                         <button
                             type="button"
                             aria-label="Close channel alerts"
-                            onClick={lambda { openTray = False; }}
+                            onClick={close_tray}
                         >
                             ×
                         </button>
@@ -240,10 +291,16 @@ def:pub ChannelAlerts -> JsxElement {
                         <ul>
                             {for item in notices {
                                 <li key={item.id}>
-                                    <a href={"/channels/" + str(item.channel_slug)}>
+                                    <a
+                                        href={alert_url(item)}
+                                        onClick={lambda { mark_read(item); }}
+                                    >
                                         {item.title}
                                     </a>
-                                    <small>{item.channel_name}</small>
+                                    <small>
+                                        {item.channel_name
+                                            + (" · Read" if item.read else "")}
+                                    </small>
                                 </li>
                             }}
                         </ul>
@@ -273,7 +330,7 @@ def:pub ChannelAlerts -> JsxElement {
                     {if hint {
                         <p role="status">{hint}</p>
                     }}
-                    <a href="/following">Manage channel alerts →</a>
+                    <a href="/following#channel-alerts">Manage channel alerts →</a>
                 </section>
             }
         }}

@@ -1,4 +1,6 @@
 """Session-owned briefing visits and watches, with separate private source storage."""
+import json
+
 from fastapi import HTTPException, Request, Response
 
 from personal import briefing as private
@@ -38,17 +40,35 @@ def install(app, catalog, reader, viewer, writer, has_personal):
     async def briefing(request: Request, response: Response):
         response.headers["Cache-Control"] = "private, no-store"
         uid = (await reader(request))["user_id"]
-        if not has_personal:
-            return await catalog.briefing(uid)
-
         def snapshot(db):
             result = journal.read_briefing(db, uid)
-            topics = journal.watches(db, uid)["topics"]
-            extra, head, more = private.edition(db, uid, result["first_visit"], topics)
-            result["private_through"] = head
-            result["has_more"] = result.get("has_more", False) or more
-            if extra:
-                result["cards"] = sorted([*result["cards"], *extra], key=lambda c: c["updated_at"], reverse=True)
+            if has_personal:
+                topics = journal.watches(db, uid)["topics"]
+                extra, head, more = private.edition(db, uid, result["first_visit"], topics)
+                result["private_through"] = head
+                result["has_more"] = result["has_more"] or more
+                if extra:
+                    result["cards"] = sorted([*result["cards"], *extra], key=lambda c: c["updated_at"], reverse=True)
+
+            # Keep one non-empty edition per reader, by development rather than by
+            # copied text. Replaying a private report rechecks its current ownership
+            # and whether its source still exists.
+            if result["cards"]:
+                refs = [(c["story_id"], c["development_id"], c["reason"]) for c in result["cards"]]
+                db.execute("""INSERT INTO news_last_briefings(user_id,card_refs) VALUES (?,?)
+                    ON CONFLICT(user_id) DO UPDATE SET card_refs=excluded.card_refs""", (uid, json.dumps(refs)))
+            else:
+                saved = db.execute("SELECT card_refs FROM news_last_briefings WHERE user_id=?", (uid,)).fetchone()
+                previous = []
+                for sid, development, reason in json.loads(saved[0]) if saved else ():
+                    if isinstance(sid, str) and sid.startswith("private-"):
+                        card = private.previous_card(db, uid, development, reason) if has_personal else None
+                    else:
+                        card = journal.read_story(db, sid, uid, development, include_timeline=False)
+                        card["reason"] = reason
+                    if card:
+                        previous.append(card)
+                result["previous_cards"] = previous
             return result
 
         return await catalog.run_db(snapshot, write=True)

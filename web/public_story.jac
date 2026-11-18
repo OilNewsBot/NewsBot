@@ -1,7 +1,7 @@
 """Attributed stories, source links and official social embeds."""
 
 import from .public_data { display_date, public_url }
-import from .watches { StoryLabels, WatchButton }
+import from .watches { StoryLabels, WatchButton, has_labels }
 import from .sector_tags { SectorTags }
 
 def:pub Story(
@@ -10,7 +10,7 @@ def:pub Story(
     href = public_url(item.url);
     published = item.published or item.published_at;
     original = item.text or item.body;
-    <article className="public-story" id={"story-" + str(item.id)}>
+    <article className="public-story" tabIndex={-1} id={"story-" + str(item.id)}>
         <div className="story-byline">
             {if channel_name {
                 <a
@@ -80,7 +80,7 @@ def:pub Story(
                 />
             </div>
         }}
-        {if item.labels {
+        {if has_labels(item.labels) {
             <details className="story-label-details">
                 <summary>Story labels</summary>
                 <StoryLabels labels={item.labels} watch={watch}/>

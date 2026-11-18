@@ -113,6 +113,18 @@ def:pub WatchButton(watch: any, kind: str, row: any) -> JsxElement {
     </span>
 }
 
+def:pub has_labels(labels: any) -> bool {
+    return bool(
+        labels
+            and (
+                len(labels.subsectors or [])
+                or len(labels.events or [])
+                or len(labels.entities or [])
+                or len(labels.places or [])
+            )
+    );
+}
+
 def:pub StoryLabels(labels: any, watch: any = None) -> JsxElement {
     groups = [
         ["subsectors", "Topics"],

@@ -36,10 +36,15 @@ def _card(row, reason, classification):
             "change": "Source updated its report" if row["kind"] == "updated" else "New report",
             "updated_at": row["observed_at"], "published": row["posted_at"], "url": row["url"],
             "channel_name": row["name"], "channel_slug": "", "source_type": row["provider"],
-            "private_source": True, "followed": bool(row["followed"]), "reason": reason,
+            "private_source": True, "development_id": row["id"], "followed": bool(row["followed"]), "reason": reason,
             "section": section, "topic": topic, "labels": labels, "source_count": 1,
             "sources": [{"item_id": story_id, "name": row["name"], "publisher": row["name"],
                          "url": row["url"], "published": row["posted_at"]}], "ai_generated": False}
+
+
+def previous_card(db, uid, development, reason):
+    row = db.execute(_ROWS + " AND d.id=?", (uid, development)).fetchone()
+    return _card(row, reason, _labels(row)) if row is not None else None
 
 
 def _development(row):

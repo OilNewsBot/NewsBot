@@ -231,7 +231,7 @@ class Catalog:
             raise HTTPException(404, "Channel not found")
         return row
 
-    def _stories(self, db, source, slug, category, tags, mixed, limit, kind, selected=()):
+    def _stories(self, db, source, slug, category, tags, mixed, limit, kind, selected=(), item_id=None):
         if selected and not mixed and category != "general" and set(tags).isdisjoint(selected):
             return []
         rows = db.execute("""SELECT i.id,i.title,i.body AS text,i.url,i.author,i.published,i.collected_at,
@@ -243,9 +243,9 @@ class Catalog:
                               AND (candidate.model=? OR (? AND candidate.generated_at IS NOT NULL))
                               ORDER BY (candidate.generated_at IS NOT NULL AND candidate.model=?) DESC,
                                        candidate.generated_at DESC LIMIT 1)
-                          WHERE i.source_id=?
+                          WHERE i.source_id=? AND (? IS NULL OR i.id=?)
                           ORDER BY i.published DESC,i.id DESC LIMIT ?""",
-                          (PROMPT_VERSION, self.model, not self.ai_enabled, self.model, source, -1 if selected else limit))
+                          (PROMPT_VERSION, self.model, not self.ai_enabled, self.model, source, item_id, item_id, -1 if selected else limit))
         stories = []
         for row in rows:
             section, topic = channel_topic(row["title"], row["text"], row["section"], category, tags, mixed)
@@ -271,7 +271,7 @@ class Catalog:
                 break
         return stories
 
-    def _channels(self, db, uid, slug=None, following=False, limit=3, selected=()):
+    def _channels(self, db, uid, slug=None, following=False, limit=3, selected=(), item_id=None):
         sql = """SELECT c.*,s.kind AS source_type,s.publisher AS source_publisher,s.mixed,s.checked_at,s.failures,
                (SELECT COUNT(*) FROM news_subscriptions f WHERE f.slug=c.slug) AS subscribers,
                EXISTS(SELECT 1 FROM news_subscriptions f WHERE f.slug=c.slug AND f.user_id=?) AS subscribed,
@@ -303,6 +303,9 @@ class Catalog:
             public["headlines"] = self._stories(db, source, row["slug"], row["category"], public["tags"],
                                                 is_mixed, max(24, limit) if is_mixed else limit,
                                                 row["source_type"], selected)
+            if item_id is not None and all(item["id"] != item_id for item in public["headlines"]):
+                public["headlines"].extend(self._stories(db, source, row["slug"], row["category"], public["tags"],
+                                                        is_mixed, 1, row["source_type"], item_id=item_id))
             channels.append(public)
         return channels
 
@@ -337,9 +340,9 @@ class Catalog:
             categories.append({**sector, "channels": channels})
         return {**self.edition, "categories": categories, "publishers": publishers}
 
-    async def detail(self, slug, uid=None):
+    async def detail(self, slug, uid=None, item_id=None):
         def read(db):
-            rows = self._channels(db, uid, slug=slug, limit=100)
+            rows = self._channels(db, uid, slug=slug, limit=100, item_id=item_id)
             if not rows:
                 raise HTTPException(404, "Channel not found")
             comments = db.execute("""SELECT id,item_id,parent_id,author,text,created_at FROM news_comments
@@ -417,7 +420,7 @@ class Catalog:
 
     async def notifications(self, uid, since):
         def read(db):
-            rows = [dict(r) for r in db.execute("""SELECT a.id,i.title,i.url,a.section,a.topic,
+            rows = [dict(r) for r in db.execute("""SELECT a.id,a.item_id,i.title,i.url,a.section,a.topic,
                 a.slug AS channel_slug,c.name AS channel_name FROM news_alerts a
                 JOIN news_channels c ON c.slug=a.slug JOIN news_items i ON i.id=a.item_id
                 WHERE a.user_id=? AND a.id>? ORDER BY a.id LIMIT 100""", (uid, since))]
