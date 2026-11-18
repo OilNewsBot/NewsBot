@@ -2,12 +2,7 @@
 
 import asyncio;
 import contextlib;
-import from auth {
-    hash_password,
-    require_admin,
-    require_user_or_admin,
-    verify_password
-}
+import from auth { hash_password, require_user, verify_password }
 import hashlib;
 import secrets;
 import from datetime { timedelta }
@@ -19,12 +14,7 @@ import uvicorn;
 import from datetime { UTC, datetime }
 import from pathlib { Path }
 import from fastapi { FastAPI, HTTPException, Request }
-import from fastapi.responses {
-    FileResponse,
-    HTMLResponse,
-    Response,
-    StreamingResponse
-}
+import from fastapi.responses { HTMLResponse, Response, StreamingResponse }
 import from adapters.base { Json, NormalizedPost, SourceAdapter }
 import from adapters.telegram { TelegramAdapter }
 import from adapters.x_api { XApiAdapter }
@@ -37,9 +27,10 @@ import from pipeline.prices { PriceFeed, PriceUnavailable }
 import from pipeline.runner { Pipeline }
 import from mobile.push { install_mobile }
 import from pipeline.trade { MAX_HOLD_MINUTES, MAX_PORTFOLIO_SHARE, Trader }
-import from personal.store { PersonalStore }
-import from personal.api { install_personal_routes }
+import from personal.store { PERSONAL_ALERT_ELIGIBILITY, PersonalStore }
+import from personal.api { check_origin, install_personal_routes }
 import from personal.worker { PersonalWorker }
+import from pwa.routes { install_pwa, pwa_index }
 
 glob log: logging.Logger = logging.getLogger("newsstream.app");
 
@@ -195,6 +186,14 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     app = FastAPI(title="newsstream", lifespan=lifespan);
     install_mobile(app, repo);
     install_personal_routes(app, repo, personal);
+    install_pwa(
+        app,
+        repo,
+        settings.db_path,
+        require_user,
+        check_origin,
+        PERSONAL_ALERT_ELIGIBILITY
+    );
     setattr(app.state, "personal", personal);
     setattr(app.state, "pipeline", pipeline);
     setattr(app.state, "repo", repo);
@@ -325,8 +324,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         if not UI_INDEX.exists() {
             return HTMLResponse(UI_MISSING_HTML, status_code=503);
         }
-        # no-cache: the page is rebuilt in place, and it is one small local file
-        return FileResponse(UI_INDEX, headers={"Cache-Control": "no-cache"});
+        return await pwa_index(UI_INDEX);
     }
 
     """The trading page is the same single-page UI; it picks the view by path."""
@@ -541,13 +539,16 @@ def main {
     logging.getLogger("httpx").setLevel(logging.WARNING);
     settings = load_settings();
     ensure_ui();
+    public_pwa = os.environ.get("NEWSBOT_PUBLIC_PWA") == "1";
     # timeout_graceful_shutdown: open SSE streams never finish on their own;
     # without this cap a SIGTERM'd server waits on them forever and zombies
     # (holding the DB and the vendor's one-WS-per-key slot; seen 2026-09-11).
     uvicorn.run(
         create_app(settings),
-        host=settings.host,
-        port=settings.port,
+        host="0.0.0.0" if public_pwa else settings.host,
+        port=int(os.environ.get("PORT", str(settings.port)))
+            if public_pwa
+            else settings.port,
         log_level="warning",
         timeout_graceful_shutdown=5
     );

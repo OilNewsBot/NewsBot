@@ -13,7 +13,11 @@ import from pathlib { Path }
 import from db.repo { Row, iso, utcnow }
 import from personal.secrets { SecretBox, credential_fingerprint }
 
-glob SCHEMA: str = Path(__file__).with_name("schema.sql").read_text();
+glob SCHEMA: str = Path(__file__).with_name("schema.sql").read_text(),
+     PERSONAL_ALERT_ELIGIBILITY: str = (
+         "n.id>s.alert_after_id AND s.deleted_at IS NULL AND c.deleted_at IS NULL "
+         + "AND s.enabled=1 AND s.alerts_enabled=1 AND c.status<>'disconnected'"
+     );
 
 def keywords(value: any) -> list[str] {
     if not isinstance(value, list) or len(value) > 20 {
@@ -644,7 +648,9 @@ obj PersonalStore {
         user_id: int, since: int = 0, limit: int = 100
     ) -> list[Row] {
         return await self._all(
-            "SELECT i.*,n.id AS notification_id,'SOURCE_POST' AS kind,s.name AS source_name,c.provider FROM personal_notifications n JOIN personal_items i ON i.id=n.item_id JOIN personal_sources s ON s.id=n.source_id JOIN personal_connections c ON c.id=s.connection_id WHERE n.user_id=? AND n.id>? AND n.id>s.alert_after_id AND s.deleted_at IS NULL AND c.deleted_at IS NULL AND s.enabled=1 AND s.alerts_enabled=1 AND c.status<>'disconnected' ORDER BY n.id ASC LIMIT ?",
+            "SELECT i.*,n.id AS notification_id,'SOURCE_POST' AS kind,s.name AS source_name,c.provider FROM personal_notifications n JOIN personal_items i ON i.id=n.item_id JOIN personal_sources s ON s.id=n.source_id JOIN personal_connections c ON c.id=s.connection_id WHERE n.user_id=? AND n.id>? AND "
+                + PERSONAL_ALERT_ELIGIBILITY
+                + " ORDER BY n.id ASC LIMIT ?",
             (user_id, max(0, since), min(200, max(1, limit)))
         );
     }
