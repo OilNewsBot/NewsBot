@@ -11,6 +11,7 @@
 
 import asyncio;
 import logging;
+import json;
 import httpx;
 import from datetime { UTC, datetime, timedelta }
 import from adapters.base { AdapterStatus, Json, NormalizedPost, Sink, SourceAdapter }
@@ -107,11 +108,8 @@ obj XApiAdapter(SourceAdapter) {
         repo: Repo,
         http: httpx.AsyncClient | None = None;  # injectable for tests
 
-    has _since_ids: dict[str, str] postinit;
-
     override def postinit {
         self.status = AdapterStatus(name="x_api");
-        self._since_ids = {};
     }
 
     def _client -> httpx.AsyncClient {
@@ -124,10 +122,41 @@ obj XApiAdapter(SourceAdapter) {
         return self.http;
     }
 
+    """Reserve the maximum possible page before I/O. An interrupted request
+    keeps its reservation because the provider may have served the page."""
+    async def _get(
+        path: str, params: dict[str, str], minimum: int, maximum: int
+    ) -> httpx.Response | None {
+        day = datetime.now(UTC).date().isoformat();
+        budget = self.settings.x_daily_read_budget;
+        count = min(maximum, budget - await self.repo.x_reads_today());
+        if count < minimum or not await self.repo.reserve_x_reads(day, count, budget) {
+            self.status.state = "budget-paused";
+            self.status.detail = f"Too few reads left for this request ({minimum} required); resumes next UTC day";
+            return None;
+        }
+        if "max_results" in params {
+            params["max_results"] = str(count);
+        }
+        try {
+            response = await self._client().get(path, params=params);
+        } except httpx.ConnectError {
+            await self.repo.refund_x_reads(day, count);
+            raise;
+        }
+        charged = max(1, len(response.json().get("data") or []))
+            if maximum > 1 and response.is_success
+            else 1;
+        await self.repo.refund_x_reads(day, count - charged);
+        return response;
+    }
+
     async def resolve_account(handle: str) -> tuple[str, str] {
-        r = await self._client().get(f"{BASE}/users/by/username/{handle.lstrip('@')}");
+        r = await self._get(f"{BASE}/users/by/username/{handle.lstrip('@')}", {}, 1, 1);
+        if r is None {
+            raise RuntimeError(self.status.detail);
+        }
         r.raise_for_status();
-        await self.repo.add_x_reads(1);  # user reads count toward the budget too
         data = r.json()["data"];
         return (str(data["id"]), str(data["username"]));
     }
@@ -142,22 +171,6 @@ obj XApiAdapter(SourceAdapter) {
         }
 
         while True {
-            reads = await self.repo.x_reads_today();
-            if reads >= s.x_daily_read_budget {
-                pause = _seconds_to_next_utc_day();
-                self.status.state = "budget-paused";
-                self.status.detail = f"{reads}/{s.x_daily_read_budget} reads used; resumes next UTC day";
-                log.error(
-                    "X DAILY READ BUDGET EXHAUSTED (%d/%d) - polling PAUSED for %.0f min. "
-                    "Telegram keeps running.",
-                    reads,
-                    s.x_daily_read_budget,
-                    pause / 60
-                );
-                await asyncio.sleep(min(pause, 3600));
-                continue;
-            }
-
             accounts = [
                 a
                 for a in await self.repo.get_accounts("x")
@@ -166,6 +179,9 @@ obj XApiAdapter(SourceAdapter) {
             for acct in accounts {
                 try {
                     await self._poll_account(acct, sink);
+                    if self.status.state == "budget-paused" {
+                        break;
+                    }
                 } except httpx.HTTPStatusError as e {
                     await self._handle_http_error(acct, e);
                 } except httpx.HTTPError as e {
@@ -173,6 +189,12 @@ obj XApiAdapter(SourceAdapter) {
                     self.status.detail = str(e)[:120];
                     log.warning("x poll network error for @%s: %s", acct["handle"], e);
                 }
+            }
+            if self.status.state == "budget-paused" {
+                log.warning("Official X polling paused: %s", self.status.detail);
+                await asyncio.sleep(min(_seconds_to_next_utc_day(), 3600));
+                self.status.state = "starting";
+                continue;
             }
             if self.status.state in ("starting", "reconnecting") {
                 self.status.state = "live";
@@ -185,42 +207,65 @@ obj XApiAdapter(SourceAdapter) {
     async def _poll_account(acct: Row, sink: Sink) {
         params = dict(TWEET_PARAMS);
         account_id = str(acct["account_id"]);
-        since = self._since_ids.get(account_id);
-        if since {
+        cursor = await self.repo.x_poll_cursor(account_id);
+        since = str(cursor["since_id"]);
+        token = str(cursor["next_token"]);
+        pages: list[Row] = json.loads(cursor["pages"]);
+        if since and since != "0" {
             params["since_id"] = since;
         }
-        r = await self._client().get(
-            f"{BASE}/users/{account_id}/tweets", params=params
-        );
-        if r.status_code == 429 {
-            reset = float(r.headers.get("x-rate-limit-reset", 0));
-            pause = max(5.0, reset - datetime.now(UTC).timestamp());
-            log.warning("x rate limited; sleeping %.0fs", pause);
-            await asyncio.sleep(min(pause, 900));
-            return;
-        }
-        r.raise_for_status();
-        payload = r.json();
-
-        (posts, handle) = parse_timeline(payload, account_id, str(acct["handle"]));
-        # Each poll bills at least one read; each returned post is a post read.
-        await self.repo.add_x_reads(max(len(posts), 1));
-        if handle != acct["handle"] {
-            log.info(
-                "handle change: @%s -> @%s (id %s)", acct["handle"], handle, account_id
+        while True {
+            if token {
+                params["pagination_token"] = token;
+            }
+            # X requires max_results >= 5 even when the timeline is empty.
+            r = await self._get(f"{BASE}/users/{account_id}/tweets", params, 5, 25);
+            if r is None {
+                return;
+            }
+            if r.status_code == 429 {
+                reset = float(r.headers.get("x-rate-limit-reset", 0));
+                pause = max(5.0, reset - datetime.now(UTC).timestamp());
+                log.warning("x rate limited; sleeping %.0fs", pause);
+                await asyncio.sleep(min(pause, 900));
+                return;
+            }
+            r.raise_for_status();
+            payload = r.json();
+            pages.append(
+                {"payload": payload, "received": datetime.now(UTC).isoformat()}
             );
+            next_token = str((payload.get("meta") or {}).get("next_token") or "");
+            # The first successful poll establishes the existing one-page baseline.
+            if not since or not next_token {
+                break;
+            }
+            if next_token == token {
+                raise httpx.ProtocolError("X pagination token did not advance");
+            }
+            token = next_token;
+            await self.repo.save_x_poll_cursor(account_id, since, token, pages);
+        }
+        newest = since or "0";
+        handle = str(acct["handle"]);
+        for page in reversed(pages) {
+            payload = page["payload"];
+            (posts, handle) = parse_timeline(
+                payload,
+                account_id,
+                handle,
+                received_at=datetime.fromisoformat(page["received"])
+            );
+            for post in posts {
+                post.tier = str(acct["tier"]);
+                await sink(post);
+            }
+            for item in payload.get("data") or [] {
+                newest = max(newest or "0", str(item["id"]), key=int);
+            }
         }
         await self.repo.upsert_account("x", account_id, handle, str(acct["tier"]));
-        for post in posts {
-            post.tier = str(acct["tier"]);
-            self._since_ids[account_id] = max(
-                self._since_ids.get(account_id, "0"), post.source_post_id, key=int
-            );
-            await sink(post);
-        }
-        if posts {
-            self.status.state = "live";
-        }
+        await self.repo.save_x_poll_cursor(account_id, newest, "", []);
     }
 
     async def _handle_http_error(acct: Row, e: httpx.HTTPStatusError) {

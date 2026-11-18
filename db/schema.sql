@@ -95,6 +95,14 @@ CREATE TABLE IF NOT EXISTS x_reads (
     reads INTEGER NOT NULL DEFAULT 0
 );
 
+-- Keep a partial official timeline window until every page reaches the sink.
+CREATE TABLE IF NOT EXISTS x_poll_cursors (
+    account_id TEXT PRIMARY KEY,
+    since_id TEXT NOT NULL,
+    next_token TEXT NOT NULL,
+    pages TEXT NOT NULL
+);
+
 -- Registered users for login and authentication
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
