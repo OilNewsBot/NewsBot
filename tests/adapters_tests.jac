@@ -141,7 +141,7 @@ test "bot update converted and reply dropped" {
     };
     post = bot_update_to_post(update, received_at=NOW);
     assert post is not None;
-    assert post.source_post_id == "-1001234:7";
+    assert post.source_post_id == "1234:7";
     assert post.posted_at == datetime.fromtimestamp(1789500000, UTC);
     update["channel_post"]["reply_to_message"] = {"message_id": 3};
     assert bot_update_to_post(update) is None;

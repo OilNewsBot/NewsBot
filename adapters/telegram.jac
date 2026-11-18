@@ -19,6 +19,9 @@ glob log: logging.Logger = logging.getLogger("newsstream.telegram");
 
 """Telethon events report channels as -100<id>; store the stable bare id."""
 def bare_chat_id(chat_id: int) -> int {
+    if chat_id <= -1000000000000 {
+        return -chat_id - 1000000000000;
+    }
     s = str(chat_id);
     return int(s[4:]) if s.startswith("-100") else abs(chat_id);
 }
@@ -44,7 +47,9 @@ def message_to_post(
         source_post_id=f"{chat_id}:{msg.id}",
         account_id=str(chat_id),
         account_handle=chat_username,
-        url=f"https://t.me/{chat_username}/{msg.id}",
+        url=f"https://t.me/c/{chat_id}/{msg.id}"
+            if chat_username == str(chat_id)
+            else f"https://t.me/{chat_username}/{msg.id}",
         text=text,
         quoted_text=None,
         is_reply=False,
@@ -69,13 +74,16 @@ def bot_update_to_post(
         return None;
     }
     chat = msg["chat"];
-    username = str(chat.get("username") or str(chat["id"]));
+    chat_id = bare_chat_id(int(chat["id"]));
+    username = str(chat.get("username") or str(chat_id));
     return NormalizedPost(
         source="telegram",
-        source_post_id=f"{chat['id']}:{msg['message_id']}",
-        account_id=str(chat["id"]),
+        source_post_id=f"{chat_id}:{msg['message_id']}",
+        account_id=str(chat_id),
         account_handle=username,
-        url=f"https://t.me/{username}/{msg['message_id']}",
+        url=f"https://t.me/c/{chat_id}/{msg['message_id']}"
+            if username == str(chat_id)
+            else f"https://t.me/{username}/{msg['message_id']}",
         text=text,
         quoted_text=None,
         is_reply=False,
@@ -112,21 +120,24 @@ obj TelegramAdapter(SourceAdapter) {
         }
     }
 
-    async def _run_telethon(sink: Sink) {
+    async def _run_telethon(sink: Sink, *, client: any = None) {
         import from telethon { TelegramClient, events }  # lazy: optional at runtime
 
         s = self.settings;
-        client = TelegramClient(
-            "newsstream", int(s.telegram_api_id), s.telegram_api_hash
-        );
+        client = client
+            or TelegramClient(
+                "newsstream", int(s.telegram_api_id), s.telegram_api_hash
+            );
         self._client = client;
         await client.start();
 
         chats: dict[int, str] = {};
+        tiers: dict[int, str] = {};
         for ch in s.telegram_channels {
             try {
                 entity = await client.get_entity(ch.channel);
                 chats[int(entity.id)] = str(entity?.username or ch.channel);
+                tiers[int(entity.id)] = ch.tier;
             } except Exception as e {
                 log.error("cannot resolve telegram channel %r: %s", ch.channel, e);
             }
@@ -140,9 +151,24 @@ obj TelegramAdapter(SourceAdapter) {
         @client.on(events.NewMessage(chats=list(chats)))
         async def _on_message(event: any) {
             chat_id = bare_chat_id(event.chat_id);
-            username = chats.get(chat_id, str(chat_id));
+            if chat_id not in chats {
+                return;
+            }
+            chat = event?.chat;
+            if chat is None {
+                try {
+                    chat = await event.get_chat();
+                } except Exception {
+                    log.warning("Could not refresh Telegram channel %s", chat_id);
+                }
+            }
+            if chat is not None {
+                chats[chat_id] = str(chat?.username or chat_id);
+            }
+            username = chats[chat_id];
             post = message_to_post(event.message, chat_id, username);
             if post {
+                post.tier = tiers[chat_id];
                 await sink(post);
             }
         }
@@ -161,6 +187,7 @@ obj TelegramAdapter(SourceAdapter) {
         http = http or httpx.AsyncClient(timeout=70);
         async with http {
             channels: dict[str, str] = {};
+            tiers: dict[str, str] = {};
             retry_at = 0.0;
             while True {
                 if time.monotonic() >= retry_at {
@@ -178,6 +205,7 @@ obj TelegramAdapter(SourceAdapter) {
                             );
                             resolved.raise_for_status();
                             channels[name] = str(resolved.json()["result"]["id"]);
+                            tiers[channels[name]] = ch.tier;
                         } except (httpx.HTTPError, KeyError, ValueError) {
                             log.warning(
                                 "Could not resolve configured Telegram channel %s", name
@@ -207,8 +235,10 @@ obj TelegramAdapter(SourceAdapter) {
                         offset = int(update["update_id"]) + 1;
                         post = bot_update_to_post(update);
                         if post
-                            and str(update["channel_post"]["chat"]["id"])
-                                in channels.values() {
+                            and str(update["channel_post"]["chat"]["id"]) in tiers {
+                            post.tier = tiers[
+                                str(update["channel_post"]["chat"]["id"])
+                            ];
                             await sink(post);
                         }
                     }

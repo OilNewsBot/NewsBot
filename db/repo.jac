@@ -468,7 +468,7 @@ obj Repo {
 
     # -- x read budget --------------------------------------------------------
 
-    """Add n reads for today (UTC); returns the new daily total."""
+    """Atomically reserve a request against its UTC day and configured limit."""
     async def reserve_x_reads(day: str, count: int, budget: int) -> bool {
         cur = await self._run(
             """INSERT INTO x_reads(day,reads) SELECT ?,? WHERE ? <= ?

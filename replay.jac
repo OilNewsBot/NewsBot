@@ -18,6 +18,7 @@ import argparse;
 import asyncio;
 import json;
 import logging;
+import math;
 import os;
 import sys;
 import httpx;
@@ -26,6 +27,11 @@ import from pathlib { Path }
 import from adapters.base { Json }
 
 glob MAX_GAP_S: float = 300.0;
+
+def posted_time(post: Json) -> datetime {
+    dt = datetime.fromisoformat(post["posted_at"]);
+    return dt.astimezone(UTC) if dt.tzinfo else dt.replace(tzinfo=UTC);
+}
 
 def load_posts(fixtures_dir: Path) -> list[Json] {
     posts: list[Json] = [];
@@ -41,13 +47,16 @@ def load_posts(fixtures_dir: Path) -> list[Json] {
             posts.append(post);
         }
     }
-    posts.sort(key=lambda (p: Json) -> str { return str(p["posted_at"]); });
+    posts.sort(key=posted_time);
     return posts;
 }
 
 async def replay(
     posts: list[Json], base_url: str, speed: float, preserve_ts: bool, token: str
 ) {
+    if not math.isfinite(speed) or speed <= 0 {
+        sys.`exit("--speed must be a finite number greater than zero");
+    }
     headers = {"X-Admin-Token": token} if token else {};
     http = httpx.AsyncClient(base_url=base_url, timeout=10, headers=headers);
     async with http {
@@ -58,7 +67,7 @@ async def replay(
         }
         prev_ts: datetime | None = None;
         for (i, p) in enumerate(posts, 1) {
-            ts = datetime.fromisoformat(p["posted_at"]);
+            ts = posted_time(p);
             if prev_ts is not None {
                 gap = min((ts - prev_ts).total_seconds(), MAX_GAP_S);
                 await asyncio.sleep(max(0.0, gap) / speed);

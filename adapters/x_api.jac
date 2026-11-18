@@ -171,40 +171,55 @@ obj XApiAdapter(SourceAdapter) {
         }
 
         while True {
-            accounts = [
-                a
-                for a in await self.repo.get_accounts("x")
-                if a["status"] == "active"
-            ];
-            for acct in accounts {
-                try {
-                    await self._poll_account(acct, sink);
-                    if self.status.state == "budget-paused" {
-                        break;
-                    }
-                } except httpx.HTTPStatusError as e {
-                    await self._handle_http_error(acct, e);
-                } except httpx.HTTPError as e {
-                    self.status.state = "reconnecting";
-                    self.status.detail = str(e)[:120];
-                    log.warning("x poll network error for @%s: %s", acct["handle"], e);
-                }
-            }
+            await self._poll_cycle(sink);
             if self.status.state == "budget-paused" {
                 log.warning("Official X polling paused: %s", self.status.detail);
                 await asyncio.sleep(min(_seconds_to_next_utc_day(), 3600));
                 self.status.state = "starting";
                 continue;
             }
-            if self.status.state in ("starting", "reconnecting") {
-                self.status.state = "live";
-                self.status.detail = f"polling {len(accounts)} account(s) every {s.x_poll_interval}s";
-            }
             await asyncio.sleep(s.x_poll_interval);
         }
     }
 
-    async def _poll_account(acct: Row, sink: Sink) {
+    async def _poll_cycle(sink: Sink) {
+        accounts = [
+            a
+            for a in await self.repo.get_accounts("x")
+            if a["status"] == "active"
+        ];
+        failures: list[str] = [];
+        for acct in accounts {
+            try {
+                if await self._poll_account(acct, sink) {
+                    continue;
+                }
+                if self.status.state == "budget-paused" {
+                    return;
+                }
+            } except httpx.HTTPStatusError as e {
+                await self._handle_http_error(acct, e);
+            } except httpx.HTTPError as e {
+                self.status.detail = str(e)[:120];
+                log.warning("x poll network error for @%s: %s", acct["handle"], e);
+            }
+            failures.append(self.status.detail);
+        }
+        if failures {
+            self.status.state = "reconnecting";
+            self.status.detail = f"{len(failures)}/{len(
+                accounts
+            )} account polls failed: {failures[0]}";
+        } elif accounts {
+            self.status.state = "live";
+            self.status.detail = f"polling {len(accounts)} account(s) every {self.settings.x_poll_interval}s";
+        } else {
+            self.status.state = "disabled";
+            self.status.detail = "no active X accounts";
+        }
+    }
+
+    async def _poll_account(acct: Row, sink: Sink) -> bool {
         params = dict(TWEET_PARAMS);
         account_id = str(acct["account_id"]);
         cursor = await self.repo.x_poll_cursor(account_id);
@@ -221,14 +236,16 @@ obj XApiAdapter(SourceAdapter) {
             # X requires max_results >= 5 even when the timeline is empty.
             r = await self._get(f"{BASE}/users/{account_id}/tweets", params, 5, 25);
             if r is None {
-                return;
+                return False;
             }
             if r.status_code == 429 {
                 reset = float(r.headers.get("x-rate-limit-reset", 0));
                 pause = max(5.0, reset - datetime.now(UTC).timestamp());
+                self.status.state = "reconnecting";
+                self.status.detail = "X rate limit reached";
                 log.warning("x rate limited; sleeping %.0fs", pause);
                 await asyncio.sleep(min(pause, 900));
-                return;
+                return False;
             }
             r.raise_for_status();
             payload = r.json();
@@ -266,6 +283,7 @@ obj XApiAdapter(SourceAdapter) {
         }
         await self.repo.upsert_account("x", account_id, handle, str(acct["tier"]));
         await self.repo.save_x_poll_cursor(account_id, newest, "", []);
+        return True;
     }
 
     async def _handle_http_error(acct: Row, e: httpx.HTTPStatusError) {
