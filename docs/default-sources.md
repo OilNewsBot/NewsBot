@@ -37,7 +37,7 @@ These twelve additional X channels carry the Energy tag. Their primary sections 
 | General News | [@GavMcCracken](https://x.com/GavMcCracken) | Individual macroeconomic and commodity commentary. Also tagged Materials. |
 | General News | [@AB4_Ali3](https://x.com/AB4_Ali3) | Independent regional news and Middle East coverage. |
 
-All 20 X profile URLs returned timeline markup from the official oEmbed endpoint during the same verification. X controls timeline availability in each reader’s browser. NewsDrop links directly to the profile and uses the embed for display only. [X Help on embedded timelines](https://help.x.com/en/using-x/embed-x-feed)
+The November 18 X edition includes two verified post permalinks per profile, with short source excerpts, editorial headlines and original publication dates. Some publishers last posted in an earlier year. These cards also appear in Discover and Following. Readers can open the original post or request the live timeline. The shared market monitor adds new posts when its configured X adapters deliver them for a matching editorial account ID. [X Help on embedded timelines](https://help.x.com/en/using-x/embed-x-feed)
 
 ## Sector photographs
 

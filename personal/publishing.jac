@@ -6,7 +6,6 @@ import hmac;
 import json;
 import os;
 import re;
-import secrets;
 import time;
 import aiosqlite;
 import from datetime { UTC, datetime }
@@ -47,7 +46,7 @@ def digest(token: str) -> str {
 }
 
 async def pair_link(store: PersonalStore, owner: int, name: str) -> str {
-    token = str(secrets.token_urlsafe(24));
+    token = os.urandom(24).hex();
     async with inbox_write(store) as db {
         await db.execute(
             "INSERT INTO personal_telegram_pairing(user_id,challenge_hash,expires_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET challenge_hash=excluded.challenge_hash,expires_at=excluded.expires_at",

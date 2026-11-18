@@ -22,7 +22,7 @@ npm ci
 npm run dev
 ```
 
-The launcher reads `server.host` and `server.port` from the checkout's `config.yaml`. The default is `http://127.0.0.1:8000`. If something is already listening, the window connects to it. Otherwise the launcher starts `jac run` in that checkout, waits for the port to open and navigates to Home. Quitting stops the server the launcher started. A separately started service continues running. External article links open in the system browser.
+The launcher reads `server.host` and `server.port` from the checkout's `config.yaml`. The default is `http://127.0.0.1:8000`. If a service is already listening, the launcher checks its NewsDrop API before connecting. An unrelated service on that port shows a setup error. Otherwise the launcher starts `jac run` in that checkout, waits for the port to open and navigates to Home. Quitting stops the server the launcher started. A separately started service continues running. External article links open in the system browser.
 
 When trying a second worktree, check the port before launching. Two copies configured for the same port can display the same running server. Use distinct ports to keep both available, or quit the first instance before opening the second.
 
@@ -47,7 +47,7 @@ npm run dev
 
 ## Connect to a shared server
 
-Set `NEWSBOT_URL` to the shared server’s HTTP or HTTPS origin when building the desktop app, or set it at launch to override the compiled value. The window connects to that server and leaves its lifecycle to the host. Desktop notifications work for that origin. [Hosted demo setup](../docs/demo-hosting.md)
+Set `NEWSBOT_URL` to the shared server’s HTTP or HTTPS origin when building the desktop app, or set it at launch to override the compiled value. The window connects to that server and retries automatically after a connection timeout. Desktop notifications work for that origin. [Hosted demo setup](../docs/demo-hosting.md)
 
 ## Notifications
 

@@ -85,7 +85,7 @@ test('enable failure is visibly pending and reconciles', async () => {
 test('rapid enable then disable cannot finish with stale enable', async () => {
   const { app, state } = setup();
   await Promise.all([app.setEnabled(true), app.setEnabled(false)]);
-  assert.deepEqual(state.sent.map(value => value.enabled), [true, false]);
+  assert.deepEqual(state.sent.map(value => value.enabled), [false]);
   assert.equal(state.saved?.enabled, false);
 });
 
@@ -106,4 +106,76 @@ test('foreground dedup survives restart and simultaneous deliveries', async () =
   assert.equal(await new ForegroundDedup(load, save).accept('7', true), false);
   assert.equal(await dedup.accept(8, false), false);
   assert.equal(await dedup.accept(8, true), true);
+});
+
+test('a stalled Expo lookup cannot delay a durable Off or send a stale enable', async () => {
+  const { app, deps, state } = setup();
+  await app.setEnabled(true);
+  const started = Promise.withResolvers<void>();
+  const result = Promise.withResolvers<string>();
+  deps.pushToken = () => {
+    started.resolve();
+    return result.promise;
+  };
+  const refresh = app.refresh();
+  await started.promise;
+  await app.setEnabled(false);
+  assert.equal(state.saved?.enabled, false);
+  assert.equal(state.saved?.pending, false);
+  assert.deepEqual(state.sent.map(value => value.enabled), [true, false]);
+  result.resolve('ExpoPushToken[late]');
+  await refresh;
+  assert.deepEqual(state.sent.map(value => value.enabled), [true, false]);
+  assert.equal((await deps.load())?.enabled, false);
+});
+
+test('failed native token rotation becomes pending and retries after restart', async () => {
+  const { app, deps, state } = setup();
+  await app.setEnabled(true);
+  const nativeToken = { type: 'android', data: 'rotated' } as const;
+  deps.pushToken = async received => {
+    assert.deepEqual(received, nativeToken);
+    throw new Error('offline during rotation');
+  };
+  await assert.rejects(app.refresh(nativeToken), /offline during rotation/);
+  assert.equal(state.saved?.enabled, true);
+  assert.equal(state.saved?.pending, true);
+  assert.equal(state.sent.length, 1);
+  deps.pushToken = async () => 'ExpoPushToken[rotated]';
+  const restarted = new Subscription(deps);
+  await restarted.retryPending();
+  assert.equal(state.sent.at(-1)?.token, 'ExpoPushToken[rotated]');
+  assert.equal(restarted.value?.pending, false);
+});
+
+test('unchanged resume and polling do not re-register or flash pending', async () => {
+  const { deps, state } = setup();
+  let lookups = 0;
+  deps.pushToken = async () => { lookups++; return state.token; };
+  const displayed: boolean[] = [];
+  const app = new Subscription(deps, () => { displayed.push(app.value!.pending); });
+  await app.setEnabled(true);
+  displayed.length = 0;
+  await app.refresh();
+  await app.refresh();
+  const afterRefresh = lookups;
+  await app.retryPending();
+  await app.retryPending();
+  assert.equal(state.sent.length, 1);
+  assert.equal(lookups, afterRefresh);
+  assert.deepEqual(displayed, []);
+});
+
+test('a failed foreground checkpoint still presents the alert exactly once in process', async () => {
+  let ids: string[] = [];
+  let fail = true;
+  const dedup = new ForegroundDedup(async () => ids, async next => {
+    if (fail) throw new Error('storage unavailable');
+    ids = next;
+  });
+  assert.equal(await dedup.accept(501, true), true);
+  assert.deepEqual(ids, []);
+  fail = false;
+  assert.equal(await dedup.accept(501, true), false);
+  assert.deepEqual(ids, ['501']);
 });
