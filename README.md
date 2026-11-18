@@ -1,10 +1,10 @@
-# Newsstream
+# NewsDrop
 
-Newsstream is a community news desk for people following markets. Discover a publisher, follow a topic or track one developing story. When you return, Home shows what changed since your last visit, why each story appeared and where the reporting came from.
+NewsDrop is a community news desk for people following markets. Discover a publisher, follow a topic or track one developing story. When you return, Home shows what changed since your last visit, why each story appeared and where the reporting came from.
 
-The directory starts with **42 channels** across eight sectors and General News. Anyone can browse. A Newsstream account lets you publish channels, discuss reports, manage private sources and carry your follows between devices connected to the same server.
+The directory starts with **42 channels** across eight sectors and General News. Anyone can browse. A NewsDrop account lets you publish channels, discuss reports, manage private sources and carry your follows between devices connected to the same server.
 
-## Try Newsstream
+## Try NewsDrop
 
 1. Open **Discover**. Filter by sector, then expand a channel to see its recent reports, source and click count. Open its page to follow it.
 2. In **Following**, open **Browse and combine topics**. Choose **Semiconductor equipment** and **Export restrictions** to follow reports that mention both. On an individual report, **Follow story** tracks future developments on its timeline.
@@ -21,7 +21,7 @@ export PATH="$HOME/.local/bin:$PATH"
 jac run
 ```
 
-Open [Newsstream on localhost](http://127.0.0.1:8000). The initial edition and public RSS work without provider keys. For Windows, use the WSL instructions in the [setup and hosting guide](docs/getting-started.md).
+Open [NewsDrop on localhost](http://127.0.0.1:8000). The initial edition and public RSS work without provider keys. For Windows, use the WSL instructions in the [setup and hosting guide](docs/getting-started.md).
 
 ## Documentation
 

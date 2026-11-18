@@ -111,7 +111,7 @@ async def receive_message(store: PersonalStore, update: Row) -> Row {
                         "INSERT INTO personal_telegram_accounts(user_id,telegram_id,linked_at,linked_message_id) VALUES(?,?,?,?)",
                         (hit["user_id"], tid, sent, mid)
                     );
-                    answer = f"Connected to Newsstream as {hit[
+                    answer = f"Connected to NewsDrop as {hit[
                         'username'
                     ]}. Send or forward text you may share here, then review it in My Sources.";
                 } elif len(linked) == 1
@@ -152,7 +152,7 @@ async def receive_message(store: PersonalStore, update: Row) -> Row {
                         datetime.fromtimestamp(published, UTC).isoformat()
                     )
                 );
-                answer = "Saved to your private Newsstream inbox. Open My Sources to choose what to publish.";
+                answer = "Saved to your private NewsDrop inbox. Open My Sources to choose what to publish.";
             }
         }
     }

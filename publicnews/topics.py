@@ -178,15 +178,15 @@ def _validate(value, known, detail):
 
 
 def categories(value):
-    return _validate(value, SECTORS, "Choose categories from the Newsstream sectors")
+    return _validate(value, SECTORS, "Choose categories from the NewsDrop sectors")
 
 
 def topic_ids(value):
-    return _validate(value, _TOPIC_IDS, "Choose a subsector from the Newsstream taxonomy")
+    return _validate(value, _TOPIC_IDS, "Choose a subsector from the NewsDrop taxonomy")
 
 
 def watch_ids(value):
-    return _validate(value, _WATCH_IDS, "Choose a topic, event, entity or place from the Newsstream taxonomy")
+    return _validate(value, _WATCH_IDS, "Choose a topic, event, entity or place from the NewsDrop taxonomy")
 
 
 def _options(rules):

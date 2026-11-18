@@ -1,6 +1,6 @@
-# Run Newsstream
+# Run NewsDrop
 
-Newsstream runs one FastAPI service with a browser interface, a SQLite database and background workers. The seeded directory, accounts, subscriptions, discussions, story timelines and topic watches work without provider credentials. Normal operation refreshes public RSS over the internet.
+NewsDrop runs one FastAPI service with a browser interface, a SQLite database and background workers. The seeded directory, accounts, subscriptions, discussions, story timelines and topic watches work without provider credentials. Normal operation refreshes public RSS over the internet.
 
 ## Start the service
 
@@ -19,7 +19,7 @@ python scripts/bootstrap.py
 wsl -d Ubuntu sh -c 'PATH="$HOME/.local/bin:$PATH" jac run'
 ```
 
-Open [Newsstream on localhost](http://127.0.0.1:8000). Open **Discover** to browse immediately, or open **My Sources** to register and sign in. Keep the server terminal open. The Tauri desktop window uses the same web interface and can attach to an existing local service. [Desktop setup](../desktop/README.md)
+Open [NewsDrop on localhost](http://127.0.0.1:8000). Open **Discover** to browse immediately, or open **My Sources** to register and sign in. Keep the server terminal open. The Tauri desktop window uses the same web interface and can attach to an existing local service. [Desktop setup](../desktop/README.md)
 
 ## Try the bundled edition offline
 

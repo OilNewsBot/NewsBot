@@ -192,7 +192,7 @@ def screen_notify(n: Notification) {
     try {
         note: any = new(
             api,
-            "newsstream — " + (n.category or "new event"),
+            "NewsDrop — " + (n.category or "new event"),
             {
                 "body": n.one_line + "\n@" + n.handle,
                 "tag": "ns-" + str(n.notification_id)

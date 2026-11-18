@@ -37,6 +37,9 @@ async function check() {
         const panel = page.getByRole("complementary", {name: "Reading insights"});
         const toggle = page.getByRole("button", {name: "Insights", exact: true});
         await panel.waitFor();
+        assert.equal(await page.title(), "NewsDrop");
+        assert.equal(await page.getByRole("link", {name: "NewsDrop home"}).locator("img").getAttribute("src"),
+            "/brand/drop.svg");
         assert.deepEqual(await panel.locator("dd").allTextContents(), ["2", "4"]);
         assert.deepEqual(await panel.locator(".insight-stories a").allTextContents(),
             ["Report 6", "Report 5", "Report 3"]);

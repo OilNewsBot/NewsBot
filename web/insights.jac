@@ -31,7 +31,7 @@ def:pub ReadingDesk(
     <div className="reading-desk">
         <header className="desk-bar">
             <div className="desk-location">
-                <a href="/">Newsstream</a>
+                <a href="/">NewsDrop</a>
                 <span aria-hidden="true">/</span>
                 <strong>{label}</strong>
             </div>
@@ -160,7 +160,7 @@ def SourceShare(kind: str, channels: list[any]) -> JsxElement {
     if not count {
         return <></>;
     }
-    <li>
+    <li data-kind={kind}>
         <span>{source_name(kind)}</span>
         <strong>{count}</strong>
         <progress

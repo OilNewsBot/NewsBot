@@ -70,11 +70,17 @@ def:pub Navigation(active: str) -> JsxElement {
             <a
                 href="/"
                 className="site-nav-brand"
-                aria-label="Newsstream home"
-                title="Newsstream"
+                aria-label="NewsDrop home"
+                title="NewsDrop"
             >
-                <span className="site-nav-mark" aria-hidden="true">N</span>
-                <span className="site-nav-text">Newsstream</span>
+                <img
+                    className="site-nav-mark"
+                    src="/brand/drop.svg"
+                    alt=""
+                    width={36}
+                    height={36}
+                />
+                <span className="site-nav-text">NewsDrop</span>
             </a>
             <button
                 ref={toggleRef}

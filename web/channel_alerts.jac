@@ -259,7 +259,7 @@ def:pub ChannelAlerts -> JsxElement {
                         </button>
                     } else {
                         <p>
-                            New stories from channels with alerts on appear here while Newsstream is open.
+                            New stories from channels with alerts on appear here while NewsDrop is open.
                         </p>
                     } }
                     <label>

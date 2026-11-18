@@ -114,6 +114,33 @@ def ChannelList(
     </ul>
 }
 
+def SectorIcon(sector: str) -> JsxElement {
+    paths = {
+        "energy": "M13 2 4 14h7l-1 8 10-13h-7l1-7z",
+        "tech": "M6 6h12v12H6z M9 9h6v6H9z M9 3v3m6-3v3M9 18v3m6-3v3M3 9h3m-3 6h3m12-6h3m-3 6h3",
+        "healthcare": "M3 12h5l3-7 3 14 3-7h4",
+        "industrials": "M3 20V9l6 3V8l6 4 1-9h3l2 17H3z M7 16h1m3 0h1m3 0h1",
+        "consumer-discretionary": "M5 8h14l1 13H4L5 8z M9 9V6a3 3 0 0 1 6 0v3",
+        "materials": "m3 8 9-5 9 5-9 5-9-5z M3 12l9 5 9-5 M3 16l9 5 9-5",
+        "utilities": "M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0V8z M12 17v4",
+        "real-estate": "M3 21h18M5 21V7l9-4v18m0-11h5v11M8 10h2m-2 4h2m-2 4h2"
+    };
+    <span className={"sector-icon sector-icon-" + sector} aria-hidden="true">
+        <svg
+            width="23"
+            height="23"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.65"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d={paths[sector]}/>
+        </svg>
+    </span>
+}
+
 def Home(channels: list[any], watch: any) -> JsxElement {
     favorites = order_channels(
         [
@@ -137,6 +164,13 @@ def Home(channels: list[any], watch: any) -> JsxElement {
                         <span aria-hidden="true">→</span>
                     </a>
                 </div>
+                <img
+                    className="forum-mark"
+                    src="/brand/drop.svg"
+                    alt=""
+                    width={80}
+                    height={80}
+                />
             </header>
         }}
         <header className="sector-heading">
@@ -148,7 +182,7 @@ def Home(channels: list[any], watch: any) -> JsxElement {
         <div className="sector-list">
             {for sector in SECTORS {
                 <a className="sector-row" key={sector} href={"/categories/" + sector}>
-                    <img src={"/directory-images/" + sector + ".jpg"} alt=""/>
+                    <SectorIcon sector={sector}/>
                     <div className="sector-body">
                         <h3>{sector_name(sector)}</h3>
                         <p>

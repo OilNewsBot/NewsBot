@@ -1,4 +1,4 @@
-# Newsstream documentation
+# NewsDrop documentation
 
 ## Using the app
 
@@ -9,7 +9,7 @@
 | [Source catalog](default-sources.md) | The default RSS editions and X accounts, their sector coverage and publisher links |
 | [Personal sources](personal-sources.md) | Private feeds, credentials, collection settings, keyword alerts and selective sharing |
 
-## Running Newsstream
+## Running NewsDrop
 
 | Guide | What it covers |
 | --- | --- |

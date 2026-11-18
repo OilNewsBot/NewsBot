@@ -81,7 +81,7 @@ async def:pub request_json(path: str, method: str = "GET", body: any = None) -> 
         return {
             "ok": False,
             "status": 0,
-            "error": "Could not reach Newsstream. Please try again.",
+            "error": "Could not reach NewsDrop. Please try again.",
             "data": {}
         };
     }

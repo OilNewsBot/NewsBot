@@ -17,6 +17,15 @@ test "the public snapshot has dated headlines and unique channel addresses" {
             transport=httpx.ASGITransport(app=service), base_url="http://test"
         );
         async with client {
+            for (path, media_type) in [
+                ("/brand/drop.svg", "image/svg+xml"),
+                ("/favicon.ico", "image/x-icon")
+            ] {
+                asset = await client.get(path);
+                assert asset.status_code == 200;
+                assert asset.headers["content-type"] == media_type;
+                assert len(asset.content) > 0;
+            }
             response = await client.get("/api/directory");
             assert response.status_code == 200;
             data = response.json();

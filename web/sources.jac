@@ -96,7 +96,7 @@ async def personal_request(path: str, method: str = "GET", body: any = None) -> 
             "ok": False,
             "status": 0,
             "data": {},
-            "error": "Cannot reach Newsstream. Try again shortly."
+            "error": "Cannot reach NewsDrop. Try again shortly."
         };
     }
 }
@@ -503,7 +503,7 @@ def:pub SourcesPage -> JsxElement {
         if _ps_screen and api and api.permission == "granted" and not in_front {
             popup = new(
                 api,
-                str(item.source_name or "Newsstream"),
+                str(item.source_name or "NewsDrop"),
                 {
                     "body": str(item.title or item.text or "New post")[:180],
                     "tag": "newsstream-personal-" + str(_ps_user_id) + "-" + str(nid)

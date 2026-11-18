@@ -54,9 +54,9 @@ glob UI_SOURCE: Path = ROOT / "web",
      UI_INDEX: Path = ROOT / ".jac" / "client" / "web" / "dist" / "index.html";
 
 glob UI_MISSING_HTML: str = (
-         "<!doctype html><meta charset=utf-8><title>newsstream</title>"
+         "<!doctype html><meta charset=utf-8><title>NewsDrop</title>"
          "<body style='font:14px sans-serif;background:#0e1116;color:#d7dde8;padding:24px'>"
-         "<h1>newsstream is running, but its web page has not been built</h1>"
+         "<h1>NewsDrop is running, but its web page has not been built</h1>"
          "<p>Run <code>jac build web</code> in the project folder, then reload. "
          "The server log says why the automatic build failed.</p>"
      );
@@ -210,7 +210,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         }
     }
 
-    app = FastAPI(title="newsstream", lifespan=lifespan);
+    app = FastAPI(title="NewsDrop", lifespan=lifespan);
     install_mobile(app, repo);
     install_personal_routes(app, repo, personal);
     install_catalog_routes(app, repo, catalog, personal);
@@ -351,6 +351,21 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         }
         # no-cache: the page is rebuilt in place, and it is one small local file
         return FileResponse(UI_INDEX, headers={"Cache-Control": "no-cache"});
+    }
+
+    @app.get("/brand/drop.svg")
+    async def brand_mark -> Response {
+        return FileResponse(
+            ROOT / "desktop" / "app-icon.svg", media_type="image/svg+xml"
+        );
+    }
+
+    @app.get("/favicon.ico")
+    async def favicon -> Response {
+        return FileResponse(
+            ROOT / "desktop" / "src-tauri" / "icons" / "icon.ico",
+            media_type="image/x-icon"
+        );
     }
 
     @app.get("/api/directory")

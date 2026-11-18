@@ -1,8 +1,8 @@
-# Newsstream product overview
+# NewsDrop product overview
 
 ## 1. Purpose
 
-Newsstream helps people who follow markets see what has changed since their last visit and trace each development to its source. A reader can start with a publisher, narrow their interest to a subject and then follow a single developing story across reports and corrections.
+NewsDrop helps people who follow markets see what has changed since their last visit and trace each development to its source. A reader can start with a publisher, narrow their interest to a subject and then follow a single developing story across reports and corrections.
 
 ## 2. Reader experience
 
@@ -20,7 +20,7 @@ The browser and desktop window use the same Jac web interface. FastAPI handles s
 
 ## 4. Content sources
 
-| Source | What Newsstream can display or collect |
+| Source | What NewsDrop can display or collect |
 | --- | --- |
 | RSS | The backend retrieves public feeds and stores dated headlines, publisher text and original links. Readers need no API key. |
 | X | Official timeline embeds display public profiles. An authorized personal provider connection can collect structured posts for private use and selective sharing. Timelines themselves supply no post text to the collector. |
@@ -35,7 +35,7 @@ The initial directory has **22 RSS channels and 20 X profiles**. It covers Energ
 
 ## 6. From report to briefing
 
-Newsstream saves the source report before enrichment. It associates the item with a story timeline, identifies mentions in the text and records substantive developments. The first signed-in briefing offers recent matching reports, or editorial coverage for a new reader with no sources or watches. Later briefings show matching developments received since the previous displayed briefing. Each card explains why it appeared and links to its evidence.
+NewsDrop saves the source report before enrichment. It associates the item with a story timeline, identifies mentions in the text and records substantive developments. The first signed-in briefing offers recent matching reports, or editorial coverage for a new reader with no sources or watches. Later briefings show matching developments received since the previous displayed briefing. Each card explains why it appeared and links to its evidence.
 
 The shared market monitor has a separate flow. It persists incoming posts, scores materiality, clusters events and emits notifications.
 
@@ -51,7 +51,7 @@ Redelivery of the same item keeps its identity. Source URLs, headline similarity
 
 ## 9. Configuration
 
-Public news, personal collectors, the optional summary provider and the market monitor have separate settings. The server reads its configuration and credentials locally. A shared deployment uses a persistent database and a stable encryption key for personal X credentials. [Run and configure Newsstream](getting-started.md)
+Public news, personal collectors, the optional summary provider and the market monitor have separate settings. The server reads its configuration and credentials locally. A shared deployment uses a persistent database and a stable encryption key for personal X credentials. [Run and configure NewsDrop](getting-started.md)
 
 ## 10. Notifications
 

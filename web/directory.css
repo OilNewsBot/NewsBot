@@ -20,15 +20,15 @@
 .directory a { color: var(--link); }
 .directory a:hover { text-decoration: underline; }
 .directory button, .directory .button-link, .directory select {
-    border: 1px solid var(--border); border-radius: 6px; min-height: 36px;
+    border: 1px solid var(--border); border-radius: var(--round-control); min-height: 36px;
     background: var(--panel2); color: var(--text); padding: 6px 13px; font: inherit;
 }
 .directory button, .directory select { cursor: pointer; }
 .directory button:disabled { opacity: .6; cursor: default; }
 .directory button:hover:not(:disabled), .directory .button-link:hover { background: var(--panel2); }
 .directory .button-link { display: inline-flex; align-items: center; }
-.directory .primary-action { background: var(--accent); color: #102819; border-color: var(--accent); font-weight: 600; }
-.directory .primary-action:hover:not(:disabled) { background: #c3d4ca; }
+.directory .primary-action { background: var(--accent-fill); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.directory .primary-action:hover:not(:disabled) { background: #aceedc; }
 .directory :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .directory-back { display: inline-block; margin-bottom: 25px; }
 .home-links, .channel-actions, .channel-byline, .channel-toolbar, .directory-share, .discover-controls,
@@ -38,8 +38,8 @@
 .home-links { margin-top: 26px; justify-content: space-between; }
 .channel-list, .comment-thread ol { margin: 0; padding: 0; list-style: none; }
 .channel-list { display: grid; gap: 6px; }
-.channel-disclosure { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; overflow: clip; }
-.channel-disclosure > summary { display: flex; align-items: center; gap: 16px; padding: 16px 12px; cursor: pointer; list-style: none; }
+.channel-disclosure { background: var(--panel); border: 1px solid var(--rule); border-radius: var(--round-card); overflow: clip; }
+.channel-disclosure > summary { display: flex; align-items: center; gap: 16px; padding: 16px; cursor: pointer; list-style: none; }
 .channel-disclosure > summary::-webkit-details-marker { display: none; }
 .channel-disclosure > summary:hover, .channel-disclosure[open] > summary { background: var(--panel2); }
 .row-info { flex: 1; min-width: 0; }
@@ -63,9 +63,9 @@
 .channel-toolbar { padding: 0 0 24px; }
 .news-section { margin-top: clamp(26px, 4vw, 45px); }
 .discover-controls { justify-content: space-between; margin-bottom: 18px; align-items: flex-end; }
-.discover-tabs { gap: 5px; border: 1px solid var(--rule); border-radius: 8px; padding: 3px; }
-.directory .discover-tabs button { background: none; border: 0; color: var(--muted); }
-.directory .discover-tabs .current { background: var(--panel2); color: var(--text); }
+.discover-tabs { gap: 5px; border: 1px solid var(--rule); border-radius: 99px; padding: 4px; background: var(--panel); }
+.directory .discover-tabs button { border-radius: 99px; background: none; border: 0; color: var(--muted); }
+.directory .discover-tabs .current { background: var(--accent-surface); color: var(--accent); }
 .discover-sort { color: var(--muted); font-size: 13px; }
 .directory select { color-scheme: dark; }
 .list-note { font-size: 13px; }
@@ -74,7 +74,7 @@
 .public-form { display: grid; gap: 10px; max-width: 640px; margin-block: 14px; }
 .public-form label { display: grid; gap: 4px; font-size: 13px; }
 .public-form input, .public-form textarea, .directory-share input {
-    color: var(--ink); background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+    color: var(--ink); background: var(--bg); border: 1px solid var(--border); border-radius: var(--round-control);
     padding: 8px 10px; width: 100%; font: inherit;
 }
 .public-form textarea { resize: vertical; }

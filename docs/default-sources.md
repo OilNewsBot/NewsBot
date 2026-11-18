@@ -4,7 +4,7 @@ The bundled catalog contains 22 public RSS editions and 20 public X profiles acr
 
 ## Sector sources
 
-On November 17, 2026 (U.S. Eastern time), Newsstream’s RSS fetcher and parser read all 22 listed feeds without credentials. The bundled edition contains 69 dated articles with original URLs and short editorial descriptions. Live refreshes replace or extend the saved edition as publishers update their feeds. [Catalog data](../db/directory_seed.json)
+On November 17, 2026 (U.S. Eastern time), NewsDrop’s RSS fetcher and parser read all 22 listed feeds without credentials. The bundled edition contains 69 dated articles with original URLs and short editorial descriptions. Live refreshes replace or extend the saved edition as publishers update their feeds. [Catalog data](../db/directory_seed.json)
 
 | Sector | Default RSS editions | Publisher X timeline and ownership reference |
 | --- | --- | --- |
@@ -37,7 +37,7 @@ These twelve additional X channels carry the Energy tag. Their primary sections 
 | General News | [@GavMcCracken](https://x.com/GavMcCracken) | Individual macroeconomic and commodity commentary. Also tagged Materials. |
 | General News | [@AB4_Ali3](https://x.com/AB4_Ali3) | Independent regional news and Middle East coverage. |
 
-All 20 X profile URLs returned timeline markup from the official oEmbed endpoint during the same verification. X controls timeline availability in each reader’s browser. Newsstream links directly to the profile and uses the embed for display only. [X Help on embedded timelines](https://help.x.com/en/using-x/embed-x-feed)
+All 20 X profile URLs returned timeline markup from the official oEmbed endpoint during the same verification. X controls timeline availability in each reader’s browser. NewsDrop links directly to the profile and uses the embed for display only. [X Help on embedded timelines](https://help.x.com/en/using-x/embed-x-feed)
 
 ## Sector photographs
 

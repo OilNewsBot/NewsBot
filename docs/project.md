@@ -1,6 +1,6 @@
-# Newsstream architecture
+# NewsDrop architecture
 
-Newsstream helps readers follow market-moving news across Energy, Tech, Healthcare, Industrials, Consumer Discretionary, Materials, Utilities and Real Estate. A reader can find a channel, inspect a report and its sources, discuss it, and follow the next development in that story. General News accommodates multi-topic publishers and reports outside the eight sectors.
+NewsDrop helps readers follow market-moving news across Energy, Tech, Healthcare, Industrials, Consumer Discretionary, Materials, Utilities and Real Estate. A reader can find a channel, inspect a report and its sources, discuss it, and follow the next development in that story. General News accommodates multi-topic publishers and reports outside the eight sectors.
 
 ## What readers see
 

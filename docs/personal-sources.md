@@ -5,7 +5,7 @@ Sign in and open **My Sources** to connect a private feed or account, manage its
 ## Add a private source
 
 1. Add an **RSS** or **X** connection. RSS needs a name and accepts public RSS 2.0, Atom and RDF feeds without an API key. X uses a TwitterAPI.io account key and a daily request budget.
-2. Under **Private sources**, add the feed URL or X handle/profile through that connection. Select the categories it covers. **General News** suits a publisher covering many sectors. Newsstream can assign a more specific sector and topic to an individual article.
+2. Under **Private sources**, add the feed URL or X handle/profile through that connection. Select the categories it covers. **General News** suits a publisher covering many sectors. NewsDrop can assign a more specific sector and topic to an individual article.
 3. Use **Categories and alert keywords** to edit the tags, include words or exclude words. Matching is case-insensitive. A match on any included word qualifies and an excluded word takes precedence. Empty keyword lists allow all otherwise eligible alerts.
 4. Use **Alerts** to turn notifications on or off while collecting. **Pause** stops collection. **Remove** hides the source and its items from your views. Removing a connection also hides its sources.
 

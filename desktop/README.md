@@ -1,6 +1,6 @@
-# Newsstream desktop
+# NewsDrop desktop
 
-The Tauri app opens Newsstream in a native window. Discover, My Sources, Following, story timelines and the home briefing use the same web interface and backend as the browser. The installed app and its startup screen currently use the name **NewsBot**.
+The Tauri app opens NewsDrop in a native window. Discover, My Sources, Following, story timelines and the home briefing use the same web interface and backend as the browser.
 
 ## Start the app from a checkout
 
@@ -12,7 +12,7 @@ Run the bootstrap command from the repository or worktree you want to open. On W
 | macOS on Apple Silicon | Node.js, Rust and Xcode command-line tools | `python3 scripts/bootstrap.py` |
 | Linux | Node.js, Rust and the Tauri system libraries for your distribution | `python3 scripts/bootstrap.py` |
 
-For platform setup, see the [Newsstream setup guide](../docs/getting-started.md) and [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
+For platform setup, see the [NewsDrop setup guide](../docs/getting-started.md) and [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
 
 From that checkout's root, run
 
