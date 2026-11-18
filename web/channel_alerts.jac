@@ -61,6 +61,7 @@ def:pub ChannelAlerts -> JsxElement {
         } except Exception {}
     }
     def mark_read(item: any) {
+        openTray = False;
         for saved in history.current {
             if saved.id == item.id {
                 saved.read = True;
@@ -330,7 +331,12 @@ def:pub ChannelAlerts -> JsxElement {
                     {if hint {
                         <p role="status">{hint}</p>
                     }}
-                    <a href="/following#channel-alerts">Manage channel alerts →</a>
+                    <a
+                        href="/following#channel-alerts"
+                        onClick={lambda { openTray = False; }}
+                    >
+                        Manage channel alerts →
+                    </a>
                 </section>
             }
         }}
