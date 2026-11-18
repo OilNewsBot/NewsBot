@@ -12,7 +12,7 @@
 .brief-reason { font-style:italic; }
 .story-tools { margin-top:8px; }
 .directory .watch-button,.directory .facet-choice,.directory .topic-selection button { font-size:12px; min-height:32px; padding:4px 10px; border-radius:99px; }
-.directory .watch-button[aria-pressed=true],.directory .facet-choice[aria-pressed=true] { background:var(--accent-surface); border-color:#3b6c6c; color:var(--accent); }
+.directory .watch-button[aria-pressed=true],.directory .facet-choice[aria-pressed=true] { background:var(--accent-surface); border-color:var(--accent-border); color:var(--accent); }
 .story-label-details,.topic-directory { margin:10px 0 6px; }
 .story-label-details summary,.topic-directory summary { color:var(--text); cursor:pointer; font-size:13px; }
 .story-facets { display:grid; gap:8px; margin-top:10px; }

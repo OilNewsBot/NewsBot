@@ -8,7 +8,7 @@
 .sector-picker legend { margin-bottom:8px; font-size:14px; font-weight:600; }
 .sector-options { gap:7px; }
 .sector-picker .sector-option { font:inherit; font-size:13px; min-height:33px; line-height:1.25; border:1px solid var(--border); padding:5px 10px; color:var(--dim); background:transparent; border-radius:99px; cursor:pointer; }
-.sector-picker .sector-option[aria-pressed="true"] { background:var(--accent-surface); color:var(--accent); border-color:#3b6c6c; }
+.sector-picker .sector-option[aria-pressed="true"] { background:var(--accent-surface); color:var(--accent); border-color:var(--accent-border); }
 .sector-picker .sector-option:disabled { opacity:.8; cursor:default; }
 .followed-controls { margin:12px 0 24px; }
 .followed-controls summary { cursor:pointer; font-weight:600; padding:10px 0; }

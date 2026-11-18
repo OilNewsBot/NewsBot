@@ -1,6 +1,6 @@
 .site-nav {
     --nav-line: var(--border);
-    background: #101925;
+    background: var(--nav-bg);
     color: var(--text);
     border-right: 1px solid var(--nav-line);
     display: flex;
@@ -24,7 +24,7 @@
 }
 .site-nav-link svg { flex: 0 0 20px; }
 .site-nav-link:hover, .site-nav-link:focus-visible, .site-nav-collapse:hover { color: #fff; background: var(--panel); }
-.site-nav-link.active { color: #b0f4e7; background: var(--accent-surface); }
+.site-nav-link.active { color: var(--text); background: var(--accent-surface); box-shadow: inset 2px 0 var(--accent); }
 .site-nav-link.active svg { color: var(--accent); }
 .site-nav-collapse, .site-nav-menu { cursor: pointer; font: inherit; background: none; color: var(--dim); border: 0; }
 .site-nav-collapse { margin-top: auto; font-size: 13px; }
@@ -51,7 +51,7 @@
 }
 
 .alerts-button { width:100%; border:0; background:transparent; cursor:pointer; text-align:left; }
-.alert-count { border-radius:10px; padding:1px 6px; background:var(--accent); color:#102418; font-size:11px; }
+.alert-count { border-radius:10px; padding:1px 6px; background:var(--accent-fill); color:var(--accent-ink); font-size:11px; }
 .alerts-popover { position:fixed; top:20%; left:198px; width:min(330px, calc(100vw - 26px)); max-height:65vh; overflow:auto; padding:18px; border-radius:var(--round-card); border:1px solid var(--border); color:var(--text); background:var(--panel); box-shadow:0 8px 26px #0005; }
 .compact .alerts-popover { left:78px; }
 .compact .alerts-button { position:relative; }
@@ -71,7 +71,7 @@
 .nav-account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-inline: 8px; font-size: 13px; color: var(--dim); }
 .nav-account a, .nav-account button { display: block; padding: 8px; border-radius: var(--round-control); color: var(--accent); background: transparent; border: 0; text-align: left; font: inherit; font-size: 14px; cursor: pointer; }
 .nav-account a:hover, .nav-account button:hover { background: var(--panel); }
-.nav-account p { font-size: 12px; color: #ffaaa5; }
+.nav-account p { font-size: 12px; color: var(--red); }
 .auth-panel small { color: var(--dim); margin-top: -10px; }
 @media (min-width: 801px) {
     .compact .nav-account { padding-inline: 0; }

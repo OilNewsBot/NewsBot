@@ -25,10 +25,10 @@
 }
 .directory button, .directory select { cursor: pointer; }
 .directory button:disabled { opacity: .6; cursor: default; }
-.directory button:hover:not(:disabled), .directory .button-link:hover { background: var(--panel2); }
+.directory button:hover:not(:disabled), .directory .button-link:hover { background: var(--panel2); border-color: var(--accent-border); }
 .directory .button-link { display: inline-flex; align-items: center; }
 .directory .primary-action { background: var(--accent-fill); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
-.directory .primary-action:hover:not(:disabled) { background: #aceedc; }
+.directory .primary-action:hover:not(:disabled), .directory .button-link.primary-action:hover { background: var(--accent-hover); }
 .directory :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .directory-back { display: inline-block; margin-bottom: 25px; }
 .home-links, .channel-actions, .channel-byline, .channel-toolbar, .directory-share, .discover-controls,
@@ -62,10 +62,18 @@
 .directory-share label { display: grid; gap: 4px; }
 .channel-toolbar { padding: 0 0 24px; }
 .news-section { margin-top: clamp(26px, 4vw, 45px); }
-.discover-controls { justify-content: space-between; margin-bottom: 18px; align-items: flex-end; }
-.discover-tabs { gap: 5px; border: 1px solid var(--rule); border-radius: 99px; padding: 4px; background: var(--panel); }
-.directory .discover-tabs button { border-radius: 99px; background: none; border: 0; color: var(--muted); }
-.directory .discover-tabs .current { background: var(--accent-surface); color: var(--accent); }
+.discover-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
+    align-items: end; gap: 12px; margin-bottom: 18px;
+}
+.discover-controls > .discover-tabs { grid-column: 1 / -1; }
+.discover-controls > label { display: grid; min-width: 0; gap: 4px; }
+.discover-controls select, .channel-search input { width: 100%; min-width: 0; }
+.channel-search input::placeholder { color: var(--dim); }
+.discover-tabs { gap: 6px; }
+.directory .discover-tabs button { background: transparent; color: var(--muted); }
+.directory .discover-tabs .current { background: var(--accent-surface); border-color: var(--accent-border); color: var(--text); }
 .discover-sort { color: var(--muted); font-size: 13px; }
 .directory select { color-scheme: dark; }
 .list-note { font-size: 13px; }
@@ -79,7 +87,7 @@
 }
 .public-form textarea { resize: vertical; }
 .public-form button { justify-self: start; }
-.directory .public-error { color: #f1aaa5; }
+.directory .public-error { color: var(--red); }
 .write-post, .followed-list, .story-discussion { margin: 10px 0 14px; }
 .write-post > summary, .followed-list > summary, .story-discussion > summary { color: var(--link); cursor: pointer; }
 .comment-thread { padding: 10px 0 6px; }
@@ -91,8 +99,8 @@
 @media (max-width: 600px) {
     .directory { padding-inline: 17px; }
     .channel-disclosure > summary { gap: 8px; padding-inline: 12px; }
-    .discover-controls { gap: 12px; align-items: flex-start; }
-    .discover-tabs { gap: 0; }
+    .discover-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .discover-controls .channel-search { grid-column: 1 / -1; }
     .directory .discover-tabs button { padding-inline: 9px; }
 }
 
