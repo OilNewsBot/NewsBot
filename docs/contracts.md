@@ -1,126 +1,88 @@
-# Shared interfaces
+# Newsstream service contracts
 
-Read the implementation before changing a contract. Update this document and its
-consumers/tests together. Coordinate through the relevant task when another agent
-is changing a producer or consumer.
+Newsstream serves the web client and JSON APIs from the same origin. The public catalog, account-owned sources and shared market monitor have separate storage identities and notification cursors. A channel slug identifies a published channel. An item ID identifies one source record. A story ID identifies a timeline that may contain several public source records and revisions.
 
-## Adapter â†’ pipeline
+## Browser and account
 
-`adapters/base.jac` defines `NormalizedPost` and `SourceAdapter`.
-
-| Field | Meaning |
-| --- | --- |
-| `source`, `source_post_id` | Platform plus platform-local post identifier; together the persistence deduplication key |
-| `account_id`, `account_handle` | Stable platform ID and current display handle |
-| `url`, `text`, `quoted_text`, `media_urls` | Original content and optional quoted/media context |
-| `is_reply` | Adapters filter replies before normal ingestion |
-| `posted_at`, `received_at` | UTC-aware datetimes; platform delay is received minus posted |
-| `tier` | Source metadata: official, tracker, or osint |
-
-An adapter runs asynchronously and delivers normalized posts to the sink.
-Account resolution returns a stable ID and canonical handle; adapter status is
-exposed in `/status`. Adding a source should preserve this boundary.
-
-## Pipeline â†’ database â†’ notification
-
-`pipeline/classify.jac` owns classification results; `pipeline/dedup.jac` owns
-clustering. Database table definitions live in `db/schema.sql`; callers use
-`db/repo.jac`. JSON fields in storage are serialized by the repository layer.
-
-`pipeline/notify.jac` builds a card, persists it, adds `notification_id`, then
-publishes the same card to the in-process bus. Cards contain:
-
-```text
-notification_id, kind, post_id, category, one_line, score,
-handle, tier, url, posted_at, received_at, platform_latency_s,
-event_id, event_title, what_changed, badges
-```
-
-Kinds are `NEW_EVENT`, `UPDATE`, and `UNFILTERED`; category/score/event_id may be
-null on the relevant paths. Do not assume every notification is classified.
-
-## HTTP / SSE â†’ browser
-
-| Endpoint | Current response/behavior |
-| --- | --- |
-| `GET /`, `GET /discover`, `GET /following` | Web client with public sector cards, sortable channel directory and signed-in Following. Returns 503 when the client build is unavailable. |
-| `GET /categories/{slug}`, `GET /channels/{slug}` | Shareable public views. Each channel row expands to show recent stories, summaries, dates and publisher links. |
-| `GET /api/directory` | Compatibility view of the editorial catalog seeded from `db/directory_seed.json`. Successful RSS refreshes update the edition and `checked_at`. |
-| Multi-topic publisher entries | `publishers` contains each publisher's full recent edition (up to 24 stories). Its canonical slug can also appear in several categories, each showing up to three headlines assigned to that category's slug. Each routed headline carries its `section` and `routed_by` value. |
-| Retired workspace bookmarks | Redirect to the public home. |
-| `GET /stream` | SSE `event: notification`, `id: <notification_id>`, `data: <card JSON>`; heartbeat comments |
-| `GET /notifications?since=N` | Array of stored cards after the notification ID, in ascending order (repository limit applies) |
-| `GET /feed` | Object containing `events` |
-| `GET /suppressed` | Object containing `posts` |
-| `GET /status` | Adapter states, latency/counts, estimated model spend, fail-open state, X budget/reads, UI threshold/settings, inactive accounts |
-| `POST /ingest` | Admin only: the `X-Admin-Token` header must equal `NEWSBOT_ADMIN_TOKEN` when that is set, otherwise only loopback clients are accepted (403 otherwise). A normalized-post JSON representation; parses ISO timestamps and queues it, returning `{"queued": true}` |
-| `POST /refetch?hours=12` | Signed-in session or admin client (401 otherwise). Starts source catch-up; clamps hours to 1â€“48; returns 409 when unconfigured or already running |
-| `GET /portfolio` | Admin access. Returns the shared operator portfolio and configured sizing rules. |
-| `PUT /portfolio` | Admin access. Accepts `portfolio_value`, `available_cash`, `aggressiveness` and `max_hold_minutes`. Returns 422 on invalid input. |
-| `GET /suggestions` | Object containing `suggestions`, newest first, each a `trade_suggestions` row plus `event_title` |
-| `GET /prices?ticker=<configured ticker>[&start=ISO&end=ISO]` | `ticker`, `symbol`, `last`, `bars` (`t` epoch seconds, `c` close), 1-minute; latest trading day or the given window; 502 when the feed fails |
-
-The browser deduplicates on `notification_id` and requests backfill on reconnect.
-SSE IDs are notification IDs, not post IDs or event IDs. When adding a field,
-prefer an additive change and update the frontend type in `web/main.jac` with
-the producer and tests. For breaking changes, sequence dependent PRs explicitly.
-
-## Public catalog and social activity
+The application serves Home at `/`, Discover at `/discover`, Following at `/following` and My Sources at `/sources`. Shareable pages use `/categories/{slug}`, `/channels/{slug}` and `/stories/{slug}`. These routes serve the built web client and return 503 when its build is missing.
 
 | Endpoint | Behavior |
 | --- | --- |
-| `GET /api/channels` | Lists public channel metadata, counts, and story previews. An authenticated session adds viewer-specific ownership, follow/recommend flags and notification settings. Channel tags use canonical sector slugs. Items carry a section slug and an optional human-readable topic. |
-| `GET /api/channels/{slug}` | Channel details, source references, recent items and discussion. |
-| `POST /api/channels` | Publish a channel for the authenticated user with a name, description, category, source type, and source URL or API mode where applicable. |
-| `POST /api/channels/{slug}/click` | Record a channel opening. Returns the updated total. |
-| `PUT /api/channels/{slug}/subscription`, `PUT /api/channels/{slug}/recommendation` | Set the session user's choice with `{"enabled":true}` or `false`. Repeating the request is idempotent. |
-| `GET /api/briefing`, `POST /api/briefing/seen` | Read a signed-in snapshot with `first_visit`, `since`, `cards`, `has_more` and offered public and private cursors. A visible client acknowledges `through` and `private_through` together, with the displayed `user_id`. Reads alone preserve the prior visit. |
-| `GET /api/watches` | Account's saved topics and stories plus the sector taxonomy and event, entity and place options. |
-| `PUT /api/watches/topics/{id}`, `PUT /api/watches/stories/{id}` | Set `enabled` to a boolean. A topic ID can join up to four stable label IDs with `~`. They must all match the same report. Writes with a mismatched `user_id` return 409. |
-| `GET /api/stories/{id}`, `GET /stories/{id}` | Read a source-linked timeline as JSON or in the app. Public IDs are numeric. An ID of the form `private-123` is scoped to its owner and becomes inaccessible when its source is removed. |
-| `GET /api/following` | Account subscriptions, saved category selection and up to 200 recent matching updates from followed channels and enabled private sources. Private rows carry `private_source: true`. |
-| `GET /api/me/feed-preferences`, `PUT /api/me/feed-preferences` | Read or replace the signed-in reader's category selection. Send `{"categories":["utilities","tech"]}` to include either sector, or an empty list for all. |
-| `PUT /api/channels/{slug}/notifications` | Opt a followed public channel into alerts or mute it using `{"enabled":true}` or `false`. |
-| `GET /api/following/notifications/head`, `GET /api/following/notifications?since=N` | Baseline and subsequent public subscription alerts for the current reader. Private source alerts use the existing authenticated personal stream. |
-| `POST /api/channels/{slug}/posts` | Publish a titled post with text or an optional source URL in an eligible channel. |
-| `POST /api/channels/{slug}/comments` | Post text on a channel, or attach to an item or parent comment in the same thread. |
-| `GET /api/me/telegram`, `POST /api/me/telegram/pair`, `DELETE /api/me/telegram` | Read the account's private Telegram inbox, issue an expiring pairing link, or disconnect. |
-| `POST /api/telegram/updates` | Dedicated bot webhook authenticated by Telegram's configured secret header. |
-| `POST /api/me/share-item` | Publish an explicitly confirmed selection from the owner's private inbox or authorized X feed into an owned channel of the matching type. |
+| `POST /register` | Create an account with `username`, `email` and a password of at least 12 characters. Login is a separate request. |
+| `POST /login` | Authenticate with email and password. Issues a seven-day HTTP-only `session` cookie and revokes any session previously supplied by the same browser. |
+| `GET /me`, `POST /logout` | Read the session's `user_id`, `username` and `email`, or revoke the session and clear its cookie. |
 
-## Private connections and collection
+Account-scoped operations derive ownership from the session cookie. Missing or expired sessions receive 401. Catalog and personal-source mutations check the browser origin. A briefing or watch mutation may include the `user_id` displayed to the reader as an account-switch guard. A mismatch returns 409.
 
-Personal source records are isolated from the shared market-event feed. See
-[Personal sources](personal-sources.md) for setup, delivery semantics and limits.
-Every `/api/me/*` route derives ownership from the session cookie; no caller
-`user_id` is accepted. Mutations reject cross-origin browser requests.
+## Public catalog and discussions
 
-| Endpoint | Response |
+| Endpoint | Behavior |
 | --- | --- |
-| `GET /sources` | Same built UI, selecting the personal sources page |
-| `GET /api/me/connections` | `{connections: [...]}`; no credentials |
-| `POST /api/me/connections` | `{connection: ...}`; input provider (`rss` or `x`), label, optional api_key and daily_limit |
-| `PATCH /api/me/connections/{id}` | `{connection: ...}`; replace an X api_key |
-| `DELETE /api/me/connections/{id}` | Disconnect owned service and stop its sources |
-| `GET /api/me/sources` | `{sources: [...]}` with status and preferences |
-| `POST /api/me/sources` | `{source: ...}`; owned connection_id, locator and optional alert preferences |
-| `PATCH /api/me/sources/{id}` | `{source: ...}`; enabled, alerts_enabled, include_keywords, exclude_keywords |
-| `DELETE /api/me/sources/{id}` | Remove owned source from collection and delivery |
-| `GET /api/me/feed?after=0` | `{items: [...]}`; publication time descending, item ID as tie breaker; optional after filters item IDs |
-| `GET /api/me/notifications?since=0` | `{notifications: [...]}`; eligible alerts ascending |
-| `GET /api/me/notifications/head` | `{notification_id: N}` for silent initial baseline |
-| `GET /api/me/stream?since=N` | SSE notification events with stable personal notification IDs; supports Last-Event-ID replay |
+| `GET /api/channels` | Returns `channels` with tags, type, curator, publisher, click/subscriber/recommendation counts and recent headlines. A session adds the reader's ownership, subscription, recommendation and notification flags. Discover sorts this collection in the client. |
+| `GET /api/channels/{slug}` | Returns `channel` and `comments`. Recent items retain their publisher or author, source links, publication and collection times, sector, optional topic, labels and summary status. |
+| `GET /api/directory` | Returns the editorial edition grouped by category. Multi-topic publishers expose up to 24 recent stories and may appear in multiple categories with up to three matching headlines per category. Routed headlines carry `section` and `routed_by`. |
+| `POST /api/channels` | Publish a channel. Required fields are `name`, `description`, `category` and `source_type`. Optional `tags` add sectors. RSS uses a public `source_url`. X and Telegram support `mode` values `embed` and `api`. Community channels need only channel metadata. Returns `channel` and HTTP 201. |
+| `POST /api/channels/{slug}/click` | Record one opening and return `clicks`. Available to same-origin visitors, including signed-out readers. |
+| `PUT /api/channels/{slug}/subscription`, `PUT /api/channels/{slug}/recommendation` | Set the signed-in reader's choice using a boolean `enabled`. Repeated writes are idempotent. Both return `channel`. |
+| `POST /api/channels/{slug}/posts` | Submit `title` and at least one of `text` or `url` to a community channel or the reader's own social channel. Returns `item` and HTTP 201. |
+| `POST /api/channels/{slug}/comments` | Submit `text` with optional `item_id` and `parent_id`. A reply belongs to the same channel and item as its parent. Returns `comment` and HTTP 201. |
 
-Private sources accept `tags` on creation and update. Existing untagged sources default to `general`. Personal item fields include `tags`, `category`, `section`, `topic`, `id`, `source_id`, `source_name`, `provider`, `title`,
-`text`, `url`, `posted_at`, `received_at`. Alerts add `notification_id` and
-`kind: SOURCE_POST`. These IDs belong to the personal notification table, not
-the legacy notification table. Empty/exhausted sessions receive 401; an already
-open personal SSE session ends on expiry/revocation with `session_expired`.
+Normalized public items have a stable source-local identity. Redelivery reuses the stored item. AI output exposes `ai_generated` and `generated_at` alongside its source reference. The worker stores the source first, caches summaries by revision, model and prompt version, reserves a daily call budget before dispatch and backs off failed attempts. RSS is the default automatic summary source. Backend summaries for X require eligible structured content from an authorized source. An embedded timeline or an ordinary shared link provides a display surface.
 
-## Shared configuration and runtime
+## Reader briefing and story watches
 
-`jac.toml`/`jac.lock`, `config.jac`, the database schema, shared test helpers,
-and recorded cassettes are common coordination points. Publish intended changes
-before editing them. Avoid unrelated dependency upgrades or mass formatting in
-feature work. `config.yaml` server overrides are per-checkout during development;
-do not commit a temporary port/database change as part of an unrelated feature.
+| Endpoint | Behavior |
+| --- | --- |
+| `GET /api/briefing` | Returns the signed-in reader's `user_id`, `first_visit`, previous visit time in `since`, `cards`, `through`, `private_through` when the personal store is installed, and `has_more`. A read offers a snapshot and leaves the acknowledged visit intact. |
+| `POST /api/briefing/seen` | Acknowledge a displayed snapshot using its `through`, `private_through` when present, and displayed `user_id`. Provided cursors advance together in one transaction. A stale tab cannot rewind the visit or mark a later development seen. After acknowledgement, fetch again if `has_more` was true. |
+| `GET /api/watches` | Returns `user_id`, saved `topics` and `stories`, the sector `taxonomy` and the available event, entity and place `facets`. |
+| `PUT /api/watches/topics/{topic_id}` | Set `enabled` for a label or a combination of two to four distinct label IDs joined by `~`. The server canonicalizes order. Every label in a combination must match the same report. |
+| `PUT /api/watches/stories/{story_id}` | Set `enabled` for one story timeline. Public story IDs are numeric. Private story IDs use `private-<item_id>` and require the owner's session. |
+| `GET /api/stories/{story_id}` | Returns `story` with dated developments and citations. Public timelines are readable without signing in. Private timelines and watch entries are scoped to their owner and become inaccessible when their source is removed. |
+
+A public timeline retains its identity when an article changes. The journal distinguishes first reports, substantive publisher revisions and additional sources. The briefing presents a source excerpt or changed passage, dated references, matching labels and a reason for including the card. Its checkpoints belong to the reader's visit. Channel alerts have a separate cursor.
+
+## Following and subscription alerts
+
+| Endpoint | Behavior |
+| --- | --- |
+| `GET /api/following` | Returns all subscribed `channels`, the saved `categories` and up to 200 matching `items` from those subscriptions and enabled private sources. Grouped public items retain source references. Private items carry `private_source: true`. |
+| `GET /api/me/feed-preferences`, `PUT /api/me/feed-preferences` | Read or replace the account's sector selection. Send `{"categories":["utilities","tech"]}` to include either sector. An empty list includes all sectors. |
+| `PUT /api/channels/{slug}/notifications` | Set the followed channel's alert preference using a boolean `enabled`. Public alerts start off. Enabling alerts establishes a silent baseline. Muting preserves the subscription and its stories. |
+| `GET /api/following/notifications/head` | Returns `user_id` and `head` for a silent initial notification cursor. |
+| `GET /api/following/notifications?since=N` | Returns `user_id`, `notifications` in ascending ID order, and the returned `head` for the next poll. Saved sectors and subscription alert settings determine eligible updates. |
+
+## Private sources and selective sharing
+
+Private connections, items, alerts and credentials belong to one account. The browsing API returns connection metadata. The server retains the encrypted X credential and enforces the configured request budget. Setup and examples are in the [personal source guide](personal-sources.md).
+
+| Endpoint | Behavior |
+| --- | --- |
+| `GET /api/me/connections`, `POST /api/me/connections` | List or create connections. Creation accepts a `provider` of `rss` or `x`, a `label` and an optional `daily_limit`. An X connection also requires an `api_key`. RSS uses the feed URL supplied when adding a source. |
+| `PATCH /api/me/connections/{connection_id}`, `DELETE /api/me/connections/{connection_id}` | Replace an owned X credential or disconnect the service and stop its sources. |
+| `GET /api/me/sources`, `POST /api/me/sources` | List or create sources. Supply an owned `connection_id` and a `locator`. Optional fields include sector `tags`, `alerts_enabled`, `include_keywords` and `exclude_keywords`. |
+| `PATCH /api/me/sources/{source_id}`, `DELETE /api/me/sources/{source_id}` | Change `enabled`, alert settings, tags or keyword filters, or remove the source from collection and delivery. Sources without explicit tags use `general`. |
+| `GET /api/me/feed?after=0` | Returns `items` ordered by publication time descending with item ID as a tie breaker. `after` filters on item ID. Personal items include their source, provider, publication and receipt times, sector and topic. |
+| `GET /api/me/notifications/head`, `GET /api/me/notifications?since=N` | Read `notification_id` for a silent baseline, then eligible `notifications` in ascending order. Each alert carries its personal `notification_id` and kind `SOURCE_POST`. |
+| `GET /api/me/stream?since=N` | Receive private notification events. `Last-Event-ID` takes precedence on reconnect. The stream emits `session_expired` when the session expires or is revoked. |
+| `GET /api/me/telegram`, `POST /api/me/telegram/pair`, `DELETE /api/me/telegram` | Read the owner's bot inbox, issue an expiring pairing link, or disconnect the Telegram account. Pairing requires a configured bot. |
+| `POST /api/telegram/updates` | Telegram bot webhook. Authenticates the incoming request with the configured `X-Telegram-Bot-Api-Secret-Token` header. |
+| `POST /api/me/share-item` | Requires `confirmed: true`, a provider, an owned item ID and an owned matching API-channel slug. For Telegram, the reader supplies a title and selects an excerpt present in the original message. For X, the server retrieves the authorized record and validates its post URL. Returns the published `item`. |
+
+## Market monitor and trading
+
+Adapters send `NormalizedPost` records to the asynchronous pipeline. The storage deduplication key is `(source, source_post_id)`. Each record includes the stable `account_id`, current `account_handle`, `tier`, `url`, `text`, optional `quoted_text`, `media_urls`, `is_reply`, and UTC-aware `posted_at` and `received_at`. The adapters filter replies during normal collection. The pipeline persists posts before classification, clusters accepted developments, stores the notification, then broadcasts its `notification_id` on the in-process event bus.
+
+| Endpoint | Behavior |
+| --- | --- |
+| `GET /stream`, `GET /notifications?since=N` | Live market SSE cards use event type `notification` and the stored notification ID as the SSE ID, with heartbeat comments between events. Reconnect by fetching stored cards after the last notification ID in ascending order. |
+| `GET /feed`, `GET /suppressed`, `GET /status` | Return shared market events, suppressed posts, or operational status including adapter state, counts, latency, estimated model spend, fail-open status, X usage and threshold settings. |
+| `POST /ingest` | Admin only. Queues a normalized post with ISO timestamps and returns `{"queued":true}`. |
+| `POST /refetch?hours=12` | A signed-in or admin caller can request X push catch-up. The window is clamped to 1–48 hours. An unconfigured adapter or active catch-up returns 409. |
+| `GET /portfolio`, `PUT /portfolio` | Admin access to the shared manual portfolio. A write accepts `portfolio_value`, `available_cash`, `aggressiveness` and `max_hold_minutes`. Invalid sizing values return 422. |
+| `GET /suggestions`, `GET /prices?ticker=<ticker>&start=<ISO>&end=<ISO>` | Return trade suggestions with their event titles, or minute closing prices for a supported instrument. Omitting the price window selects the latest trading day. A price-feed failure returns 502. |
+| `PUT /mobile/subscription` | With mobile push enabled, an installation bearer secret controls its Expo push subscription. Enabling requires a valid Expo push token. |
+
+Market card kinds are `NEW_EVENT`, `UPDATE` and `UNFILTERED`. The card fields are `notification_id`, `kind`, `post_id`, `category`, `one_line`, `score`, `handle`, `tier`, `url`, `posted_at`, `received_at`, `platform_latency_s`, `event_id`, `event_title`, `what_changed` and `badges`. Classification and event fields can be null. Consumers deduplicate market cards using the market `notification_id`.
+
+For admin routes, a configured `NEWSBOT_ADMIN_TOKEN` must match the `X-Admin-Token` header. When the token is unset, only loopback clients qualify for admin access.

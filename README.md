@@ -1,35 +1,34 @@
 # Newsstream
 
-Newsstream is a shared news and discussion service for people following Energy, Tech, Healthcare, Industrials, Consumer Discretionary, Materials, Utilities and Real Estate. Signed-in Home shows developments since your last visit. Browse the sectors on Home, find channels in Discover, and manage topic and story watches in Following. Each channel has a shareable address, source information, recent updates and a discussion. Sign in to publish channels, follow them and recommend sources.
+Newsstream is a community news desk for people following markets. Discover a publisher, follow a topic or track one developing story. When you return, Home shows what changed since your last visit, why each story appeared and where the reporting came from.
+
+The directory starts with **42 channels** across eight sectors and General News. Anyone can browse. A Newsstream account lets you publish channels, discuss reports, manage private sources and carry your follows between devices connected to the same server.
+
+## Try Newsstream
+
+1. Open **Discover**. Filter by sector, then expand a channel to see its recent reports, source and click count. Open its page to follow it.
+2. In **Following**, open **Browse and combine topics**. Choose **Semiconductor equipment** and **Export restrictions** to follow reports that mention both. On an individual report, **Follow story** tracks future developments on its timeline.
+3. Return to **Home**. Your first briefing offers recent coverage. Subsequent visits highlight new reports and material revisions, with links to the original sources.
+4. Open **My Sources** to publish a community, RSS, X or Telegram channel. Private connections have their own feed and controls. You choose which eligible private items to publish.
 
 ## Run locally
 
-Newsstream uses the native Jac 0.37.25 binary, FastAPI and SQLite. Install the pinned runtime and dependencies with the repository helper. On native Windows run the helper with `python`. Run the Jac commands in Ubuntu/WSL.
+Run these commands from the repository root on Linux or an Apple Silicon Mac.
 
 ```sh
 python3 scripts/bootstrap.py
+export PATH="$HOME/.local/bin:$PATH"
 jac run
 ```
 
-Open [Newsstream on localhost](http://127.0.0.1:8000). The initial edition includes genuine, dated publisher stories. A background worker refreshes the public feeds automatically. Public RSS and browsing work without a provider key. A shared demo uses one running backend, one database on persistent storage and a single HTTPS URL for all devices.
+Open [Newsstream on localhost](http://127.0.0.1:8000). The initial edition and public RSS work without provider keys. For Windows, use the WSL instructions in the [setup and hosting guide](docs/getting-started.md).
 
-## Sources
+## Documentation
 
-| Source | How readers use it |
+| If you want to… | Start here |
 | --- | --- |
-| RSS | Publish a public feed URL. Newsstream collects items, preserves publisher links and can generate attributed summaries. |
-| X | Publish an official profile timeline embed or select a post from an authorized personal provider connection. A reader can open the profile directly. |
-| Telegram | Embed a public post or pair a Telegram account through the demo bot. The account holder chooses a permitted message and explicitly publishes it. |
-| Community | Publish original posts with an optional source link. Readers can discuss individual posts or the channel itself. |
-
-Private connections and provider credentials belong to the signed-in account. Source collections, provider limits and AI settings are managed on the server.
-
-## Development
-
-```sh
-python3 scripts/check.py
-```
-
-The check runs helper tests, formatting, type checking, offline application tests and the web build. It masks live credentials and disables feed refresh. `jac build web` builds the browser client. `jac run replay -- tests/fixtures/` exercises the separate market-event monitor on a running service.
-
-See the [channel and demo guide](docs/feature-overhaul.md), [project map](docs/project.md), [API contracts](docs/contracts.md) and [documentation index](docs/README.md). The [desktop guide](desktop/README.md) covers the Tauri wrapper. The [mobile guide](mobile/README.md) covers the existing market-event push client.
+| Use the briefing, publish a channel or manage alerts | [Reader guide](docs/feature-overhaul.md) |
+| Understand the goals and available features | [Product overview](docs/spec.md) |
+| Run a shared server or configure AI and integrations | [Setup and hosting](docs/getting-started.md) |
+| Understand how reports become stories and briefings | [Architecture](docs/project.md) |
+| Look up endpoints or platform-specific instructions | [Documentation index](docs/README.md) |

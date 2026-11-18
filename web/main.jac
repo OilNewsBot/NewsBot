@@ -1,11 +1,8 @@
-"""newsstream web UI (docs/spec.md §10): notification tray, event feed, suppressed
-list and status footer.
+"""Newsstream browser entry point (docs/spec.md §10).
 
-This is the browser half of the app, written in Jac and compiled to one
-self-contained page by `jac build web`. It talks to the FastAPI service
-(app.jac) over the same plain HTTP endpoints as before: /stream (SSE),
-/notifications, /feed, /suppressed, /status and /refetch.
-"""
+The compiled web client opens the briefing or sector directory on Home. It also
+routes Discover, Following, My Sources, channels and story timelines. Market
+monitor components use the separate event and notification endpoints below."""
 
 import "./main.css";
 import from react { useEffect }

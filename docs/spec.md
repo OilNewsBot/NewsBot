@@ -1,72 +1,82 @@
-# Newsstream product specification
+# Newsstream product overview
 
 ## 1. Purpose
 
-Newsstream helps people follow market-moving news across Energy, Tech, Healthcare, Industrials, Consumer Discretionary, Materials, Utilities and Real Estate. A reader can find a source, inspect the original report, discuss it and follow subsequent updates. A clinical trial result, a change in manufacturing capacity and a grid investment decision each belong in the same news experience.
+Newsstream helps people who follow markets see what has changed since their last visit and trace each development to its source. A reader can start with a publisher, narrow their interest to a subject and then follow a single developing story across reports and corrections.
 
-## 2. Public and personal views
+## 2. Reader experience
 
-| View | Reader action |
+| Page | What a reader can do |
 | --- | --- |
-| Home | Open a personal briefing of developments since the last displayed visit when signed in. Browse eight sectors, editorial channels and recommendations on the same page. General News collects stories from multi-topic publishers that have no clear sector fit. |
-| Discover | Browse the complete public catalog, sort by name, category or clicks, and switch to New or Trending. Display click totals in channel disclosures. Use observable activity for the initial lists. More elaborate trending logic is a later product decision. |
-| Following | Read updates from subscriptions, manage topic and story watches, and open the original report or its story timeline. |
-| My Sources | Manage private connections, publish channels and select content to share. Connecting a source grants no public access to its history or credential. |
-| Channel | Read the description and byline, see source type and reader activity, follow or recommend the channel, open source links, and discuss the channel or its stories. |
+| Home | Browse sectors when signed out. When signed in, read a personal briefing and then browse the sectors below it. |
+| Discover | Browse every public channel. Filter by sector, sort by name, category or clicks, and open the New channels or Trending views. Trending uses recorded clicks. |
+| Following | Read updates from subscribed channels and enabled private sources, filter the feed, manage channel alerts and save topic or story watches. |
+| My Sources | Manage private connections, publish public channels and review selected items before sharing. |
+| Channel and story pages | Inspect source information and coverage tags, recommend or follow a channel, join a discussion, or open the dated timeline for a particular story. |
 
-## 3. Architecture
+## 3. Service architecture
 
-One FastAPI service runs the Jac web client, authentication, background collection and SQLite persistence. The demo uses one server worker against persistent storage. Existing Tauri packaging starts a local service. A shared URL lets separate accounts and devices use the same database.
+The browser and desktop window use the same Jac web interface. FastAPI handles sessions, reads and writes. SQLite stores accounts, public news, private source data and the shared market monitor in separate tables. One server process runs collection and publishing for everyone using that deployment. [Architecture](project.md)
 
-The public catalog connects channels to normalized items and readers' subscriptions, recommendations and comments. Private sources use separate owner-scoped tables. The market-event backend keeps its adapter contracts, classification records, notifications and trade suggestions.
+## 4. Content sources
 
-## 4. Sources and authorization
+| Source | What Newsstream can display or collect |
+| --- | --- |
+| RSS | The backend retrieves public feeds and stores dated headlines, publisher text and original links. Readers need no API key. |
+| X | Official timeline embeds display public profiles. An authorized personal provider connection can collect structured posts for private use and selective sharing. Timelines themselves supply no post text to the collector. |
+| Telegram | Public message links can be embedded. A paired account can send or forward permitted text to a dedicated bot, review the private inbox and publish a selection. |
+| Community | Signed-in readers can post a title with text or a source link, comment on a channel or report and reply in a thread. |
 
-- **RSS.** A public feed requires a URL. Reuse the bounded RSS, Atom and RDF collector, publisher links and dated fallback editions. Readers need no API credentials.
-- **X.** Public account channels can display an official profile embed. An authorized data provider can supply structured posts for selective sharing. A shared URL or an embed supplies no backend post text by itself.
-- **Telegram.** Public posts may use Telegram's post widget. A signed-in account can pair with a configured Telegram bot, send or forward an eligible message into a private inbox, and decide which text to publish. Membership, sender identity, private invite links and chat history stay outside the public catalog.
-- **Community.** A signed-in user can publish a titled post with text and an optional source link. Persist its byline, channel and timestamps. Replies belong to a channel or item thread.
+The separate market monitor receives posts from its configured Telegram and X adapters. It identifies accounts by platform ID and retains original publication and collection times.
 
-The separate event monitor also supports configured Telegram, X push and budgeted X polling. Adapter identities use stable platform IDs. Drop replies at that boundary, preserve quoted text and record publication and collection time.
+## 5. Directory and coverage
 
-## 5. Directory and ownership
+The initial directory has **22 RSS channels and 20 X profiles**. It covers Energy, Tech, Healthcare, Industrials, Consumer Discretionary, Materials, Utilities and Real Estate, plus General News. A channel has a primary sector and can carry additional coverage tags. A multi-topic publisher's individual reports can appear in different sectors. Readers can subscribe to The New York Times front page or choose its dedicated Technology feed. [Default channels and publishers](default-sources.md)
 
-The initial edition includes dedicated RSS and official X timeline channels in each sector, along with multi-topic publishers. A public channel has a stable shareable URL. Each subscriber and recommender contributes at most one active relation per channel. Article references keep their publisher attribution across channels.
+## 6. From report to briefing
 
-## 6. Processing
+Newsstream saves the source report before enrichment. It associates the item with a story timeline, identifies mentions in the text and records substantive developments. The first signed-in briefing offers recent matching reports, or editorial coverage for a new reader with no sources or watches. Later briefings show matching developments received since the previous displayed briefing. Each card explains why it appeared and links to its evidence.
 
-Persist source text and metadata before model work. Use source identity and a stable item identifier to suppress redelivery. Changes to substantive content may create a new revision. Keep a readable source record when a feed or model is temporarily unavailable.
+The shared market monitor has a separate flow. It persists incoming posts, scores materiality, clusters events and emits notifications.
 
-The existing event monitor persists raw posts and decisions, clusters accepted posts, records notifications and broadcasts them over SSE. Existing clients backfill by notification ID.
+## 7. Labels, watches and summaries
 
-## 7. Classification and summaries
+A source describes **who** a reader follows. A topic watch describes **what** they want to hear about. A story follow tracks **one developing event**. The vocabulary includes 49 subsector labels, 12 event types, 19 named entities and 14 places. A combined watch matches when one report carries all selected labels, up to four. For example, a reader can combine semiconductor equipment and export restrictions without subscribing to a particular publisher.
 
-The public directory routes multi-topic articles to sectors. A shared vocabulary identifies subsectors, events, named organizations and places mentioned in source text. A saved topic can require multiple labels in the same report. Story timelines preserve source citations and substantive revisions under a stable identity. A public AI summary must cite its input, identify AI authorship, preserve uncertainty and distinguish allegations from established facts. Start automatic summaries with RSS. Source excerpts and author text remain readable without a model.
+The briefing uses excerpts and changed source text. Optional model-generated article summaries are labeled and dated. RSS is the default eligible source. Server-side settings select the provider, model, eligible sources and daily budget. Story timelines and source links work with summaries disabled.
 
-The market monitor separately scores materiality against a configurable rubric. Its review model handles near-threshold cases. Its error and fail-open paths preserve source visibility.
+## 8. Duplicate reports and corrections
 
-## 8. Duplicate and related reports
-
-A redelivered item should neither produce another public story nor consume a new summary call. Coalesce exact source references while retaining channel attribution. Preserve corrections and update references when facts change. The market monitor additionally distinguishes new events, material updates and duplicates using recent event candidates.
+Redelivery of the same item keeps its identity. Source URLs, headline similarity and matching named details can group related public reporting. New evidence or a material correction can add a development to the same timeline. Reports with ambiguous connections can remain separate. Readers can inspect publication and observation times and open the underlying reporting. A private story's history belongs to its source owner.
 
 ## 9. Configuration
 
-Keep secrets and model/provider selection on the server. Record attempt state, limit model concurrency and daily usage, and back off transient failures. Model IDs and prices used by the existing monitor are configured centrally. See the [demo guide](feature-overhaul.md) for the public service settings.
+Public news, personal collectors, the optional summary provider and the market monitor have separate settings. The server reads its configuration and credentials locally. A shared deployment uses a persistent database and a stable encryption key for personal X credentials. [Run and configure Newsstream](getting-started.md)
 
-## 10. Interface and notifications
+## 10. Notifications
 
-Navigation works on desktop and phone, supports keyboard dismissal, and leaves the last channel, post and action reachable. Readers can inspect a channel from its dropdown or share the full page. Show dates, authors and direct links with story text. The market-event and private-source clients retain their existing notification contracts.
+Following a public channel adds its reports to Following. Channel alerts are a separate opt-in. A reader can mute a channel and keep reading it. Private sources have independent collection, notification and keyword controls. Sector preferences apply across eligible updates and alerts. Topic and story watches surface matching coverage on Home. [Personal sources and notifications](personal-sources.md)
 
-## 11. Verification
+## 11. Verification and replay
 
-The offline gate runs helper tests, formatting, type checks, application tests and the web build. Provider tests use fixtures or stub responses. Use isolated accounts to verify publishing, Following, recommendation counts and comments. Exercise private sharing with an unrelated account and verify that only explicitly selected content reaches public reads.
+The offline checks cover account isolation, publishing, watch persistence, story revisions, briefing checkpoints, provider failure and the web build. A separate replay tool sends example sequences through the market-event pipeline. [Replay data and usage](../tests/fixtures/README.md)
 
-## 12. Operation
+## 12. Hosting and operation
 
-Use one worker for collection and the in-process notification bus. Keep the database and its WAL on durable local storage. Startup with a missing provider credential should leave public browsing available. Set the admin token before exposing the service beyond loopback. The operator's portfolio is shared state and requires admin access.
+Devices using the same service URL share the catalog and sign in with individual accounts. The desktop wrapper can start or reuse a local backend. A shared demo uses one worker, persistent SQLite storage and HTTPS. The Expo app delivers shared market-event alerts to registered devices. [Desktop guide](../desktop/README.md) · [Mobile guide](../mobile/README.md)
 
-## 16. News-based trading
+## 13. Accounts and privacy
 
-Trading commentary should identify the event, the affected instrument and the reasoning connecting them. An ordinary news channel can run without any trading signals. The existing backend supports a limited instrument set and stores a shared operator portfolio and suggestions. See [contracts](contracts.md) and `pipeline/trade.jac` for current behavior.
+Anonymous visitors can read public channels and stories. Account sessions control publishing, follows, recommendations, comments and private connections. A private source is visible to its owner. Sharing eligible private material creates a public item with the chosen content.
 
-A future paper-performance view applies only to channels with explicit signals. Its results must identify the entry, exit, sizing, fees, slippage and missing-price assumptions. Generalized performance scoring is outside the public news demo.
+## 14. Publishing and discussion
+
+A creator supplies the channel name, description, source type and sector tags. Published channels become discoverable on that server and have a shareable address. Readers can recommend a channel once per account and discuss either the channel or one of its items.
+
+## 15. Visit tracking
+
+Home saves its displayed position once the briefing becomes visible. Older tabs cannot move that position backward. A return visit with no matching developments shows a caught-up state. Public and private changes have separate checkpoints, so an update from an owner-only source can appear alongside a public story while retaining its access controls.
+
+## 16. Market monitoring and trading
+
+The market-monitor backend can record quotes, a manually entered operator portfolio and speculative suggestions for its supported instruments. The browser home is the news briefing. The portfolio endpoints use the server's admin access rules. Generalized trading theses and per-channel paper performance are future product goals. [Market service endpoints](contracts.md)

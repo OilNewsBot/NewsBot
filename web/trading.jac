@@ -1,12 +1,8 @@
-"""Newsstream - Trading page (docs/spec.md §16), served at /trading.
+"""Market-monitor portfolio, quote chart and suggestion components (docs/spec.md §16).
 
-Portfolio entry (typed in by hand; there is no brokerage link), a 1-minute
-WTI / RBOB chart, and the speculative suggestions the service made after
-NEW_EVENT cards. The chart shows one local day: today (live) or any of the
-six before it. Clicking a suggestion switches to its ticker and day and
-overlays its entry and closeout: long entry green, short entry red, long
-closeout red, short closeout green.
-"""
+The chart supports the configured WTI and RBOB series. The current browser
+navigation sends /trading to Home. Operator access to portfolio data is
+provided by the market service endpoints documented in docs/contracts.md."""
 
 import from react { useEffect }
 

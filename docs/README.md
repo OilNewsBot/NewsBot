@@ -1,17 +1,26 @@
-# NewsBot documentation
+# Newsstream documentation
 
-NewsBot is the repository; **Newsstream** is the application name.
+## Using the app
 
-| Document | Purpose |
+| Guide | What it covers |
 | --- | --- |
-| [Getting started](getting-started.md) | One-time teammate setup and the normal “describe a feature” experience |
-| [Agent collaboration](collaboration.md) | Task lifecycle, commands, overlapping work, integration, and recovery |
-| [Project map](project.md) | Current implementation, configuration, tests, and limitations |
-| [Shared contracts](contracts.md) | Adapter, persistence, HTTP, and SSE boundaries |
-| [Product specification](spec.md) | Channel types, discovery, publishing and news processing |
-| [Channel and demo guide](feature-overhaul.md) | Reader workflows, shared hosting and optional provider setup |
-| [Repository administration](repository-admin.md) | Owner setup for checks and approval-free automatic merging |
+| [Product overview](spec.md) | Product goals, reader experience, source types and market-monitor capabilities |
+| [Reader guide](feature-overhaul.md) | Discover, channel publishing, topic and story follows, briefings, alerts and discussions |
+| [Source catalog](default-sources.md) | The default RSS editions and X accounts, their sector coverage and publisher links |
+| [Personal sources](personal-sources.md) | Private feeds, credentials, collection settings, keyword alerts and selective sharing |
 
-Agent entry points are [AGENTS.md](../AGENTS.md) and [CLAUDE.md](../CLAUDE.md).
-The project uses GitHub and local Git worktrees for collaboration; no shared model
-subscription, always-on coordinator, or paid agent API is required.
+## Running Newsstream
+
+| Guide | What it covers |
+| --- | --- |
+| [Setup and hosting](getting-started.md) | Local installation, Windows/WSL, offline operation, shared hosting, summary providers and Telegram pairing |
+| [Desktop app](../desktop/README.md) | Starting and packaging the Tauri window, choosing the checkout and connecting to the local service |
+| [Mobile alerts](../mobile/README.md) | Configuring the Expo client and delivering market-event push notifications |
+| [Replay fixtures](../tests/fixtures/README.md) | Exercising the market-event pipeline with repeatable example sequences |
+
+## Inside the service
+
+| Reference | What it covers |
+| --- | --- |
+| [Architecture](project.md) | The web client, authentication, SQLite storage, collection, story updates and per-account visit tracking |
+| [API contracts](contracts.md) | Public, account-owned and administrative endpoints, source data, event streams and cursors |

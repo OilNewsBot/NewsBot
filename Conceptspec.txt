@@ -1,13 +1,15 @@
 Newsstream product concept
 
-Newsstream brings news, discussion and market context together across Energy, Tech, Healthcare, Industrials, Consumer Discretionary,
-Materials, Utilities and Real Estate. A reader can find channels, inspect the evidence for
-a story and follow the people and publishers whose updates they value.
+A reader following a market wants to know which developments deserve a closer
+look. Newsstream brings publisher reporting, community discussion and private
+sources into one workspace. A channel identifies who to read, a topic watch
+identifies subjects of interest, and a story follow tracks a developing event.
 
-Public RSS, X profiles, Telegram channels and community posts share the same
-directory, channel pages and subscription model. Connecting a personal source
-does not publish its contents. Owners choose what to share and can distinguish
-reported facts, their interpretation and AI-generated summaries.
+The signed-in Home briefing highlights what changed since the last displayed
+visit. Each card explains why it appeared and links to the underlying reporting.
+Readers can inspect revisions, compare accounts of the same development and
+choose which material from their private sources to publish.
 
-The product specification lives in docs/spec.md. The channel and demo guide is
-docs/feature-overhaul.md.
+Product overview: docs/spec.md
+Reader guide: docs/feature-overhaul.md
+Architecture: docs/project.md

@@ -1,81 +1,54 @@
-# Newsstream channel and demo guide
+# Read and publish with Newsstream
 
-## Find and follow channels
+You can browse public channels and read discussions without signing in. Open **My Sources** to create an account or sign in. Your subscriptions, watches and private sources are available on other devices that use the same Newsstream server.
 
-Home opens the sector directory for visitors. Signed-in readers see their briefing first and can jump to the sectors below. Discover lists public channels across sources. Choose a sort order to compare names, categories or click totals. Open a channel dropdown to see its activity and recent stories, or open the channel page for the full discussion. New and Trending use basic ordering for this demo. Following collects updates for the current account.
+## Find a channel
 
-### Follow a topic or developing story
+**Home** has a card for each of the eight market sectors and a separate link to General News. Choose a sector to see channels covering it. Reader recommendations also appear on Home when channels have received votes. [Default channels and publisher links](default-sources.md)
 
-- Open **Following** to manage watches. Follow a single label or combine up to four, such as **Semiconductor equipment + Export restrictions** or **Electric utilities + Rate decisions + Texas**. A combined watch requires every selected label on the same report. Separate watches can match independently.
-- Article labels identify the subsectors, events, organizations and places mentioned in source text. Open a story timeline for the dated evidence and original reporting. Use **Follow story** to track that particular development, including material corrections, even without following its channel.
-- On the first signed-in visit, Home shows a selection of recent matching reports. An account with no sources or watches gets a starting selection from the editorial directory. Return to Home for developments received since your last displayed briefing. Each card explains why it appeared. Topic and story watches surface updates on Home. Channel alert settings continue to control notifications.
-- A visible briefing saves its checkpoint per account across devices. A background tab waits until it becomes visible. A feed retry or an AI summary refresh does not create another development. Source text is available without model credentials.
-- A private report has its own owner-only timeline. Public stories can combine coverage using the same source link, matching headlines, or closely related reports with a shared named entity and event or place. Ambiguous reports can appear as separate stories. Timelines distinguish publisher updates from additional sources.
+In **Discover**, choose a category or leave **All categories** selected. **All channels** sorts by name, category or clicks. **New channels** shows the most recently published channels first. **Trending** ranks channels with at least one click by their total recorded clicks.
 
-### Personalize Following
+Expand a channel to see its publisher, coverage tags, click count, recommendations and up to three recent items. Opening the preview records a click. Continue to **Open channel** for the full discussion, or use **Copy link** to share its address. On the channel page, **Follow channel** adds it to your feed. **Recommend** adds one vote for your account and can be toggled off.
 
-1. Sign in and follow channels from Discover or a channel page. Following collects their updates alongside items from your enabled private sources. The account that added a private source is the only one who can read it.
-2. Select one or more categories in Following. Selecting Tech and Utilities includes articles in either sector across your sources. Clear the selection to show all categories. Your selection is saved on the server and follows you across devices.
-3. Each followed public channel starts with alerts off. Turn alerts on for the channels you want to hear from. Muting a channel keeps it in Following. Private sources have independent collection, alert and keyword settings in My Sources. The same account category selection applies to eligible public and private alerts.
-4. Alerts start with newly received updates after the initial baseline. Official X timelines can be opened directly on a channel page. They provide display only, so new timeline posts do not trigger Newsstream alerts or summaries. An explicitly shared post with authorized content can appear in Following.
+## Set up your feed and alerts
 
-Channels show their coverage tags. A mixed publisher such as The New York Times can produce an Energy story marked Oil & gas and a Tech story marked Semiconductors. The article determines which Following filter matches. Stories without a clear sector stay in General News. For a narrower subscription, follow the publisher's dedicated section feed where available. [Default source directory](default-sources.md)
+1. In **Following**, select the sectors you want to read. Selecting Tech and Utilities includes articles from either sector across your followed channels and enabled private sources. Clear the selection to see all sectors. Newsstream saves this preference on your account.
+2. Expand the followed-channel controls to turn **Alerts on** or **Alerts off** for individual channels. New subscriptions start with alerts off. Muting alerts keeps the subscription and its articles in Following.
+3. Open **Channel alerts** in the navigation to see new matching updates while the app is open. For system banners, enable **Screen notifications on this device** and allow notifications when prompted. A new RSS channel's first collection establishes its baseline.
+4. In **My Sources**, manage private sources separately. You can pause collection, set alert preferences and choose keywords. Keywords narrow private alerts while the feed retains all collected posts. The shared sector preference also filters eligible alerts.
 
-## Publish and discuss
+Channel tags cover an entire source. Article labels describe an individual report. For example, following the New York Times front page can give you reports across several sectors. A Tech filter selects its technology stories. Following the separate New York Times Technology feed subscribes you to that desk.
 
-Sign in and open My Sources. Choose the channel type, give it a name and description, and select its sector. A channel URL can be shared with a different browser or device. Followers see new public items. Each account can recommend a channel and participate in its discussions.
+## Track a subject or a developing story
 
-| Channel type | Public source and private controls |
+Open **Following → Followed stories and topics → Browse and combine topics**. Choose a single label or combine up to four. For example, combine **Electric utilities**, **Rate decisions** and **Texas** to see reports carrying all three labels. To track semiconductor equipment regardless of geography, choose **Semiconductor equipment** alone. Saving separate watches lets each match independently.
+
+On an article, open **Story timeline** for dated reports, revisions and original source links. **Follow story** tracks that development as further reporting arrives, even if you do not follow its channel. A public timeline can group coverage of the same development from different publishers. Private-source timelines are visible only to the account that owns the source. Watch labels describe mentions in the article, including proposals and disputed claims.
+
+## Read your Home briefing
+
+Your first signed-in visit shows recent reports from your sources and watches. If you have none, Home draws from the public directory. Each briefing card explains why it appeared and links to the evidence. Later visits show developments received since your last displayed briefing, including new reporting and material revisions. Visible briefings save the visit on your account across devices. A background tab waits until you view it.
+
+Following a topic or story adds matches to Home. Channel alert settings control notifications. Publisher text is available when AI is off or a summary is pending. When Newsstream generates a summary, the article displays **AI summary**, its generation date and the available source link.
+
+## Publish a public channel
+
+In **My Sources**, select **Create channel** under **Published channels**. Enter a name, description and primary category. Select any additional category tags and choose the source type. Select **Publish public channel**. Other readers can now find the channel in Discover and open its shareable address.
+
+| Source | What to enter or publish |
 | --- | --- |
-| RSS | Supply a public RSS, Atom or RDF URL. Changes and source links are saved on the server. |
-| Community | Publish an original title and description, with an optional source link. |
-| X | A public profile can use an official timeline embed. For authorized data access, use a personal provider connection and select the post to share. |
-| Telegram | A public message can be embedded from its post URL. For private material, pair your Telegram account and send or forward eligible text to the dedicated bot. Review what will be public and choose an owned destination channel. |
+| RSS / Atom | Enter a publicly accessible feed URL. Newsstream periodically collects new articles and keeps the publisher links. No reader API key is required. |
+| Community | Publish the channel, then open it to create a post with a title, text and an optional source link. Signed-in readers can contribute posts and replies. |
+| X | Choose **Public embed or profile** and enter a public profile URL. Readers can view the official timeline, open X directly and discuss the channel. The channel owner can also share individual post links. For selected provider-supplied posts, use the API mode below. |
+| Telegram | Choose **Public embed or profile** and enter a public Telegram channel or post URL. A post URL displays the specific public message. A channel URL provides a link to Telegram. For permitted private material, use the inbox below. |
 
-## Run the shared demo
+Use the channel discussion for questions about the source. Open an individual update’s **Discussion** to reply to the article or to an existing comment. A recommendation applies to the channel as a whole.
 
-Run `python3 scripts/bootstrap.py` in a Linux or macOS checkout, or `python scripts/bootstrap.py` on Windows with Ubuntu/WSL. Use one server for all devices. Put the HTTPS reverse proxy in front of that service. Keep the process and its database volume available throughout the demo.
+### Share a selected X or Telegram update
 
-```sh
-jac run
-```
+Create a public channel of the appropriate type and choose **Selected posts via API**. In My Sources, open **Share selected updates**, choose the individual update, review the material, select one of your compatible published channels and confirm that you may share it. Readers see the published selection. Private connections and unshared inbox items remain visible only to their owner.
 
-The default listener is `127.0.0.1:8000`. Set `NEWSSTREAM_HOST` and `NEWSSTREAM_PORT` if the host needs a different bind address or port. Point `NEWSSTREAM_DB_PATH` at the persistent SQLite database. Use the same `NEWSBOT_CONNECTION_KEY` across restarts if using encrypted private X connections. Set a random `NEWSBOT_ADMIN_TOKEN` in the server environment before exposing the service. Forward the original HTTPS scheme and host from the trusted reverse proxy so cookie and origin checks work correctly.
+- **X.** Add an authorized TwitterAPI.io connection under your private sources and follow the account you want to collect. **Connected X posts** lets you choose a collected post to publish. An embedded timeline supplies display only. New posts inside the widget do not generate feed items, alerts or AI summaries.
+- **Telegram.** Under **Private Telegram inbox**, open the pairing link and start the dedicated bot in your own Telegram account. Send or forward permitted text to your private chat with the bot. Select a message and review the excerpt you want to publish. Pairing gives the bot access to messages you send it. Telegram’s forwarding restrictions apply. [Telegram post widgets](https://core.telegram.org/widgets/post)
 
-### Publisher refresh and AI
-
-The bundled edition contains dated stories from dedicated RSS feeds across all eight sectors and a multi-topic front page. Each sector also has public X profiles. Public RSS refresh runs automatically. To skip refreshing just the bundled feeds, set `NEWSSTREAM_DEMO_RSS=0`. Disable public RSS networking with `NEWSSTREAM_PUBLIC_RSS=0` for offline verification. The last successful edition remains readable through upstream outages.
-
-To enable RSS summaries, supply the server-side `ANTHROPIC_API_KEY`. Set `NEWSSTREAM_SUMMARY_MODEL` to override the small model slot. `NEWSSTREAM_SUMMARY_DAILY_LIMIT` caps daily request reservations, including a possible JSON retry. `NEWSSTREAM_SUMMARY_PROVIDER=disabled` turns off hosted summaries. The default eligible source is RSS. Set `NEWSSTREAM_SUMMARY_SOURCES=rss,x,community` to include explicitly published provider-supplied X text and original community posts. Embed views and Telegram inbox messages do not enter the model worker. See each story's source links for the original reporting.
-
-For a local or hosted Chat Completions-compatible model, set
-`NEWSSTREAM_SUMMARY_PROVIDER=openai-compatible`, `NEWSSTREAM_SUMMARY_BASE_URL`
-to the operator's API base (for example `http://127.0.0.1:11434/v1`) and
-`NEWSSTREAM_SUMMARY_MODEL` to an installed model on that server. Supply
-`NEWSSTREAM_SUMMARY_API_KEY` if the endpoint requires authentication. The
-backend sends eligible public item text to this endpoint.
-
-### Telegram account pairing
-
-Create a dedicated Telegram bot for Newsstream, keep its bot token on the operator's machine, and set `NEWSSTREAM_TELEGRAM_BOT_USERNAME` and `NEWSSTREAM_TELEGRAM_WEBHOOK_SECRET` in the server environment. Use a random URL-safe secret of at least 32 characters. Register the bot's HTTPS webhook with Telegram's `setWebhook`, setting `url` to `https://YOUR_HOST/api/telegram/updates`, `secret_token` to the same secret and `allowed_updates` to `["message"]`. Use a dedicated bot so another service does not consume its updates. [Telegram Bot API](https://core.telegram.org/bots/api#setwebhook)
-
-In My Sources, open the pairing link and start the bot in your own Telegram account. Send it the message you want to review. Use a private chat with the bot. Telegram's forwarding permissions still apply. Discover readers see the material you choose to publish. The bot does not sign into your Telegram account or import a group's history. Public embeds require a publicly viewable post. [Telegram post widget](https://core.telegram.org/widgets/post)
-
-## Verify the demo
-
-Use two separate browser profiles. Publish a community channel with the first, then discover, follow, recommend and comment from the second. Open the channel dropdown, inspect its click count and switch sort order. Restart the service and confirm the channel, following state and discussion persist. Use the built-in offline tests for provider failure and retry behavior. A real provider handshake requires that provider's credentials and a public Telegram webhook requires an HTTPS host.
-
-## Directory assets
-
-The bundled edition in `db/directory_seed.json` includes publisher URLs, dates and editorial summaries. New stories use short excerpts from the publisher feed. The sector photographs are illustrative and are stored locally.
-
-| Category | Photograph |
-| --- | --- |
-| Energy | [NASA Kennedy Space Center, Solar Farm at KSC](https://images.nasa.gov/details/KSC-20210405-PH-NAS01_0001) |
-| Tech | [NASA/JPL-Caltech, InSightâ€™s Second Microchip](https://images.nasa.gov/details/PIA22206) |
-| Healthcare | [NASA Johnson Space Center, Moon Microscope](https://images.nasa.gov/details/jsc2022e083574) |
-| Industrials | [NASA/Charles Beason, friction stir welding](https://images.nasa.gov/details/MSFC-1701231) |
-| Consumer Discretionary | [NASA, Durrat Al Bahrain residential and tourism development](https://images.nasa.gov/details/iss026e020126) |
-| Materials | [NASA/JPL, Morenci copper mine](https://images.nasa.gov/details/PIA10617) |
-| Utilities | [NASA, Three Gorges Dam](https://images.nasa.gov/details/iss019e007720) |
-| Real Estate | [NASA, Lisbon and its suburbs](https://images.nasa.gov/details/iss073e0078399) |
+These private provider options depend on the services configured for your Newsstream server. [Installation and optional services](getting-started.md)

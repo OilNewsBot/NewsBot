@@ -1,10 +1,10 @@
 # Default channel sources
 
-The directory has eight market sectors and a General News section. Channel tags describe an account or feed's coverage. The first tag is its home section. Each publisher's RSS feed and X timeline can be followed separately. The New York Times front page covers several sectors and its stories receive individual section labels. Its Technology desk also has a dedicated RSS channel for readers who want that desk alone.
+The bundled catalog contains 22 public RSS editions and 20 public X profiles across eight market sectors and General News. Channel tags describe an account or feed's coverage. The first tag is its home section. Each publisher's RSS feed and X timeline can be followed separately. The New York Times front page covers several sectors and its stories receive individual section labels. Its Technology desk also has a dedicated RSS channel for readers who want that desk alone.
 
 ## Sector sources
 
-The table links directly to the RSS editions and to the publisher websites that identify their X handles. On November 17, 2026 (U.S. Eastern time), Newsstream’s production RSS fetcher and XML parser read all 22 feeds without credentials. The nine newly added feeds returned dated articles with original links. Each new feed ships with three attributed headlines and short editorial descriptions for offline viewing. The other thirteen RSS editions retain their existing snapshots.
+On November 17, 2026 (U.S. Eastern time), Newsstream’s RSS fetcher and parser read all 22 listed feeds without credentials. The bundled edition contains 69 dated articles with original URLs and short editorial descriptions. Live refreshes replace or extend the saved edition as publishers update their feeds. [Catalog data](../db/directory_seed.json)
 
 | Sector | Default RSS editions | Publisher X timeline and ownership reference |
 | --- | --- | --- |
@@ -18,9 +18,9 @@ The table links directly to the RSS editions and to the publisher websites that 
 | Real Estate | [HousingWire](https://www.housingwire.com/feed/), [Multifamily Dive](https://www.multifamilydive.com/feeds/news/) | [@multifamilydive](https://x.com/multifamilydive) covers apartment ownership and operations. [Multifamily Dive](https://www.multifamilydive.com/) |
 | General News | [The New York Times front page](https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml) | See the cross-sector accounts below. |
 
-## Previously monitored accounts
+## Energy, shipping and geopolitical coverage
 
-All twelve handles in the original top-level `accounts` list are available as public X channels. Every one carries the Energy tag. Their primary sections reflect what they cover. A government notice, a commercial tracking estimate and an individual account's interpretation have different provenance. The publisher field uses the account handle when the operator's identity has not been independently established.
+These twelve additional X channels carry the Energy tag. Their primary sections reflect what they cover. A government notice, a commercial tracking estimate and an individual account's interpretation have different provenance. The publisher field uses the account handle when the operator's identity has not been independently established.
 
 | Primary section | Account | Coverage |
 | --- | --- | --- |
@@ -37,4 +37,19 @@ All twelve handles in the original top-level `accounts` list are available as pu
 | General News | [@GavMcCracken](https://x.com/GavMcCracken) | Individual macroeconomic and commodity commentary. Also tagged Materials. |
 | General News | [@AB4_Ali3](https://x.com/AB4_Ali3) | Independent regional news and Middle East coverage. |
 
-Each default X URL was checked through the official profile oEmbed endpoint. That check verifies returned timeline markup. X controls timeline display in each visitor's browser. The seed stores the profile URL and an empty headline list. No X posts enter the feed or summary queue through these embeds. [X embedded timeline documentation](https://developer.x.com/en/docs/x-for-websites/timelines/overview)
+All 20 X profile URLs returned timeline markup from the official oEmbed endpoint during the same verification. X controls timeline availability in each reader’s browser. Newsstream links directly to the profile and uses the embed for display only. [X Help on embedded timelines](https://help.x.com/en/using-x/embed-x-feed)
+
+## Sector photographs
+
+The sector cards use locally stored photographs. The links below credit the original images.
+
+| Sector | Photograph |
+| --- | --- |
+| Energy | Solar Farm at Kennedy Space Center. [NASA Kennedy Space Center](https://images.nasa.gov/details/KSC-20210405-PH-NAS01_0001) |
+| Tech | InSight’s Second Microchip. [NASA/JPL-Caltech](https://images.nasa.gov/details/PIA22206) |
+| Healthcare | Moon Microscope. [NASA Johnson Space Center](https://images.nasa.gov/details/jsc2022e083574) |
+| Industrials | Friction stir welding. [NASA/Charles Beason](https://images.nasa.gov/details/MSFC-1701231) |
+| Consumer Discretionary | Durrat Al Bahrain residential and tourism development. [NASA](https://images.nasa.gov/details/iss026e020126) |
+| Materials | Morenci copper mine. [NASA/JPL](https://images.nasa.gov/details/PIA10617) |
+| Utilities | Three Gorges Dam. [NASA](https://images.nasa.gov/details/iss019e007720) |
+| Real Estate | Lisbon and its suburbs. [NASA](https://images.nasa.gov/details/iss073e0078399) |
