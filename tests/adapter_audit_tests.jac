@@ -11,7 +11,7 @@ import from replay { load_posts, replay }
 import from adapters.base { Json, NormalizedPost }
 import from adapters.x_api { XApiAdapter }
 import from adapters.telegram { TelegramAdapter, bot_update_to_post, message_to_post }
-import from config { ChannelCfg }
+import from config { AccountCfg, ChannelCfg }
 import from tests.helpers { make_settings, open_repo }
 
 test "official X daily budget is bounded on every request" {
@@ -98,6 +98,143 @@ test "official X catchup spans pages and survives a pause and restart" {
                 assert got == [str(i) for i in range(101, 131)];
                 assert await repo.x_reads_today() == 30;
                 assert (await repo.x_poll_cursor("1"))["since_id"] == "130";
+            }
+        }
+    }
+    asyncio.run(body());
+}
+
+test "expired X continuations restart the missing range with a bounded retry" {
+    async def body {
+        s = make_settings();
+        s.x_daily_read_budget = 5;
+        acct: Json = {"account_id": "1", "handle": "demo", "tier": "tracker"};
+        def row(id: int) -> Json {
+            return {
+                "id": str(id),
+                "created_at": "2026-11-18T12:00:00Z",
+                "text": "fixture"
+            };
+        }
+        tokens: list[str] = [];
+        got: list[str] = [];
+        def handle(r: httpx.Request) -> httpx.Response {
+            q = r.url.params;
+            assert q["since_id"] == "100";
+            token = q.get("pagination_token", "");
+            tokens.append(token);
+            if token {
+                return httpx.Response(400, json={"detail": "Expired pagination_token"});
+            }
+            next_id = int(q["until_id"]) - 1;
+            return httpx.Response(
+                200,
+                json={
+                    "data": [row(next_id)],
+                    "meta": {"next_token": f"expired-{next_id}"}
+                        if next_id > 101
+                        else {}
+                }
+            );
+        }
+        async def sink(p: NormalizedPost) {
+            got.append(p.source_post_id);
+        }
+        async with open_repo(s) as repo {
+            await repo.save_x_poll_cursor(
+                "1",
+                "100",
+                "original",
+                [
+                    {
+                        "payload": {"data": [row(105), row(104)]},
+                        "received": "2026-11-18T12:00:00+00:00"
+                    }
+                ]
+            );
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(handle)
+            ) as client {
+                adapter = XApiAdapter(s, repo, client);
+                assert not await adapter._poll_account(acct, sink);
+                assert tokens == ["original"]
+                    and not got
+                    and await repo.x_reads_today() == 1;
+                s.x_daily_read_budget = 25;
+                try {
+                    await adapter._poll_account(acct, sink);
+                    assert False , "a second rejection must yield to the next poll";
+                } except httpx.HTTPStatusError {}
+                checkpoint = await repo.x_poll_cursor("1");
+                assert checkpoint["since_id"] == "100"
+                    and checkpoint["next_token"] == ""
+                    and not got;
+                assert tokens == ["original", "", "expired-103", "", "expired-102"];
+                assert await XApiAdapter(s, repo, client)._poll_account(acct, sink);
+                assert got == ["101", "102", "103", "104", "105"];
+                assert (await repo.x_poll_cursor("1"))["since_id"] == "105";
+                assert await repo.x_reads_today() == 6;
+            }
+        }
+    }
+    asyncio.run(body());
+}
+
+test "running X adapter resolves quota-deferred configured accounts after UTC rollover" {
+    async def body {
+        s = make_settings();
+        s.x_api_enabled = True;
+        s.x_bearer_token = "fixture";
+        s.x_daily_read_budget = 8;
+        s.accounts = [
+            AccountCfg("alpha", "x", "official"),
+            AccountCfg("beta", "x", "tracker")
+        ];
+        calls: list[str] = [];
+        def handle(r: httpx.Request) -> httpx.Response {
+            path = r.url.path;
+            calls.append(path);
+            if path.endswith("/tweets") {
+                return httpx.Response(200, json={"data": []});
+            }
+            username = path.split("/")[-1];
+            return httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "id": "1" if username == "alpha" else "2",
+                        "username": username
+                    }
+                }
+            );
+        }
+        async def sink(p: NormalizedPost) {}
+        async with open_repo(s) as repo {
+            await repo.add_x_reads(7);
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(handle)
+            ) as client {
+                adapter = XApiAdapter(s, repo, client);
+                async def advance(delay: float) {
+                    if adapter.status.state == "budget-paused" {
+                        assert calls == ["/2/users/by/username/alpha"];
+                        assert await repo.x_reads_today() == 8;
+                        await repo._run("UPDATE x_reads SET day='2000-01-01'");
+                        await repo.db.commit();
+                    } else {
+                        assert adapter.status.state == "live";
+                        raise asyncio.CancelledError();
+                    }
+                }
+                with patch("adapters.x_api.asyncio.sleep", new=advance) {
+                    try {
+                        await adapter.run(sink);
+                    } except asyncio.CancelledError {}
+                }
+                assert calls[:2]
+                    == ["/2/users/by/username/alpha", "/2/users/by/username/beta"];
+                assert sorted(calls[2:]) == ["/2/users/1/tweets", "/2/users/2/tweets"];
+                assert await repo.x_reads_today() == 3;
             }
         }
     }

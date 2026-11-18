@@ -15,7 +15,7 @@ import json;
 import httpx;
 import from datetime { UTC, datetime, timedelta }
 import from adapters.base { AdapterStatus, Json, NormalizedPost, Sink, SourceAdapter }
-import from config { Settings }
+import from config { AccountCfg, Settings }
 import from db.repo { Repo, Row }
 
 glob log: logging.Logger = logging.getLogger("newsstream.x_api");
@@ -103,6 +103,8 @@ def _seconds_to_next_utc_day -> float {
     return (tomorrow - now).total_seconds();
 }
 
+class _ReadBudgetPaused(RuntimeError) {}
+
 obj XApiAdapter(SourceAdapter) {
     has settings: Settings,
         repo: Repo,
@@ -154,11 +156,28 @@ obj XApiAdapter(SourceAdapter) {
     async def resolve_account(handle: str) -> tuple[str, str] {
         r = await self._get(f"{BASE}/users/by/username/{handle.lstrip('@')}", {}, 1, 1);
         if r is None {
-            raise RuntimeError(self.status.detail);
+            raise _ReadBudgetPaused(self.status.detail);
         }
         r.raise_for_status();
         data = r.json()["data"];
         return (str(data["id"]), str(data["username"]));
+    }
+
+    async def _resolve_configured(pending: list[AccountCfg]) -> list[AccountCfg] {
+        for (index, acct) in enumerate(pending) {
+            try {
+                (account_id, handle) = await self.resolve_account(acct.handle);
+                await self.repo.upsert_account("x", account_id, handle, acct.tier);
+                log.info("resolved @%s -> id %s", handle, account_id);
+            } except _ReadBudgetPaused {
+                return pending[index:];
+            } except Exception as e {
+                log.error(
+                    "could not resolve configured X handle @%s: %s", acct.handle, e
+                );
+            }
+        }
+        return [];
     }
 
     async def run(sink: Sink) {
@@ -170,8 +189,17 @@ obj XApiAdapter(SourceAdapter) {
             return;
         }
 
+        known = {str(a["handle"]).lower() for a in await self.repo.get_accounts("x")};
+        pending = [
+            a
+            for a in s.accounts
+            if a.source == "x" and a.handle.lstrip("@").lower() not in known
+        ];
         while True {
-            await self._poll_cycle(sink);
+            pending = await self._resolve_configured(pending);
+            if not pending {
+                await self._poll_cycle(sink);
+            }
             if self.status.state == "budget-paused" {
                 log.warning("Official X polling paused: %s", self.status.detail);
                 await asyncio.sleep(min(_seconds_to_next_utc_day(), 3600));
@@ -226,12 +254,28 @@ obj XApiAdapter(SourceAdapter) {
         since = str(cursor["since_id"]);
         token = str(cursor["next_token"]);
         pages: list[Row] = json.loads(cursor["pages"]);
+        upper = str(pages[-1].get("until_id", "")) if pages else "";
+        restarted = False;
         if since and since != "0" {
             params["since_id"] = since;
         }
         while True {
             if token {
                 params["pagination_token"] = token;
+            } elif pages {
+                # Preserve the buffered rows. Restart only the missing interval
+                # above the committed since_id and below the oldest buffered ID.
+                upper = min(
+                    (
+                        str(row["id"]) for page in pages
+                        for row in page["payload"].get("data") or []
+                    ),
+                    key=int,
+                    `default=""
+                );
+            }
+            if upper {
+                params["until_id"] = upper;
             }
             # X requires max_results >= 5 even when the timeline is empty.
             r = await self._get(f"{BASE}/users/{account_id}/tweets", params, 5, 25);
@@ -247,10 +291,25 @@ obj XApiAdapter(SourceAdapter) {
                 await asyncio.sleep(min(pause, 900));
                 return False;
             }
+            if token and r.status_code in (400, 410, 422) {
+                # Retry a rejected continuation at most once per poll. A second
+                # rejection leaves a token-free checkpoint for the following poll.
+                token = "";
+                params.pop("pagination_token", None);
+                await self.repo.save_x_poll_cursor(account_id, since, "", pages);
+                if not restarted {
+                    restarted = True;
+                    continue;
+                }
+            }
             r.raise_for_status();
             payload = r.json();
             pages.append(
-                {"payload": payload, "received": datetime.now(UTC).isoformat()}
+                {
+                    "payload": payload,
+                    "received": datetime.now(UTC).isoformat(),
+                    "until_id": upper
+                }
             );
             next_token = str((payload.get("meta") or {}).get("next_token") or "");
             # The first successful poll establishes the existing one-page baseline.
