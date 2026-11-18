@@ -658,7 +658,7 @@ def Browse(path: str, watch: any) -> JsxElement {
             <main className="directory directory-reading">
                 <h1>Following</h1>
                 <p>Sign in to see updates from the channels you follow.</p>
-                <a className="directory-signin" href={sign_in_url()}>
+                <a className="button-link primary-action" href={sign_in_url()}>
                     Log in or register
                 </a>
             </main>;
