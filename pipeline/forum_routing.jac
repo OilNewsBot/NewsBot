@@ -11,7 +11,7 @@ import from pipeline.llm { LLMUnavailable, LLMParseError }
 
 glob log = logging.getLogger("newsstream.forums"),
      STOP = set(
-         "the a an and or of from into in to on while as its is are after at for how a with their by more new have has they who what this that it be his her was were will over than about when why you says say face faces service services report reports change changes".split()
+         "the a an and or of from into in to on while as its is are after at for how a with their by more new have has they who what this that it be his her was were will over than about when why you says say face faces service services report reports change changes lead leads delay delays data study studies".split()
      );
 
 def features(text: str) -> set[str] {
@@ -76,7 +76,7 @@ obj ForumRouter {
         (best_score, best_label) = ranked[0];
         runner_up = ranked[1][0] if len(ranked) > 1 else 0.0;
         return best_label
-            if best_score >= 0.18 and best_score - runner_up >= 0.07
+            if best_score >= 0.40 and best_score - runner_up >= 0.07
             else "general";
     }
 
