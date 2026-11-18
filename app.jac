@@ -2,7 +2,14 @@
 
 import asyncio;
 import contextlib;
-import from auth { hash_password, require_user, verify_password }
+import from auth {
+    hash_password,
+    require_admin,
+    require_user,
+    require_user_or_admin,
+    verify_password
+}
+
 import hashlib;
 import secrets;
 import from datetime { timedelta }
