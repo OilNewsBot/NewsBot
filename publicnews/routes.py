@@ -1,6 +1,8 @@
 """Public read APIs and same-origin, session-owned community writes."""
 from fastapi import HTTPException, Query, Request, Response
 
+from . import briefing_routes
+
 
 def install(app, repo, catalog, require_user, check_origin, personal=None):
     async def viewer(request):
@@ -15,6 +17,11 @@ def install(app, repo, catalog, require_user, check_origin, personal=None):
     async def writer(request):
         check_origin(request)
         return await require_user(request, repo)
+
+    async def reader(request):
+        return await require_user(request, repo)
+
+    briefing_routes.install(app, catalog, reader, viewer, writer, personal is not None)
 
     @app.get("/api/channels")
     async def channels(request: Request, response: Response):

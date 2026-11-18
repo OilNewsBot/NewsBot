@@ -74,6 +74,10 @@ the producer and tests. For breaking changes, sequence dependent PRs explicitly.
 | `POST /api/channels` | Publish a channel for the authenticated user with a name, description, category, source type, and source URL or API mode where applicable. |
 | `POST /api/channels/{slug}/click` | Record a channel opening. Returns the updated total. |
 | `PUT /api/channels/{slug}/subscription`, `PUT /api/channels/{slug}/recommendation` | Set the session user's choice with `{"enabled":true}` or `false`. Repeating the request is idempotent. |
+| `GET /api/briefing`, `POST /api/briefing/seen` | Read a signed-in snapshot with `first_visit`, `since`, `cards`, `has_more` and offered public and private cursors. A visible client acknowledges `through` and `private_through` together, with the displayed `user_id`. Reads alone preserve the prior visit. |
+| `GET /api/watches` | Account's saved topics and stories plus the sector taxonomy and event, entity and place options. |
+| `PUT /api/watches/topics/{id}`, `PUT /api/watches/stories/{id}` | Set `enabled` to a boolean. A topic ID can join up to four stable label IDs with `~`. They must all match the same report. Writes with a mismatched `user_id` return 409. |
+| `GET /api/stories/{id}`, `GET /stories/{id}` | Read a source-linked timeline as JSON or in the app. Public IDs are numeric. An ID of the form `private-123` is scoped to its owner and becomes inaccessible when its source is removed. |
 | `GET /api/following` | Account subscriptions, saved category selection and up to 200 recent matching updates from followed channels and enabled private sources. Private rows carry `private_source: true`. |
 | `GET /api/me/feed-preferences`, `PUT /api/me/feed-preferences` | Read or replace the signed-in reader's category selection. Send `{"categories":["utilities","tech"]}` to include either sector, or an empty list for all. |
 | `PUT /api/channels/{slug}/notifications` | Opt a followed public channel into alerts or mute it using `{"enabled":true}` or `false`. |

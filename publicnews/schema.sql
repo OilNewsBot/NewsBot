@@ -79,3 +79,32 @@ CREATE TABLE IF NOT EXISTS news_alerts (
     UNIQUE(user_id,item_id)
 );
 CREATE INDEX IF NOT EXISTS news_alerts_user_id ON news_alerts(user_id,id);
+
+CREATE TABLE IF NOT EXISTS news_stories (id INTEGER PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS news_story_items (
+    item_id INTEGER PRIMARY KEY REFERENCES news_items(id), story_id INTEGER NOT NULL REFERENCES news_stories(id),
+    url_key TEXT NOT NULL, title_key TEXT NOT NULL, publisher_key TEXT NOT NULL, labels TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS news_members_story ON news_story_items(story_id);
+CREATE INDEX IF NOT EXISTS news_members_url ON news_story_items(url_key);
+CREATE INDEX IF NOT EXISTS news_members_title ON news_story_items(title_key);
+CREATE INDEX IF NOT EXISTS news_items_published ON news_items(published DESC);
+CREATE TABLE IF NOT EXISTS news_developments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES news_stories(id),
+    item_id INTEGER NOT NULL REFERENCES news_items(id), kind TEXT NOT NULL, title TEXT NOT NULL,
+    body TEXT NOT NULL, url TEXT NOT NULL, author TEXT NOT NULL, published TEXT NOT NULL, observed_at TEXT NOT NULL,
+    section TEXT NOT NULL, topic TEXT NOT NULL, labels TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS news_developments_story ON news_developments(story_id,id DESC);
+CREATE TABLE IF NOT EXISTS news_story_follows (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    story_id INTEGER NOT NULL REFERENCES news_stories(id), PRIMARY KEY(user_id,story_id)
+);
+CREATE TABLE IF NOT EXISTS news_topic_follows (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, topic_id TEXT NOT NULL,
+    PRIMARY KEY(user_id,topic_id)
+);
+CREATE TABLE IF NOT EXISTS news_brief_visits (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, checkpoint INTEGER,
+    offered INTEGER NOT NULL DEFAULT 0, offered_at TEXT, visited_at TEXT
+);

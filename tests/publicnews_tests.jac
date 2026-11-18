@@ -12,3 +12,13 @@ test "summary provider selection, bounded compatible requests and cache isolatio
     cases: any = importlib.import_module("tests.publicnews_cases");
     asyncio.run(cases.provider_regressions());
 }
+
+test "eight-sector labels and cross-sector facets use stable identities" {
+    cases: any = importlib.import_module("tests.topic_cases");
+    cases.taxonomy_regressions();
+}
+
+test "story evidence, topic follows and briefing checkpoints persist" {
+    cases: any = importlib.import_module("tests.briefing_cases");
+    asyncio.run(cases.briefing_regressions());
+}

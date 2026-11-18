@@ -2,7 +2,15 @@
 
 ## Find and follow channels
 
-Home opens the sector directory. Discover lists public channels across sources. Choose a sort order to compare names, categories or click totals. Open a channel dropdown to see its activity and recent stories, or open the channel page for the full discussion. New and Trending use basic ordering for this demo. Following collects updates for the current account.
+Home opens the sector directory for visitors. Signed-in readers see their briefing first and can jump to the sectors below. Discover lists public channels across sources. Choose a sort order to compare names, categories or click totals. Open a channel dropdown to see its activity and recent stories, or open the channel page for the full discussion. New and Trending use basic ordering for this demo. Following collects updates for the current account.
+
+### Follow a topic or developing story
+
+- Open **Following** to manage watches. Follow a single label or combine up to four, such as **Semiconductor equipment + Export restrictions** or **Electric utilities + Rate decisions + Texas**. A combined watch requires every selected label on the same report. Separate watches can match independently.
+- Article labels identify the subsectors, events, organizations and places mentioned in source text. Open a story timeline for the dated evidence and original reporting. Use **Follow story** to track that particular development, including material corrections, even without following its channel.
+- On the first signed-in visit, Home shows a selection of recent matching reports. An account with no sources or watches gets a starting selection from the editorial directory. Return to Home for developments received since your last displayed briefing. Each card explains why it appeared. Topic and story watches surface updates on Home. Channel alert settings continue to control notifications.
+- A visible briefing saves its checkpoint per account across devices. A background tab waits until it becomes visible. A feed retry or an AI summary refresh does not create another development. Source text is available without model credentials.
+- A private report has its own owner-only timeline. Public stories can combine coverage using the same source link, matching headlines, or closely related reports with a shared named entity and event or place. Ambiguous reports can appear as separate stories. Timelines distinguish publisher updates from additional sources.
 
 ### Personalize Following
 

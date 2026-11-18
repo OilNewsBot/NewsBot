@@ -372,6 +372,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
 
     @app.get("/categories/{slug}")
     @app.get("/channels/{slug}")
+    @app.get("/stories/{slug}")
     async def directory_page(slug: str) -> Response {
         return await index();
     }

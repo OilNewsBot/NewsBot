@@ -1,9 +1,12 @@
 """Attributed stories, source links and official social embeds."""
 
 import from .public_data { display_date, public_url }
+import from .watches { StoryLabels, WatchButton }
 import from .sector_tags { SectorTags }
 
-def:pub Story(item: any, channel_name: str = "", full: bool = False) -> JsxElement {
+def:pub Story(
+    item: any, channel_name: str = "", full: bool = False, watch: any = None
+) -> JsxElement {
     href = public_url(item.url);
     published = item.published or item.published_at;
     original = item.text or item.body;
@@ -66,6 +69,22 @@ def:pub Story(item: any, channel_name: str = "", full: bool = False) -> JsxEleme
             >
                 Original source ↗
             </a>
+        }}
+        {if item.story_id {
+            <div className="story-tools">
+                <a href={"/stories/" + str(item.story_id)}>Story timeline →</a>
+                <WatchButton
+                    watch={watch}
+                    kind="stories"
+                    row={{"id": item.story_id, "title": item.title}}
+                />
+            </div>
+        }}
+        {if item.labels {
+            <details className="story-label-details">
+                <summary>Story labels</summary>
+                <StoryLabels labels={item.labels} watch={watch}/>
+            </details>
         }}
     </article>
 }

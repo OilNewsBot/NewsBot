@@ -2,6 +2,7 @@
 
 import "./sources.css";
 import from react { useEffect }
+import from .auth { SESSION_EVENT }
 import from .sector_tags { SectorPicker, SectorTags }
 import from .publishing { PublishingPanel }
 
@@ -743,9 +744,15 @@ def:pub SourcesPage -> JsxElement {
             check_session();
             timer = setInterval(lambda { periodic_refresh(); }, 15000);
             focus = lambda { check_session(); };
+            change = lambda {
+                clear_session();
+                check_session();
+            };
+            window.addEventListener(SESSION_EVENT, change);
             window.addEventListener("focus", focus);
             return lambda {
                 clearInterval(timer);
+                window.removeEventListener(SESSION_EVENT, change);
                 window.removeEventListener("focus", focus);
                 clear_session();
             };

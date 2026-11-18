@@ -13,7 +13,8 @@ from urllib.parse import parse_qsl, urlsplit, urlunsplit
 from fastapi import HTTPException
 
 from personal.coverage import item_section
-from .topics import SECTORS, categories, channel_topic
+from . import briefing as journal
+from .topics import SECTORS, article_labels, categories, channel_topic
 
 PROMPT_VERSION = "attributed-v1"
 
@@ -111,6 +112,10 @@ class Catalog:
             db.executescript(Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"))
             db.execute("BEGIN IMMEDIATE")
             db.execute("INSERT OR IGNORE INTO news_channel_tags SELECT slug,category FROM news_channels")
+            missing = db.execute("""SELECT i.id FROM news_items i LEFT JOIN news_story_items m ON i.id=m.item_id
+                WHERE m.item_id IS NULL ORDER BY i.collected_at,i.id""").fetchall()
+            for item in missing:
+                journal.record(db, item[0])
             seed = self.edition
             existing = self._seed_channels(seed)
             editorial_slugs = {}
@@ -174,10 +179,10 @@ class Catalog:
               rss_alias=False, notify=True):
         stable = digest(external)
         # A seed snapshot can identify a story by its URL before its feed GUID is known.
-        original = db.execute("SELECT id FROM news_items WHERE source_id=? AND external_id=?",
+        original = db.execute("SELECT id,title,body FROM news_items WHERE source_id=? AND external_id=?",
                               (source, stable)).fetchone()
         if not original and url and rss_alias:
-            original = db.execute("SELECT id FROM news_items WHERE source_id=? AND url=? ORDER BY id LIMIT 1",
+            original = db.execute("SELECT id,title,body FROM news_items WHERE source_id=? AND url=? ORDER BY id LIMIT 1",
                                   (source, url)).fetchone()
         signature = digest("\n".join(" ".join(x.split()) for x in (title, body, author)))
         # A matching long headline on the same UTC day can group editions from multiple sources.
@@ -189,10 +194,13 @@ class Catalog:
                        published=?,collected_at=?,section=?,revision=?,story_key=?,eligible=?
                        WHERE id=? AND (revision<>? OR published<>? OR url<>? OR eligible<>? OR section<>?)""",
                        (*values, original[0], signature, published, url, int(eligible), section))
+            if original["title"] != title or original["body"] != body:
+                journal.record(db, original[0])
             return original[0]
         item_id = db.execute("""INSERT INTO news_items(external_id,url,title,body,author,published,
                           collected_at,section,revision,story_key,eligible,source_id)
                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""", (*values, source)).lastrowid
+        journal.record(db, item_id)
         if notify:
             Catalog._notify(db, source, item_id, title, body, section, published)
         return item_id
@@ -227,8 +235,9 @@ class Catalog:
         if selected and not mixed and category != "general" and set(tags).isdisjoint(selected):
             return []
         rows = db.execute("""SELECT i.id,i.title,i.body AS text,i.url,i.author,i.published,i.collected_at,
-                          i.section,i.story_key,i.eligible,k.summary AS ai,k.generated_at,k.attempts
-                          FROM news_items i LEFT JOIN news_summaries k ON i.eligible=1 AND k.rowid=(
+                          i.section,i.story_key,m.story_id,i.eligible,k.summary AS ai,k.generated_at,k.attempts
+                          FROM news_items i LEFT JOIN news_story_items m ON i.id=m.item_id
+                          LEFT JOIN news_summaries k ON i.eligible=1 AND k.rowid=(
                               SELECT candidate.rowid FROM news_summaries candidate
                               WHERE candidate.revision=i.revision AND candidate.prompt_version=?
                               AND (candidate.model=? OR (? AND candidate.generated_at IS NOT NULL))
@@ -253,6 +262,7 @@ class Catalog:
             tries = data.pop("attempts") or 0
             eligible = data.pop("eligible")
             data.update(summary=summary, ai_generated=generated, generated_at=data["generated_at"] or "",
+                        labels=article_labels(row["title"], row["text"], section),
                         channel_slug=slug, source_type=kind, section=section, topic=topic,
                         status=("summarized" if generated else "retry" if tries else
                                 "pending" if eligible and self.ai_enabled and kind in self.summary_sources else "source"))
@@ -307,7 +317,8 @@ class Catalog:
             headlines = []
             original = {h["url"]: h for h in entry["headlines"]}
             for story in channel["headlines"][:24 if mixed else 3]:
-                head = {k: story[k] for k in ("title", "url", "summary", "published", "section", "topic")}
+                head = {k: story[k] for k in ("title", "url", "summary", "published", "section", "topic",
+                                              "labels", "story_id")}
                 if mixed:
                     head.update(section=story["section"], routed_by=original.get(story["url"], {}).get("routed_by", "local"))
                 headlines.append(head)
@@ -341,12 +352,9 @@ class Catalog:
             selected = self._categories(db, uid)
             channels = self._channels(db, uid, following=True, limit=50, selected=selected)
             groups = {}
-            canonical = {}
             for channel in channels:
                 for item in channel["headlines"]:
-                    key = canonical.get(item["url"], item["story_key"]) if item["url"] else item["story_key"]
-                    if item["url"]:
-                        canonical[item["url"]] = key
+                    key = item["story_id"] or item["story_key"]
                     group = groups.setdefault(key, {**item, "sources": []})
                     if item["published"] > group["published"]:
                         group.update(item)
@@ -364,6 +372,24 @@ class Catalog:
 
     async def feed_preferences(self, uid):
         return {"categories": await self.run_db(self._categories, uid)}
+
+    async def briefing(self, uid):
+        return await self.run_db(journal.read_briefing, uid, write=True)
+
+    async def acknowledge_briefing(self, uid, through, additional=None):
+        return await self.run_db(journal.acknowledge, uid, through, additional, write=True)
+
+    async def story(self, story_id, uid=None):
+        return await self.run_db(journal.read_story, story_id, uid)
+
+    async def watches(self, uid):
+        return await self.run_db(journal.watches, uid)
+
+    async def follow_story(self, uid, story_id, enabled):
+        return await self.run_db(journal.follow_story, uid, story_id, enabled, write=True)
+
+    async def follow_topic(self, uid, topic_id, enabled):
+        return await self.run_db(journal.follow_topic, uid, topic_id, enabled, write=True)
 
     async def set_preferences(self, uid, value):
         selected = categories(value)
@@ -518,8 +544,9 @@ class Catalog:
 
     @staticmethod
     def _stories_one(db, iid, slug, category, kind):
-        item = dict(db.execute("""SELECT id,url,title,body AS text,author,published,collected_at,story_key
-                               FROM news_items WHERE id=?""", (iid,)).fetchone())
+        item = dict(db.execute("""SELECT i.id,i.url,i.title,i.body AS text,i.author,i.published,i.collected_at,i.story_key,m.story_id
+                               FROM news_items i LEFT JOIN news_story_items m ON m.item_id=i.id WHERE i.id=?""", (iid,)).fetchone())
         section, topic = channel_topic(item["title"], item["text"], "", category, Catalog._tags(db, slug, category), False)
-        return {**item, "channel_slug": slug, "source_type": kind, "section": section, "topic": topic, "summary": item["text"][:260],
+        return {**item, "channel_slug": slug, "source_type": kind, "section": section, "topic": topic,
+                "labels": article_labels(item["title"], item["text"], section), "summary": item["text"][:260],
                 "ai_generated": False, "generated_at": "", "status": "source"}

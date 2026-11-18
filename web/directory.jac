@@ -13,11 +13,15 @@ import from .public_data {
     request_json
 }
 import from .public_channel { ChannelPage }
+import from .briefing { Briefing, Timeline }
+import from .watches { useWatches, WatchManager }
 import from .sector_tags { SectorTags, SectorPicker }
 import from .public_story { ShareChannel, Story }
 import "./directory.css";
 
-def ChannelRow(channel: any, sector: str = "", onClicks: any = None) -> JsxElement {
+def ChannelRow(
+    channel: any, watch: any, sector: str = "", onClicks: any = None
+) -> JsxElement {
     has clicks: int = int(channel.clicks or 0);
     counted: any = useRef(False);
     useEffect(lambda { clicks = int(channel.clicks or 0); }, [channel.clicks]);
@@ -80,7 +84,7 @@ def ChannelRow(channel: any, sector: str = "", onClicks: any = None) -> JsxEleme
                 {if len(headlines) {
                     <div className="preview-stories">
                         {for item in headlines {
-                            <Story key={str(item.id)} item={item}/>
+                            <Story watch={watch} key={str(item.id)} item={item}/>
                         }}
                     </div>
                 } else {
@@ -98,11 +102,12 @@ def ChannelRow(channel: any, sector: str = "", onClicks: any = None) -> JsxEleme
 }
 
 def ChannelList(
-    channels: list[any], sector: str = "", onClicks: any = None
+    channels: list[any], watch: any, sector: str = "", onClicks: any = None
 ) -> JsxElement {
     <ul className="channel-list" aria-label="Channels">
         {for ch in channels {
             <ChannelRow
+                watch={watch}
                 key={str(ch.slug)}
                 channel={ch}
                 sector={sector}
@@ -112,7 +117,7 @@ def ChannelList(
     </ul>
 }
 
-def Home(channels: list[any]) -> JsxElement {
+def Home(channels: list[any], watch: any) -> JsxElement {
     favorites = order_channels(
         [
             c
@@ -124,7 +129,11 @@ def Home(channels: list[any]) -> JsxElement {
     mixed = by_sector(channels, "general");
     <main className="directory">
         <header className="directory-heading">
-            <h1>Market forums</h1>
+            {if watch.data {
+                <h2 id="sectors">Browse sectors</h2>
+            } else {
+                <h1 id="sectors">Market forums</h1>
+            } }
             <p>Explore the channels covering your sectors.</p>
         </header>
         <div className="sector-grid">
@@ -157,7 +166,7 @@ def Home(channels: list[any]) -> JsxElement {
         {if len(favorites) {
             <section className="news-section">
                 <h2>Top recommended channels</h2>
-                <ChannelList channels={favorites}/>
+                <ChannelList watch={watch} channels={favorites}/>
             </section>
         }}
         <div className="home-links">
@@ -169,7 +178,7 @@ def Home(channels: list[any]) -> JsxElement {
     </main>
 }
 
-def Discover(channels: list[any], onClicks: any) -> JsxElement {
+def Discover(channels: list[any], onClicks: any, watch: any) -> JsxElement {
     has tab: str = "all",
         sortOrder: str = "name",
         sector: str = "";
@@ -238,6 +247,7 @@ def Discover(channels: list[any], onClicks: any) -> JsxElement {
         }}
         {if len(rows) {
             <ChannelList
+                watch={watch}
                 channels={order_channels(rows, order)}
                 sector={sector}
                 onClicks={onClicks}
@@ -252,7 +262,7 @@ def Discover(channels: list[any], onClicks: any) -> JsxElement {
     </main>
 }
 
-def Following(data: any, reload: any) -> JsxElement {
+def Following(data: any, reload: any, watch: any) -> JsxElement {
     has saving: bool = False,
         issue: str = "";
     names: dict[str, str] = {str(c.slug): str(c.name) for c in data.channels};
@@ -323,6 +333,7 @@ def Following(data: any, reload: any) -> JsxElement {
                 <a href="/sources">Manage private sources →</a>
             </div>
         </details>
+        <WatchManager watch={watch}/>
         <section className="news-section">
             <h2>Latest updates</h2>
             {if not len(data.items) {
@@ -338,6 +349,7 @@ def Following(data: any, reload: any) -> JsxElement {
                     key={str(item.channel_slug or "private") + "/" + str(item.id)}
                 >
                     <Story
+                        watch={watch}
                         item={item}
                         channel_name={item.source_name
                             if item.private_source
@@ -377,7 +389,7 @@ def Following(data: any, reload: any) -> JsxElement {
     </main>
 }
 
-def Browse(path: str) -> JsxElement {
+def Browse(path: str, watch: any) -> JsxElement {
     has data: any = None,
         error: str = "",
         unauthorized: bool = False;
@@ -461,13 +473,14 @@ def Browse(path: str) -> JsxElement {
             </main>;
     }
     if path == "/" {
-        return <Home channels={data.channels}/>;
+        return <Home watch={watch} channels={data.channels}/>;
     }
     if path == "/discover" {
-        return <Discover channels={data.channels} onClicks={change_clicks}/>;
+        return
+            <Discover watch={watch} channels={data.channels} onClicks={change_clicks}/>;
     }
     if path == "/following" {
-        return <Following data={data} reload={load}/>;
+        return <Following watch={watch} data={data} reload={load}/>;
     }
     slug = path.split("/")[2] if path.startswith("/categories/") else "";
     if slug in SECTORS or slug == "general" {
@@ -479,7 +492,7 @@ def Browse(path: str) -> JsxElement {
                     <h1>{sector_name(slug)}</h1>
                     <p>{count_label(len(rows), "channel", "channels")}</p>
                 </header>
-                <ChannelList channels={rows} sector={slug}/>
+                <ChannelList watch={watch} channels={rows} sector={slug}/>
             </main>;
     }
     return
@@ -490,15 +503,31 @@ def Browse(path: str) -> JsxElement {
 }
 
 def:pub DirectoryPage(path: str) -> JsxElement {
+    watch = useWatches();
     active = "home"
-        if path == "/" or path.startswith("/categories/")
+        if path == "/"
+            or path.startswith("/categories/")
+            or path.startswith("/stories/")
         else ("following" if path == "/following" else "discover");
     <div className="app-layout">
         <Navigation active={active}/>
-        {if path.startswith("/channels/") {
-            <ChannelPage slug={path.split("/")[2]}/>
+        {if watch.issue {
+            <p className="watch-error" role="alert">
+                {watch.issue}{" "}
+                <button type="button" onClick={lambda { watch.load(); }}>
+                    Retry watch list
+                </button>
+            </p>
+        }}
+        {if path == "/" {
+            <Briefing watch={watch}/>
+        }}
+        {if path.startswith("/stories/") {
+            <Timeline storyId={path.split("/")[2]} watch={watch}/>
+        } elif path.startswith("/channels/") {
+            <ChannelPage watch={watch} slug={path.split("/")[2]}/>
         } else {
-            <Browse path={path}/>
-        } }
+            <Browse watch={watch} path={path}/>
+        }  }
     </div>
 }

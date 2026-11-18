@@ -8,9 +8,9 @@ Newsstream helps people follow market-moving news across Energy, Tech, Healthcar
 
 | View | Reader action |
 | --- | --- |
-| Home | Browse the eight sectors, their editorial channels and recommendations. General News collects stories from multi-topic publishers that have no clear sector fit. |
+| Home | Open a personal briefing of developments since the last displayed visit when signed in. Browse eight sectors, editorial channels and recommendations on the same page. General News collects stories from multi-topic publishers that have no clear sector fit. |
 | Discover | Browse the complete public catalog, sort by name, category or clicks, and switch to New or Trending. Display click totals in channel disclosures. Use observable activity for the initial lists. More elaborate trending logic is a later product decision. |
-| Following | Read updates from the signed-in user's subscriptions and open the originating channel or publisher. |
+| Following | Read updates from subscriptions, manage topic and story watches, and open the original report or its story timeline. |
 | My Sources | Manage private connections, publish channels and select content to share. Connecting a source grants no public access to its history or credential. |
 | Channel | Read the description and byline, see source type and reader activity, follow or recommend the channel, open source links, and discuss the channel or its stories. |
 
@@ -41,7 +41,7 @@ The existing event monitor persists raw posts and decisions, clusters accepted p
 
 ## 7. Classification and summaries
 
-The public directory routes multi-topic articles to sectors. A public AI summary must cite its input, identify AI authorship, preserve uncertainty and distinguish allegations from established facts. Start automatic summaries with RSS. Source excerpts and author text remain readable without a model.
+The public directory routes multi-topic articles to sectors. A shared vocabulary identifies subsectors, events, named organizations and places mentioned in source text. A saved topic can require multiple labels in the same report. Story timelines preserve source citations and substantive revisions under a stable identity. A public AI summary must cite its input, identify AI authorship, preserve uncertainty and distinguish allegations from established facts. Start automatic summaries with RSS. Source excerpts and author text remain readable without a model.
 
 The market monitor separately scores materiality against a configurable rubric. Its review model handles near-threshold cases. Its error and fail-open paths preserve source visibility.
 

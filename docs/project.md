@@ -6,6 +6,7 @@ Newsstream serves a public news directory for Energy, Tech, Healthcare, Industri
 | --- | --- |
 | Service | `main.jac` starts `app.jac`, which assembles FastAPI, cookie sessions, the web client and asynchronous workers. |
 | Public channel catalog | `publicnews/` stores channels, story revisions, comments, click counts, subscriptions and recommendations in SQLite. It serves public reads and account-scoped writes. |
+| Reader briefing | Public evidence and visits live in `publicnews/briefing.py`. `personal/briefing.py` reads owner-only stories. `publicnews/briefing_routes.py` combines the two for the authenticated reader. `publicnews/topics.py` supplies watch IDs shared by ingestion, articles and the client. |
 | Initial edition | `db/directory_seed.json` provides the dated publisher edition and source URLs. `db/directory.jac` loads prior saved editions and supports the editorial directory contract. |
 | RSS and summaries | The public collector reuses the bounded fetcher and parser in `personal/providers.jac`. Public processing persists articles before summary generation. The separate `pipeline/forum_routing.jac` assigns sectors to multi-topic articles. |
 | Private sources | `personal/` manages account-owned connections and delivery. `personal/publishing.jac` bridges explicitly selected material to a public channel. |

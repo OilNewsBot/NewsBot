@@ -7,6 +7,9 @@ glob:pub SESSION_EVENT: str = "ns-session";
 
 def announce_session_change {
     # the checker has no browser typings for Event
+    try {
+        localStorage.setItem("ns-session-change", str(new(Date).getTime()));
+    } except Exception {}
     window.dispatchEvent(new(Event, SESSION_EVENT));  # jac:ignore[E1053]
 }
 

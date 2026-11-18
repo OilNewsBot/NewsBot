@@ -219,7 +219,7 @@ def PostForm(slug: str, onChange: any) -> JsxElement {
     </details>
 }
 
-def:pub ChannelPage(slug: str) -> JsxElement {
+def:pub ChannelPage(slug: str, watch: any) -> JsxElement {
     has channel: any = None,
         comments: list[any] = [],
         signed_in: bool = False,
@@ -406,7 +406,7 @@ def:pub ChannelPage(slug: str) -> JsxElement {
                 }}
                 {for item in channel.headlines {
                     <div key={str(item.id)} className="story-with-thread">
-                        <Story item={item} full={True}/>
+                        <Story item={item} watch={watch} full={True}/>
                         <details className="story-discussion">
                             <summary>
                                 {"Discussion ("

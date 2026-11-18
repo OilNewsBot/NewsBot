@@ -404,6 +404,20 @@ def LockedPage -> JsxElement {
 }
 
 def:pub app -> JsxElement {
+    useEffect(
+        lambda {
+            announce = lambda { window.dispatchEvent(new(Event, SESSION_EVENT)); };  # jac:ignore[E1053]
+            change = lambda (e: any) { if e.key == "ns-session-change" { announce(); }};
+            restore = lambda (e: any) { if e.persisted { announce(); }};
+            window.addEventListener("storage", change);
+            window.addEventListener("pageshow", restore);
+            return lambda {
+                window.removeEventListener("storage", change);
+                window.removeEventListener("pageshow", restore);
+            };
+        },
+        []
+    );
     win: any = window;
     path = str(win.location.pathname);
     if path == "/sources" {

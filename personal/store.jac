@@ -16,7 +16,8 @@ import from personal.secrets { SecretBox, credential_fingerprint }
 
 glob SCHEMA: str = Path(__file__).with_name("schema.sql").read_text();
 
-glob topic_rules: any = importlib.import_module("publicnews.topics"),
+glob story_text: any = importlib.import_module("publicnews.storytext"),
+     topic_rules: any = importlib.import_module("publicnews.topics"),
      coverage: any = importlib.import_module("personal.coverage");
 
 def source_tags(value: any) -> list[str] {
@@ -620,7 +621,7 @@ obj PersonalStore {
                         continue;
                     }
                     old = await self._one(
-                        "SELECT id FROM personal_items WHERE source_id=? AND external_id=?",
+                        "SELECT id,title,text,url FROM personal_items WHERE source_id=? AND external_id=?",
                         (source_id, ext)
                     );
                     title = str(item.get("title", ""))[:500];
@@ -630,6 +631,23 @@ obj PersonalStore {
                         url = "";
                     }
                     if old {
+                        if (title, body, url)
+                            == (old["title"], old["text"], old["url"]) {
+                            continue;
+                        }
+                        previous = await self._one(
+                            "SELECT title,body FROM personal_developments WHERE item_id=? ORDER BY id DESC LIMIT 1",
+                            (old["id"], )
+                        );
+                        if previous
+                            and story_text.meaningful_change(
+                                previous["title"], previous["body"], title, body
+                            ) {
+                            await self._run(
+                                "INSERT INTO personal_developments(user_id,item_id,kind,observed_at,title,body,url) VALUES (?,?,'updated',?,?,?,?)",
+                                (source["user_id"], old["id"], now, title, body, url)
+                            );
+                        }
                         await self._run(
                             "UPDATE personal_items SET title=?,text=?,url=? WHERE id=?",
                             (title, body, url, old["id"])

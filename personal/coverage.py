@@ -1,7 +1,7 @@
 """Account-scoped views over private items, including sources saved before tagging."""
 import json
 
-from publicnews.topics import channel_topic
+from publicnews.topics import article_labels, channel_topic
 
 
 def item_topic(title, body, raw_tags):
@@ -18,6 +18,8 @@ def present(row):
     row["section"], row["topic"] = item_topic(row["title"], row["text"], raw_tags)
     row["tags"] = json.loads(raw_tags) if raw_tags else ["general"]
     row["category"] = row["tags"][0]
+    row["labels"] = article_labels(row["title"], row["text"], row["section"])
+    row["story_id"] = f"private-{row['id']}"
     return row
 
 
