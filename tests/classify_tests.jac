@@ -127,6 +127,11 @@ test "three errors switch to unfiltered for official tier" {
             assert await pipeline.process(osint) == "held-llm-down";  # error 2
             # error 3 -> fail open
             assert await pipeline.process(official) == "UNFILTERED";
+            history = await repo.unfiltered_feed();
+            assert len(history) == 1;
+            assert history[0]["url"] == official.url;
+            assert history[0]["kind"] == "UNFILTERED";
+            assert history[0]["notification_id"] == await repo.notification_head();
             # osint stays held even in fail-open mode
             osint2 = load_fixture("noise")[0][0];
             assert await pipeline.process(osint2) == "held-llm-down";

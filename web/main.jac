@@ -8,7 +8,7 @@ self-contained page by `jac build web`. It talks to the FastAPI service
 """
 
 import "./main.css";
-import from react { useEffect }
+import from react { useEffect, useRef }
 import from .auth { AuthPanel, SESSION_EVENT }
 import from .trading { TradingPage }
 import from .sources { SourcesPage }
@@ -49,6 +49,7 @@ obj FeedEvent {
         category: str,
         title: str,
         summary: str,
+        origin_posted_at: str,
         status: str,  # open | stale
         posts: list[FeedPost];
 }
@@ -102,12 +103,7 @@ obj Status {
 
 # ---------- module state that must not trigger re-renders ----------
 
-glob _seen: any = new(Set),  # notification ids already handled
-     _acked: any = new(Set),  # notification ids the user dismissed
-     _last_id: int = 0,  # highest id seen; the SSE backfill resumes from here
-     _feed_timer: any = None,
-     _stream: any = None,
-     _session_known: bool = False;  # a /me check has answered at least once
+glob _session_known: bool = False;  # a /me check has answered at least once
 
 glob REFETCH_LABEL: str = "⟳ refetch 12h";
 
@@ -313,6 +309,18 @@ def EventBlock(ev: FeedEvent) -> JsxElement {
     </div>
 }
 
+def UnfilteredPost(n: Notification) -> JsxElement {
+    <article className="event unfiltered-history">
+        <h3>
+            <span className="badge warn">unfiltered</span>
+            {" " + n.one_line}
+        </h3>
+        <a href={n.url} target="_blank" rel="noopener">{"@" + n.handle}</a>{" "}
+        <TierChip tier={n.tier}/>{" "}
+        <span className="dim">{rel(n.posted_at)}</span>
+    </article>
+}
+
 def SuppressedRow(p: SuppressedPost) -> JsxElement {
     score = "?" if p.materiality_score is None else str(p.materiality_score);
 
@@ -474,9 +482,20 @@ def:pub app -> JsxElement {
 }
 
 def NewsPage -> JsxElement {
+    # Per-mount state shared by the live stream and ordered history reader.
+    sync: any = useRef(
+        {
+            "active": False,
+            "cursor": None,
+            "busy": False,
+            "requested": False,
+            "stream": None,
+            "timer": None
+        }
+    );
     has tray: list[Notification] = [],  # newest first
         expanded: bool = False,
-        events: list[FeedEvent] = [],
+        timeline: list[any] = [],
         feedLoaded: bool = False,
         suppressed: list[SuppressedPost] = [],
         showSuppressed: bool = False,
@@ -501,9 +520,34 @@ def NewsPage -> JsxElement {
 
     async def load_feed {
         data = await get_json("/feed");
-        if data {
-            events = data.events as list[FeedEvent];
-            feedLoaded = True;
+        if not sync.current.active or not data or not Array.isArray(data.events) {
+            return;
+        }
+        rows: list[any] = [
+            {
+                "event": ev,
+                "key": "event-" + str(ev.id),
+                "time": Date.parse(ev.origin_posted_at),
+                "stale": ev.status == "stale"
+            } for ev in data.events
+        ];
+        for card in (data.unfiltered or []) {
+            rows.append(
+                {
+                    "card": card,
+                    "key": "alert-" + str(card.notification_id),
+                    "time": Date.parse(card.posted_at),
+                    "stale": False
+                }
+            );
+        }
+        rows.sort(key=lambda (row: any) -> float { return row.time; }, reverse=True);
+        rows.sort(key=lambda (row: any) -> int { return 1 if row.stale else 0; });
+        timeline = rows;
+        feedLoaded = True;
+        if sync.current.cursor is None {
+            sync.current.cursor = data.notification_head;
+            connect();
         }
     }
 
@@ -524,7 +568,6 @@ def NewsPage -> JsxElement {
     }
 
     def ack(nid: int) {
-        _acked.add(nid);
         remaining: list[Notification] = [];
         for c in tray {
             if c.notification_id != nid {
@@ -537,67 +580,75 @@ def NewsPage -> JsxElement {
         }
     }
 
-    def handle(n: Notification, fresh: bool) {
-        if _seen.has(n.notification_id) {
+    def handle(n: Notification) {
+        if n.notification_id <= sync.current.cursor {
             return;
         }
-        _seen.add(n.notification_id);
-        if n.notification_id > _last_id {
-            _last_id = n.notification_id;
+        sync.current.cursor = n.notification_id;
+        tray = [n] + tray;
+        if n.kind == "NEW_EVENT" and sound {
+            chime();
         }
-        if fresh and not _acked.has(n.notification_id) {
-            tray = [n] + tray;
-            if n.kind == "NEW_EVENT" and sound {
-                chime();
-            }
-            if n.kind == "NEW_EVENT" and screen {
-                screen_notify(n);
-            }
+        if n.kind == "NEW_EVENT" and screen {
+            screen_notify(n);
         }
-        # one feed reload shortly after a burst of notifications
-        if _feed_timer {
-            clearTimeout(_feed_timer);
-        }
-        _feed_timer = setTimeout(lambda { load_feed(); }, 400);
+        clearTimeout(sync.current.timer);
+        sync.current.timer = setTimeout(lambda { load_feed(); }, 400);
     }
 
-    """Fetch whatever was published while the stream was down."""
+    # Only an ordered history page (or the immediate next SSE id) can
+    # advance the cursor. A live event racing a catch-up schedules another
+    # read; its newer ID cannot jump over the backlog.
     async def backfill {
-        missed = await get_json("/notifications?since=" + str(_last_id));
-        for n in (missed or []) {
-            handle(n as Notification, True);
+        sync.current.requested = True;
+        if sync.current.busy {
+            return;
+        }
+        sync.current.busy = True;
+        try {
+            while sync.current.active and sync.current.requested {
+                sync.current.requested = False;
+                page = await get_json(
+                    "/notifications?since=" + str(sync.current.cursor)
+                );
+                if not sync.current.active {
+                    return;
+                }
+                if not Array.isArray(page) {
+                    sync.current.requested = True;
+                    return;
+                }
+                for n in page {
+                    handle(n as Notification);
+                }
+                if len(page) > 0 {
+                    sync.current.requested = True;
+                }
+            }
+        } finally {
+            sync.current.busy = False;
         }
     }
 
-    """SSE with reconnect: EventSource retries by itself, and every (re)open
-    runs the backfill."""
     def connect {
-        # the checker has no browser typings for EventSource
-        _stream = new(EventSource, "/stream");  # jac:ignore[E1053]
-        _stream.addEventListener(
+        stream: any = new(EventSource, "/stream");  # jac:ignore[E1053]
+        sync.current.stream = stream;
+        stream.addEventListener(
             "notification",
-            lambda (ev: any) { handle(JSON.parse(ev.data) as Notification, True); }
+            lambda (ev: any) {
+                if not sync.current.active {
+                    return;
+                }
+                n = JSON.parse(ev.data) as Notification;
+                if n.notification_id == sync.current.cursor + 1
+                    and not sync.current.busy {
+                    handle(n);
+                } elif n.notification_id > sync.current.cursor {
+                    backfill();
+                }
+            }
         );
-        _stream.onopen = lambda { backfill(); };
-    }
-
-    async def boot {
-        # Seed the seen-set with all history so old notifications don't flood the
-        # tray. /notifications returns one page at a time (repository limit), so
-        # keep reading from the highest id until a page adds nothing.
-        while True {
-            before = _last_id;
-            hist = await get_json("/notifications?since=" + str(_last_id));
-            for n in (hist or []) {
-                handle(n as Notification, False);
-            }
-            if _last_id == before {
-                break;
-            }
-        }
-        connect();
-        load_feed();
-        load_status();
+        stream.onopen = lambda { backfill(); };
     }
 
     def on_key(e: KeyboardEvent) {
@@ -665,16 +716,30 @@ def NewsPage -> JsxElement {
                     setTimeout(lambda { screen = api.permission == "granted"; }, 500);
                 }
             }
-            boot();
-            status_timer = setInterval(lambda { load_status(); }, 10000);
+            sync.current.active = True;
+            load_feed();
+            load_status();
+            status_timer = setInterval(
+                lambda {
+                    load_status();
+                    if sync.current.cursor is None {
+                        load_feed();
+                    } elif sync.current.requested {
+                        backfill();
+                    }
+                },
+                10000
+            );
             clock_timer = setInterval(lambda { clock = clock + 1; }, 30000);
             document.addEventListener("keydown", on_key);
             return lambda {
                 clearInterval(status_timer);
                 clearInterval(clock_timer);
                 document.removeEventListener("keydown", on_key);
-                if _stream {
-                    _stream.close();
+                sync.current.active = False;
+                clearTimeout(sync.current.timer);
+                if sync.current.stream {
+                    sync.current.stream.close();
                 }
             };
         },
@@ -754,10 +819,16 @@ def NewsPage -> JsxElement {
                 </div>
             }}
             <div id="feed" className="news-feed-content">
-                {for ev in events {
-                    <EventBlock key={ev.id} ev={ev}/>
+                {for row in timeline {
+                    <div key={row.key}>
+                        {if row.event {
+                            <EventBlock ev={row.event}/>
+                        } else {
+                            <UnfilteredPost n={row.card}/>
+                        } }
+                    </div>
                 }}
-                {if feedLoaded and len(events) == 0 {
+                {if feedLoaded and len(timeline) == 0 {
                     <div className="news-empty">
                         <div className="news-empty-icon">◇</div>
                         <h2>No market events yet</h2>

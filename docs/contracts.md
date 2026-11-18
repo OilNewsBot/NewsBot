@@ -48,7 +48,7 @@ null on the relevant paths. Do not assume every notification is classified.
 | `GET /` | Built UI, or 503 when unavailable |
 | `GET /stream` | SSE `event: notification`, `id: <notification_id>`, `data: <card JSON>`; heartbeat comments |
 | `GET /notifications?since=N` | Array of stored cards after the notification ID, in ascending order (repository limit applies) |
-| `GET /feed` | Object containing `events` |
+| `GET /feed` | Object containing `events`, recent `unfiltered` notification cards, and the initial `notification_head` cursor |
 | `GET /suppressed` | Object containing `posts` |
 | `GET /status` | Adapter states, latency/counts, estimated model spend, fail-open state, X budget/reads, UI threshold/settings, inactive accounts |
 | `POST /ingest` | Admin only: the `X-Admin-Token` header must equal `NEWSBOT_ADMIN_TOKEN` when that is set, otherwise only loopback clients are accepted (403 otherwise). A normalized-post JSON representation; parses ISO timestamps and queues it, returning `{"queued": true}` |

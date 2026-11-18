@@ -375,7 +375,13 @@ def create_app(settings: Settings | None = None) -> FastAPI {
 
     @app.get("/feed")
     async def feed -> Json {
-        return {"events": await repo.feed()};
+        # Capture the cursor first. Alerts committed while loading history will
+        # also be available to the browser on its first stream backfill.
+        return {
+            "notification_head": await repo.notification_head(),
+            "events": await repo.feed(),
+            "unfiltered": await repo.unfiltered_feed()
+        };
     }
 
     @app.get("/suppressed")
