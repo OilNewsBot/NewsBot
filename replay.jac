@@ -4,7 +4,9 @@
                                       [--speed 10] [--preserve-timestamps]
 
 Posts go to the running server's /ingest endpoint so the real pipeline and UI
-are exercised without live platform credentials. By default posted_at is
+are exercised without live platform credentials. A local server accepts them
+from this machine; a server with NEWSBOT_ADMIN_TOKEN set needs the same token
+here (environment or --admin-token). By default posted_at is
 rewritten to ~20s before send time so cards look current and latency badges
 are sensible; --preserve-timestamps keeps the original September 2026 times.
 Gaps between posts are capped at 300s of original time, then divided by
@@ -16,6 +18,7 @@ import argparse;
 import asyncio;
 import json;
 import logging;
+import os;
 import sys;
 import httpx;
 import from datetime { UTC, datetime, timedelta }
@@ -42,8 +45,11 @@ def load_posts(fixtures_dir: Path) -> list[Json] {
     return posts;
 }
 
-async def replay(posts: list[Json], base_url: str, speed: float, preserve_ts: bool) {
-    http = httpx.AsyncClient(base_url=base_url, timeout=10);
+async def replay(
+    posts: list[Json], base_url: str, speed: float, preserve_ts: bool, token: str
+) {
+    headers = {"X-Admin-Token": token} if token else {};
+    http = httpx.AsyncClient(base_url=base_url, timeout=10, headers=headers);
     async with http {
         try {
             await http.get("/status");
@@ -65,6 +71,11 @@ async def replay(posts: list[Json], base_url: str, speed: float, preserve_ts: bo
                 p.pop("received_at", None);
             }
             r = await http.post("/ingest", json=p);
+            if r.status_code == 403 {
+                sys.`exit(
+                    "the server refused /ingest: set NEWSBOT_ADMIN_TOKEN to its token"
+                );
+            }
             r.raise_for_status();
             print(
                 f"[{i}/{len(posts)}] @{p['account_handle']}: {p['text'][:70]!r} -> queued"
@@ -84,6 +95,11 @@ def main {
     ap.add_argument("--base-url", `default="http://localhost:8000");
     ap.add_argument("--speed", `type=float, `default=10.0);
     ap.add_argument("--preserve-timestamps", action="store_true");
+    ap.add_argument(
+        "--admin-token",
+        `default=os.environ.get("NEWSBOT_ADMIN_TOKEN", ""),
+        help="the server's NEWSBOT_ADMIN_TOKEN (default: from the environment)"
+    );
     args = ap.parse_args();
     # The jac runtime's root log handler would print one line per HTTP request.
     logging.getLogger("httpx").setLevel(logging.WARNING);
@@ -92,7 +108,8 @@ def main {
             load_posts(args.fixtures),
             args.base_url,
             args.speed,
-            args.preserve_timestamps
+            args.preserve_timestamps,
+            args.admin_token
         )
     );
 }

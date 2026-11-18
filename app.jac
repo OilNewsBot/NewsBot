@@ -2,7 +2,12 @@
 
 import asyncio;
 import contextlib;
-import from auth { hash_password, verify_password }
+import from auth {
+    hash_password,
+    require_admin,
+    require_user_or_admin,
+    verify_password
+}
 import hashlib;
 import secrets;
 import from datetime { timedelta }
@@ -477,7 +482,8 @@ def create_app(settings: Settings | None = None) -> FastAPI {
 
     """Re-pull every account's recent posts (UI catch-up button)."""
     @app.post("/refetch")
-    async def refetch(hours: float = 12) -> Json {
+    async def refetch(request: Request, hours: float = 12) -> Json {
+        await require_user_or_admin(request, repo);
         hours = max(1.0, min(48.0, hours));
         if not settings.x_push_api_key {
             raise HTTPException(409, "x_push is not configured");
@@ -489,9 +495,10 @@ def create_app(settings: Settings | None = None) -> FastAPI {
         return {"started": True, "hours": hours};
     }
 
-    """Local ingestion endpoint used by `jac run replay.jac`."""
+    """Admin ingestion endpoint used by `jac run replay` and `fake_tweets --remote`."""
     @app.post("/ingest")
-    async def ingest(body: Json) -> Json {
+    async def ingest(body: Json, request: Request) -> Json {
+        await require_admin(request);
         post: NormalizedPost;
         try {
             post = NormalizedPost(

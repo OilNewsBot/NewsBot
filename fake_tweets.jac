@@ -2,6 +2,7 @@
 
     jac run fake_tweets [-- --no-wait] [--exit] [--interval 10] [--port 8000]
                         [--vendor-port 8790] [--keep-db] [--verbose]
+    jac run fake_tweets -- --remote https://<server> [--no-wait] [--interval 10]
 
 Starts a fake twitterapi.io (REST rule/backfill endpoints and the tweet
 WebSocket) and an in-process NewsBot whose x_push adapter connects to it, then
@@ -15,6 +16,11 @@ X API are off, X_PUSH_API_KEY is a fake key, and Expo mobile push is off. Model
 calls are real when ANTHROPIC_API_KEY is set (a few cents). Quit the NewsBot app
 or `jac run` first: this script serves on the same port so the desktop app can
 attach to it.
+
+--remote sends the same five tweets to an already running server instead (a
+hosted demo), through its POST /ingest with the X-Admin-Token header from
+NEWSBOT_ADMIN_TOKEN or --admin-token. That path skips the X adapter, and the
+server's own database and API keys are used.
 """
 
 import argparse;
@@ -28,6 +34,7 @@ import sqlite3;
 import sys;
 import tempfile;
 import time;
+import httpx;
 import uvicorn;
 import from datetime { UTC, datetime }
 import from pathlib { Path }
@@ -259,6 +266,62 @@ async def wait_for_outcomes(
     return results;
 }
 
+"""Wait for Enter when interactive, so the presenter picks the moment."""
+async def wait_for_go(args: argparse.Namespace) {
+    if not args.no_wait and sys.stdin.isatty() {
+        await asyncio.to_thread(input, "Press Enter here to send the tweets. ");
+    }
+}
+
+"""--remote: queue the tweets on a running server's /ingest. Tiers come from
+this checkout's config.yaml, as the X adapter would set them."""
+async def send_remote(args: argparse.Namespace) -> int {
+    settings = load_settings();
+    token = args.admin_token or os.environ.get("NEWSBOT_ADMIN_TOKEN", "");
+    headers = {"X-Admin-Token": token} if token else {};
+    base = args.remote.rstrip("/");
+    http = httpx.AsyncClient(base_url=base, timeout=20, headers=headers);
+    async with http {
+        try {
+            await http.get("/status");
+        } except httpx.HTTPError as e {
+            print(f"Cannot reach {base}: {e}");
+            return 2;
+        }
+        await wait_for_go(args);
+        stamp = int(time.time() * 1000);
+        for (i, t) in enumerate(TWEETS) {
+            if i {
+                await asyncio.sleep(args.interval);
+            }
+            now = datetime.now(UTC);
+            tweet_id = f"9{stamp}{i}";
+            r = await http.post(
+                "/ingest",
+                json={
+                    "source": "x",
+                    "source_post_id": tweet_id,
+                    "account_handle": t.handle,
+                    "url": f"https://x.com/{t.handle}/status/{tweet_id}",
+                    "text": t.text.replace("{hhmm}", now.strftime("%H%M")),
+                    "posted_at": now.isoformat(),
+                    "tier": settings.tier_for_handle(t.handle)
+                }
+            );
+            if r.status_code == 403 {
+                print(
+                    "The server refused /ingest: set NEWSBOT_ADMIN_TOKEN to its token."
+                );
+                return 2;
+            }
+            r.raise_for_status();
+            print(f"sent {i + 1}/{len(TWEETS)}: @{t.handle}", flush=True);
+        }
+    }
+    print("All five are queued. Watch the app for the new cards.");
+    return 0;
+}
+
 """Settings for the isolated run: temp database, fake vendor, other feeds off."""
 def test_settings(args: argparse.Namespace, db: Path, vendor: str) -> Settings {
     settings = load_settings(db_path=db);
@@ -278,6 +341,9 @@ def test_settings(args: argparse.Namespace, db: Path, vendor: str) -> Settings {
 }
 
 async def run(args: argparse.Namespace) -> int {
+    if args.remote {
+        return await send_remote(args);
+    }
     real = load_settings();
     host = real.host;
     port = args.port or real.port;
@@ -356,12 +422,10 @@ async def run(args: argparse.Namespace) -> int {
         if not args.no_wait and sys.stdin.isatty() {
             print(
                 "Open it in the desktop app (npm run dev in desktop/) or a browser, "
-                "sign in, tick Desktop notifications, switch to another window,"
-            );
-            await asyncio.to_thread(
-                input, "then press Enter here to send the tweets. "
+                "sign in, tick Desktop notifications, and switch to another window."
             );
         }
+        await wait_for_go(args);
 
         ids = account_ids(db);
         stamp = int(time.time() * 1000);
@@ -447,6 +511,16 @@ def main {
         "--keep-db", action="store_true", help="keep the temporary database"
     );
     parser.add_argument("--verbose", action="store_true", help="show pipeline logs");
+    parser.add_argument(
+        "--remote",
+        `default="",
+        help="send to this running server's /ingest instead (e.g. a hosted demo)"
+    );
+    parser.add_argument(
+        "--admin-token",
+        `default="",
+        help="--remote: the server's NEWSBOT_ADMIN_TOKEN (default: from the environment)"
+    );
     args = parser.parse_args();
     logging.basicConfig(
         level=logging.INFO if args.verbose else logging.WARNING,
