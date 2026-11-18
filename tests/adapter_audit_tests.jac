@@ -1,9 +1,16 @@
 """Offline regression scenarios from the November 2026 feature audit."""
 import asyncio;
 import httpx;
+import json;
+import tempfile;
+import from datetime { UTC, datetime }
+import from pathlib { Path }
+import from types { SimpleNamespace }
+import from unittest.mock { AsyncMock, Mock, patch }
+import from replay { load_posts, replay }
 import from adapters.base { Json, NormalizedPost }
 import from adapters.x_api { XApiAdapter }
-import from adapters.telegram { TelegramAdapter }
+import from adapters.telegram { TelegramAdapter, bot_update_to_post, message_to_post }
 import from config { ChannelCfg }
 import from tests.helpers { make_settings, open_repo }
 
@@ -142,4 +149,152 @@ test "Telegram Bot only forwards configured stable channel IDs" {
         assert got == ["renamed"] and calls == ["0", "3"];
     }
     asyncio.run(body());
+}
+
+test "official X reports a failed cycle and a successful recovery" {
+    async def body {
+        s = make_settings();
+        async with open_repo(s) as repo {
+            for i in range(3) {
+                await repo.upsert_account("x", str(i), "demo" + str(i), "osint");
+            }
+            async def sink(p: NormalizedPost) {}
+            offline = [True];
+            def handle(r: httpx.Request) -> httpx.Response {
+                if offline[0] {
+                    raise httpx.ConnectError("fixture offline");
+                }
+                return httpx.Response(200, json={"data": []});
+            }
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(handle)
+            ) as http {
+                adapter = XApiAdapter(s, repo, http);
+                await adapter._poll_cycle(sink);
+                assert adapter.status.state == "reconnecting"
+                    and "3/3" in adapter.status.detail;
+                offline[0] = False;
+                await adapter._poll_cycle(sink);
+                assert adapter.status.state == "live";
+            }
+        }
+    }
+    asyncio.run(body());
+}
+
+test "Bot and Telethon deduplicate across channels, transports and legacy storage" {
+    async def body {
+        async with open_repo(make_settings()) as repo {
+            for (bare, marked, legacy) in [
+                (1234567, -1001234567, False),
+                (2345678, -1002345678, True),
+                (3456789, -1000003456789, True)
+            ] {
+                msg = SimpleNamespace(
+                    id=7, message="news", reply_to=None, date=datetime.now(UTC)
+                );
+                bot = bot_update_to_post(
+                    {
+                        "channel_post": {
+                            "text": "news",
+                            "chat": {"id": marked, "username": "alpha"},
+                            "message_id": 7,
+                            "date": 1789500000
+                        }
+                    }
+                );
+                mt = message_to_post(msg, bare, "alpha");
+                assert bot is not None and mt is not None;
+                assert (bot.account_id, bot.source_post_id)
+                    == (mt.account_id, mt.source_post_id);
+                if legacy {
+                    bot.account_id = str(marked);
+                    bot.source_post_id = f"{marked}:7";
+                }
+                assert await repo.insert_post(bot) is not None;
+                assert await repo.insert_post(mt) is None;
+                assert (
+                    await repo._one(
+                        "SELECT source_post_id FROM posts WHERE source_post_id=?",
+                        (bot.source_post_id, )
+                    )
+                )
+                    is not None;
+            }
+            assert len(await repo._all("SELECT id FROM posts")) == 3;
+        }
+    }
+    asyncio.run(body());
+}
+
+test "Telethon channel rename updates the delivered post without losing its tier" {
+    async def body {
+        s = make_settings();
+        s.telegram_channels = [ChannelCfg("alpha", "official")];
+        s.telegram_api_id = "1234";
+        client = Mock();
+        client.start = AsyncMock();
+        client.get_entity = AsyncMock(
+            return_value=SimpleNamespace(id=123, username="alpha")
+        );
+        decorated = [];
+        def register(handler: any) -> any {
+            decorated.append(handler);
+            return handler;
+        }
+        client.on = Mock(return_value=register);
+        client.run_until_disconnected = AsyncMock();
+        emitted: list[NormalizedPost] = [];
+        async def sink(p: NormalizedPost) {
+            emitted.append(p);
+        }
+        await TelegramAdapter(s)._run_telethon(sink, client=client);
+        msg = SimpleNamespace(
+            id=38, message="bulletin", reply_to=None, date=datetime.now(UTC)
+        );
+        event = SimpleNamespace(
+            chat_id=-100123, chat=SimpleNamespace(username="alpha_renamed"), message=msg
+        );
+        await decorated[0](event);
+        assert len(emitted) == 1;
+        assert emitted[0].url == "https://t.me/alpha_renamed/38";
+        assert (emitted[0].account_id, emitted[0].account_handle, emitted[0].tier)
+            == ("123", "alpha_renamed", "official");
+    }
+    asyncio.run(body());
+}
+
+test "replay sorts fixture timestamps by UTC instant" {
+    with tempfile.TemporaryDirectory() as directory {
+        path = Path(directory);
+        (path / "fixture.json").write_text(
+            json.dumps(
+                {
+                    "posts": [
+                        {"text": "later", "posted_at": "2026-11-18T09:00:00-05:00"},
+                        {"text": "earlier", "posted_at": "2026-11-18T13:30:00+00:00"},
+                        {"text": "first", "posted_at": "2026-11-18T12:00:00"}
+                    ]
+                }
+            )
+        );
+        assert [p["text"] for p in load_posts(path)] == ["first", "earlier", "later"];
+    }
+}
+
+test "invalid replay speeds are rejected before opening an HTTP client" {
+    with patch("httpx.AsyncClient") as client {
+        for speed in [0.0, -1.0, float("nan"), float("inf")] {
+            rejected = False;
+            try {
+                asyncio.run(
+                    replay([{}, {}], "http://example.invalid", speed, True, "")
+                );
+            } except SystemExit as e {
+                rejected = "--speed" in str(e);
+            }
+            assert rejected;
+        }
+        client.assert_not_called();
+    }
 }

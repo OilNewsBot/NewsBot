@@ -28,6 +28,23 @@ CREATE TABLE IF NOT EXISTS posts (
     media_urls     TEXT NOT NULL DEFAULT '[]',
     UNIQUE (source, source_post_id)
 );
+-- Older Bot API rows used Telegram's negative marked channel ID. Keep those
+-- keys and their foreign-key references while deduplicating canonical writes.
+CREATE TRIGGER IF NOT EXISTS prevent_telegram_transport_duplicate
+BEFORE INSERT ON posts
+WHEN NEW.source='telegram' AND NEW.account_id <> ''
+     AND NEW.account_id NOT GLOB '*[^0-9]*'
+     AND substr(NEW.source_post_id,1,length(NEW.account_id)+1)=NEW.account_id||':'
+BEGIN
+    SELECT RAISE(ABORT,'Telegram message already stored with marked channel ID')
+    WHERE EXISTS (
+        SELECT 1 FROM posts WHERE source='telegram' AND source_post_id IN (
+            '-100'||NEW.source_post_id,
+            CAST(-1000000000000-CAST(NEW.account_id AS INTEGER) AS TEXT)||
+                substr(NEW.source_post_id,length(NEW.account_id)+1)
+        )
+    );
+END;
 CREATE INDEX IF NOT EXISTS idx_posts_received ON posts (received_at);
 
 -- One row per classifier run (triage and, near the threshold, review).
