@@ -8,7 +8,7 @@ overlays its entry and closeout: long entry green, short entry red, long
 closeout red, short closeout green.
 """
 
-import from react { useEffect }
+import from react { useEffect, useRef }
 import from .navigation { Navigation }
 
 """One stored suggestion, as listed by /suggestions."""
@@ -43,10 +43,8 @@ obj Mark {
         label: str;
 }
 
-glob HOLD_CHOICES: list[int] = [15, 30, 60, 90, 120];
-
-glob DAYS_SHOWN: int = 7,  # today and the six days before it
-     _load_seq: int = 0;  # newest chart request; older responses are dropped
+glob DAYS_SHOWN: int = 7,
+     PRICE_ERROR: str = "Price data could not be loaded. Try again.";
 
 glob W: int = 760,
      H: int = 280,
@@ -108,20 +106,18 @@ def day_start(back: int) -> any {
     return d;
 }
 
-"""How many local days before today ts_iso falls (0 = today)."""
-def days_back(ts_iso: str) -> int {
+"""Local midnight on the calendar date of an ISO timestamp."""
+def entry_day(ts_iso: str) -> float {
     d = new(Date, ts_iso);
     d.setHours(0, 0, 0, 0);
-    # round, not floor: a day across a DST change is 23 or 25 hours
-    n: any = Math.max(0, Math.round((day_start(0).getTime() - d.getTime()) / 86400000));
-    return n;
+    return d.getTime();
 }
 
-def day_label(back: int) -> str {
-    if back == 0 {
+def day_label(start_ms: float) -> str {
+    if start_ms == day_start(0).getTime() {
         return "Today";
     }
-    return day_start(back).toLocaleDateString(
+    return new(Date, start_ms).toLocaleDateString(
         [], {"weekday": "short", "month": "short", "day": "numeric"}
     );
 }
@@ -143,11 +139,10 @@ def marks_for(s: Suggestion, bars: list[Bar]) -> list[Mark] {
     t_in = new(Date, s.created_at).getTime();
     t_out = new(Date, s.closeout_at).getTime();
     long = s.side == "long";
-    p_in = price_at(bars, t_in);
     out: list[Mark] = [
         Mark(
             ms=t_in,
-            price=p_in if p_in is not None else s.ref_price,
+            price=s.ref_price,
             color="var(--green)" if long else "var(--red)",
             label=("Open long " if long else "Open short ") + when(s.created_at)
         )
@@ -173,9 +168,14 @@ def marks_for(s: Suggestion, bars: list[Bar]) -> list[Mark] {
 """1-minute closes; `hold` is [entry ms, closeout ms] of a picked suggestion,
 shaded so short holds stay readable on a whole-day chart."""
 def PriceChart(
-    ticker: str, bars: list[Bar], marks: list[Mark], hold: list[float], note: str
+    ticker: str,
+    bars: list[Bar],
+    marks: list[Mark],
+    hold: list[float],
+    note: str,
+    width: float
 ) -> JsxElement {
-    if len(bars) < 2 {
+    if len(bars) == 0 {
         return <div className="chart-empty dim">{note or "Loading prices…"}</div>;
     }
     t0 = bars[0].t * 1000;
@@ -197,7 +197,10 @@ def PriceChart(
     span_t = Math.max(1, t1 - t0);
 
     def x(ms: float) -> float {
-        return PAD_L + (ms - t0) / span_t * (W - PAD_L - PAD_R);
+        if t0 == t1 {
+            return (PAD_L + width - PAD_R) / 2;
+        }
+        return PAD_L + (ms - t0) / span_t * (width - PAD_L - PAD_R);
     }
     def y(p: float) -> float {
         return PAD_T + (hi - p) / (hi - lo) * (H - PAD_T - PAD_B);
@@ -211,7 +214,7 @@ def PriceChart(
         ]
     );
     ticks = [hi, (hi + lo) / 2, lo];
-    times = [t0, (t0 + t1) / 2, t1];
+    times = [t0] if t0 == t1 else [t0, (t0 + t1) / 2, t1];
     visible = [
         m
         for m in marks
@@ -222,7 +225,7 @@ def PriceChart(
         band = [x(Math.max(hold[0], t0)), x(Math.min(hold[1], t1, Date.now()))];
     }
 
-    <svg className="chart" viewBox={"0 0 " + str(W) + " " + str(H)} role="img">
+    <svg className="chart" viewBox={"0 0 " + str(width) + " " + str(H)} role="img">
         <title>{ticker + " 1-minute closes"}</title>
         {if len(band) == 2 {
             <rect
@@ -235,7 +238,13 @@ def PriceChart(
         }}
         {for p in ticks {
             <g key={"y" + str(p)}>
-                <line x1={PAD_L} x2={W - PAD_R} y1={y(p)} y2={y(p)} className="grid"/>
+                <line
+                    x1={PAD_L}
+                    x2={width - PAD_R}
+                    y1={y(p)}
+                    y2={y(p)}
+                    className="grid"
+                />
                 <text x={PAD_L - 6} y={y(p) + 4} textAnchor="end" className="axis">
                     {price_str(ticker, p)}
                 </text>
@@ -246,13 +255,19 @@ def PriceChart(
                 key={"x" + str(i)}
                 x={x(t)}
                 y={H - 6}
-                textAnchor={["start", "middle", "end"][i]}
+                textAnchor={"middle"
+                    if len(times) == 1
+                    else ["start", "middle", "end"][i]}
                 className="axis"
             >
                 {clock(t)}
             </text>
         }}
-        <polyline points={pts} className="line"/>
+        {if len(bars) == 1 {
+            <circle cx={x(t0)} cy={y(bars[0].c)} r="3" fill="var(--accent)"/>
+        } else {
+            <polyline points={pts} className="line"/>
+        } }
         {for m in visible {
             <circle
                 key={m.label}
@@ -275,7 +290,9 @@ def SuggestionRow(
     left = Math.max(
         0, Math.round((new(Date, s.closeout_at).getTime() - Date.now()) / 60000)
     );
-    <div
+    <button
+        type="button"
+        aria-pressed={selected}
         className={"sugg" + (" picked" if selected else "")}
         onClick={lambda { onPick(s); }}
         title={s.rationale}
@@ -296,24 +313,32 @@ def SuggestionRow(
             {("closes in " + str(left) + "m") if open_now else "closed"}
         </span>
         {if s.event_title {
-            <div className="sugg-event dim">{s.event_title}</div>
+            <span className="sugg-event dim">{s.event_title}</span>
         } elif s.rationale {
             # hand-entered (demo) suggestions have no event; show why instead
-            <div className="sugg-event dim">{s.rationale}</div>
+            <span className="sugg-event dim">{s.rationale}</span>
         } }
-    </div>
+    </button>
 }
 
 # ---------- the page ----------
 
 def:pub TradingPage -> JsxElement {
+    chartBox: any = useRef(None);
+    chartSeq: any = useRef(0);
+    loadingSuggestions: any = useRef(False);
     has ticker: str = "WTI",
-        day: int = 0,  # days before today; 0 = today, refreshed every minute
+        day: float = 0,  # local midnight, or zero to follow today
+        chartWidth: float = W,
         bars: list[Bar] = [],
         chartNote: str = "",
         picked: Suggestion | None = None,
         suggestions: list[Suggestion] = [],
         hasPortfolio: bool = False,
+        portfolioState: str = "loading",
+        suggestionsState: str = "loading",
+        tradingEnabled: bool = True,
+        saving: bool = False,
         value: str = "",
         cash: str = "",
         level: str = "medium",
@@ -321,14 +346,16 @@ def:pub TradingPage -> JsxElement {
         levels: list[str] = ["low", "medium", "high"],
         sizing: str = "",
         formMsg: str = "",
-        tick: int = 0;  # bumped every 30 s so countdowns refresh
+        tick: float = 0;  # updated every 30 s so countdowns and day labels refresh
 
-    """Chart one local calendar day of ticker t, `back` days before today."""
-    async def load_day(t: str, back: int) {
-        _load_seq = _load_seq + 1;
-        seq = _load_seq;
-        start = day_start(back).toISOString();
-        end = day_start(back - 1).toISOString();
+    """Request one explicit calendar date, even when the local day rolls over."""
+    async def load_day(t: str, start_ms: float) {
+        chartSeq.current += 1;
+        seq = chartSeq.current;
+        start = new(Date, start_ms).toISOString();
+        tomorrow = new(Date, start_ms);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        end = tomorrow.toISOString();
         data = await fetch_json(
             "/prices?ticker="
                 + t
@@ -337,36 +364,44 @@ def:pub TradingPage -> JsxElement {
                 + "&end="
                 + encodeURIComponent(end)
         );
-        if seq != _load_seq {
+        if seq != chartSeq.current {
             return;  # the ticker or day changed while this was loading
         }
         chartNote = "";
         if data is None {
             bars = [];
-            chartNote = "Prices unavailable right now (Yahoo Finance)."
-                if back == 0
-                else "No 1-minute prices for this day (Yahoo keeps about 30 days).";
+            chartNote = PRICE_ERROR;
             return;
         }
         bars = data.bars as list[Bar];
-        if len(bars) < 2 {
-            chartNote = ("No trades yet today" if back == 0 else "No trades this day")
-                + " (futures trade Sunday 6 pm to Friday 5 pm ET).";
+        if len(bars) == 0 {
+            chartNote = "No one-minute quotes for the selected day.";
         }
     }
 
     async def load_suggestions {
+        if loadingSuggestions.current {
+            return;
+        }
+        loadingSuggestions.current = True;
         data = await fetch_json("/suggestions");
+        loadingSuggestions.current = False;
         if data {
             suggestions = data.suggestions as list[Suggestion];
+            suggestionsState = "ready";
+        } else {
+            suggestionsState = "error";
         }
     }
 
     async def load_portfolio {
+        portfolioState = "loading";
         data = await fetch_json("/portfolio");
         if not data {
+            portfolioState = "error";
             return;
         }
+        tradingEnabled = data.enabled;
         levels = data.aggressiveness as list[str];
         parts: list[str] = [];
         for t in ["WTI", "RBOB"] {
@@ -393,10 +428,15 @@ def:pub TradingPage -> JsxElement {
             level = p.aggressiveness;
             maxHold = str(p.max_hold_minutes);
         }
+        portfolioState = "ready";
     }
 
     async def save_portfolio(e: FormEvent) {
         e.preventDefault();
+        if portfolioState != "ready" or saving {
+            return;
+        }
+        saving = True;
         formMsg = "";
         try {
             resp = await fetch(
@@ -423,17 +463,19 @@ def:pub TradingPage -> JsxElement {
             }
         } except Exception {
             formMsg = "Could not reach the service.";
+        } finally {
+            saving = False;
         }
     }
 
     """Show a chart view; the chart effect loads it when it changed."""
-    def show(t: str, back: int) {
-        if t != ticker or back != day {
+    def show(t: str, date_ms: float) {
+        if t != ticker or date_ms != day {
             bars = [];
             chartNote = "";
         }
         ticker = t;
-        day = back;
+        day = date_ms;
     }
 
     """Overlay a suggestion on its own ticker and day; again to remove it."""
@@ -443,7 +485,8 @@ def:pub TradingPage -> JsxElement {
             return;
         }
         picked = s;
-        show(s.ticker, days_back(s.created_at));
+        date_ms = entry_day(s.created_at);
+        show(s.ticker, 0 if date_ms == day_start(0).getTime() else date_ms);
     }
 
     def show_ticker(t: str) {
@@ -451,36 +494,54 @@ def:pub TradingPage -> JsxElement {
         show(t, day);
     }
 
-    def show_day(back: int) {
-        picked = None;
-        show(ticker, back);
+    def show_day(date_ms: float) {
+        if picked
+            and not (
+                entry_day(picked.created_at) <= date_ms
+                and date_ms <= entry_day(picked.closeout_at)
+            ) {
+            picked = None;
+        }
+        show(ticker, 0 if date_ms == day_start(0).getTime() else date_ms);
     }
 
     useEffect(
         lambda {
             load_portfolio();
             load_suggestions();
+            win: any = window;
+            measure = lambda { chartWidth = Math.max(
+                1, chartBox.current.clientWidth
+            ); };
+            measure();
+            observer = new(win.ResizeObserver, measure);
+            observer.observe(chartBox.current);
             sugg_timer = setInterval(lambda { load_suggestions(); }, 10000);
-            tick_timer = setInterval(lambda { tick = tick + 1; }, 30000);
+            tick_timer = setInterval(lambda { tick = Date.now(); }, 30000);
             return lambda {
                 clearInterval(sugg_timer);
                 clearInterval(tick_timer);
+                observer.disconnect();
             };
         },
         []
     );
 
-    # Chart: load the selected day; today keeps refreshing every minute.
+    selectedStart = day or day_start(0).getTime();
     useEffect(
         lambda {
-            load_day(ticker, day);
+            bars = [];
+            chartNote = "";
+            load_day(ticker, selectedStart);
             if day != 0 {
                 return lambda {};
             }
-            timer = setInterval(lambda { load_day(ticker, 0); }, 60000);
+            timer = setInterval(
+                lambda { load_day(ticker, day_start(0).getTime()); }, 60000
+            );
             return lambda { clearInterval(timer); };
         },
-        [ticker, day]
+        [ticker, day, selectedStart]
     );
 
     today = [
@@ -493,7 +554,13 @@ def:pub TradingPage -> JsxElement {
         for s in suggestions
         if is_past(s)
     ];
-    marks = marks_for(picked, bars) if picked else [];
+    marks = [
+        m
+        for m in marks_for(picked, bars)
+        if entry_day(new(Date, m.ms).toISOString()) == selectedStart
+    ]
+        if picked
+        else [];
     hold: list[float] = [
         new(Date, picked.created_at).getTime(),
         new(Date, picked.closeout_at).getTime()
@@ -501,10 +568,17 @@ def:pub TradingPage -> JsxElement {
         if picked
         else [];
     last = bars[len(bars) - 1].c if len(bars) > 0 else None;
-    # a suggestion older than the selector's days still gets its own chip
-    day_choices = list(range(DAYS_SHOWN));
-    if day >= DAYS_SHOWN {
-        day_choices = day_choices + [day];
+    day_choices = [day_start(i).getTime() for i in range(DAYS_SHOWN)];
+    if selectedStart not in day_choices {
+        day_choices = day_choices + [selectedStart];
+    }
+    if picked {
+        for stamp in [picked.created_at, picked.closeout_at] {
+            date_ms = entry_day(stamp);
+            if date_ms not in day_choices {
+                day_choices = day_choices + [date_ms];
+            }
+        }
     }
 
     <main className="trading" data-tick={tick}>
@@ -555,20 +629,31 @@ def:pub TradingPage -> JsxElement {
                 {for d in day_choices {
                     <button
                         key={d}
-                        className={"on" if day == d else ""}
+                        className={"on" if selectedStart == d else ""}
                         onClick={lambda { show_day(d); }}
                     >
                         {day_label(d)}
                     </button>
                 }}
             </div>
-            <PriceChart
-                ticker={ticker}
-                bars={bars}
-                marks={marks}
-                hold={hold}
-                note={chartNote}
-            />
+            <div ref={chartBox}>
+                <PriceChart
+                    ticker={ticker}
+                    bars={bars}
+                    marks={marks}
+                    hold={hold}
+                    note={chartNote}
+                    width={chartWidth}
+                />
+            </div>
+            {if chartNote == PRICE_ERROR {
+                <button
+                    type="button"
+                    onClick={lambda { load_day(ticker, selectedStart); }}
+                >
+                    Retry prices
+                </button>
+            }}
             {if picked {
                 <p className="dim small">
                     {"#"
@@ -587,8 +672,19 @@ def:pub TradingPage -> JsxElement {
             <p id="portfolio-sharing">
                 Everyone using this Newsstream server can view and change these figures. Use simulated balances.
             </p>
+            {if portfolioState == "loading" {
+                <p role="status">Loading portfolio…</p>
+            } elif portfolioState == "error" {
+                <p role="status">
+                    Could not load the shared portfolio.{" "}
+                    <button type="button" onClick={lambda { load_portfolio(); }}>
+                        Retry portfolio
+                    </button>
+                </p>
+            } }
             <form
                 className="portfolio"
+                onChange={lambda { formMsg = ""; }}
                 onSubmit={save_portfolio}
                 aria-describedby="portfolio-sharing"
             >
@@ -599,6 +695,7 @@ def:pub TradingPage -> JsxElement {
                         min="0"
                         step="any"
                         required
+                        disabled={portfolioState != "ready" or saving}
                         value={value}
                         onChange={lambda (e: ChangeEvent) { value = e.target.value; }}
                     />
@@ -610,6 +707,7 @@ def:pub TradingPage -> JsxElement {
                         min="0"
                         step="any"
                         required
+                        disabled={portfolioState != "ready" or saving}
                         value={cash}
                         onChange={lambda (e: ChangeEvent) { cash = e.target.value; }}
                     />
@@ -617,6 +715,7 @@ def:pub TradingPage -> JsxElement {
                 <label>
                     {"Aggressiveness"}
                     <select
+                        disabled={portfolioState != "ready" or saving}
                         value={level}
                         onChange={lambda (e: ChangeEvent) { level = e.target.value; }}
                     >
@@ -626,19 +725,21 @@ def:pub TradingPage -> JsxElement {
                     </select>
                 </label>
                 <label>
-                    {"Time horizon"}
-                    <select
+                    {"Time horizon (minutes)"}
+                    <input
+                        type="number"
+                        min="1"
+                        max="120"
+                        step="1"
+                        required
+                        disabled={portfolioState != "ready" or saving}
                         value={maxHold}
                         onChange={lambda (e: ChangeEvent) { maxHold = e.target.value; }}
-                    >
-                        {for m in HOLD_CHOICES {
-                            <option key={m} value={str(m)}>
-                                {"up to " + str(m) + " min"}
-                            </option>
-                        }}
-                    </select>
+                    />
                 </label>
-                <button type="submit">Save</button>
+                <button type="submit" disabled={portfolioState != "ready" or saving}>
+                    Save
+                </button>
                 {if formMsg {
                     <span className="dim">{formMsg}</span>
                 }}
@@ -648,14 +749,28 @@ def:pub TradingPage -> JsxElement {
                     + "available cash, scaled by aggressiveness. "
                     + sizing}
             </p>
-            {if not hasPortfolio {
+            {if portfolioState == "ready" and not tradingEnabled {
+                <p className="warn-text">
+                    New trading suggestions are disabled on this server.
+                </p>
+            } elif portfolioState == "ready" and not hasPortfolio {
                 <p className="warn-text">
                     Enter simulated balances to start getting suggestions.
                 </p>
-            }}
+            } }
         </section>
         <section className="panel">
             <h2>Today</h2>
+            {if suggestionsState == "loading" {
+                <p role="status">Loading suggestions…</p>
+            } elif suggestionsState == "error" {
+                <p role="status">
+                    Could not refresh trading suggestions.{" "}
+                    <button type="button" onClick={lambda { load_suggestions(); }}>
+                        Retry suggestions
+                    </button>
+                </p>
+            } }
             {for s in today {
                 <SuggestionRow
                     key={s.id}
@@ -664,7 +779,7 @@ def:pub TradingPage -> JsxElement {
                     onPick={pick}
                 />
             }}
-            {if len(today) == 0 {
+            {if suggestionsState == "ready" and len(today) == 0 {
                 <div className="dim">No suggestions today.</div>
             }}
         </section>
@@ -678,7 +793,7 @@ def:pub TradingPage -> JsxElement {
                     onPick={pick}
                 />
             }}
-            {if len(past) == 0 {
+            {if suggestionsState == "ready" and len(past) == 0 {
                 <div className="dim">None yet.</div>
             }}
         </section>
