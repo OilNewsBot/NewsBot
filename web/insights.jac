@@ -1,32 +1,61 @@
 """Reader context computed from the same edition displayed on the page."""
 
-import from react { useEffect }
+import from react { useEffect, useRef }
 import from .public_data { channel_preview, display_date, sector_name, source_name }
 
 """The panel preference is local to this browser. Small windows start closed."""
 def:pub ReadingDesk(
     label: str, content: JsxElement, insights: JsxElement
 ) -> JsxElement {
-    has opened: bool = False;
+    has opened: bool = False,
+        wide: bool = False;
+    drawer: any = useRef(None);
     useEffect(
         lambda {
             win: any = window;
-            wide = win.matchMedia("(min-width: 1120px)").matches;
-            try {
-                saved = localStorage.getItem("ns-coverage-panel");
-                opened = wide if saved is None else saved == "open";
-            } except Exception {
-                opened = wide;
+            media = win.matchMedia("(min-width: 1120px)");
+            def layout {
+                wide = media.matches;
+                saved = True;
+                try {
+                    saved = localStorage.getItem("ns-coverage-panel") != "closed";
+                } except Exception {}
+                opened = media.matches and saved;
             }
+            layout();
+            media.addEventListener("change", layout);
+            return lambda { media.removeEventListener("change", layout); };
         },
         []
+    );
+    useEffect(
+        lambda {
+            panel = drawer.current;
+            if not wide and panel {
+                if opened and not panel.open {
+                    panel.showModal();
+                } elif not opened and panel.open {
+                    panel.close();
+                }
+            }
+        },
+        [opened, wide]
     );
     def toggle {
         value = not opened;
         opened = value;
-        try {
-            localStorage.setItem("ns-coverage-panel", "open" if value else "closed");
-        } except Exception {}
+        if wide {
+            try {
+                localStorage.setItem(
+                    "ns-coverage-panel", "open" if value else "closed"
+                );
+            } except Exception {}
+        }
+    }
+    def dismiss_link(e: any) {
+        if e.target == drawer.current or e.target.closest("a[href]") {
+            drawer.current.close();
+        }
     }
     <div className="reading-desk">
         <header className="desk-bar">
@@ -58,13 +87,35 @@ def:pub ReadingDesk(
             </button>
         </header>
         <div className="desk-columns">
-            <aside
-                id="reading-insights"
-                aria-label="Reading insights"
-                hidden={not opened}
-            >
-                {insights}
-            </aside>
+            {if wide {
+                <aside
+                    id="reading-insights"
+                    aria-label="Reading insights"
+                    hidden={not opened}
+                >
+                    {insights}
+                </aside>
+            } else {
+                <dialog
+                    ref={drawer}
+                    id="reading-insights"
+                    className="insights-drawer"
+                    aria-label="Reading insights"
+                    onClose={lambda { opened = False; }}
+                    onClick={dismiss_link}
+                >
+                    <div className="insights-drawer-content">
+                        <button
+                            type="button"
+                            className="insights-close"
+                            onClick={lambda { drawer.current.close(); }}
+                        >
+                            Close insights
+                        </button>
+                        {insights}
+                    </div>
+                </dialog>
+            } }
             <div className="desk-reading">{content}</div>
         </div>
     </div>
@@ -194,7 +245,7 @@ def:pub FollowingInsights(data: any, watch: any) -> JsxElement {
                     + str(len(data.channels))
                     + " channels have alerts on."}
             </p>
-            <a href="#followed-channels">Manage alerts →</a>
+            <a href="#channel-alerts">Manage alerts →</a>
         </section>
         {if watch.data {
             <section className="insight-section">

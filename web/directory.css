@@ -95,3 +95,16 @@
     .discover-tabs { gap: 0; }
     .directory .discover-tabs button { padding-inline: 9px; }
 }
+
+.channel-search input {
+    min-width: 0; max-width: 100%; min-height: 36px; padding: 6px 10px;
+    border: 1px solid var(--border); border-radius: var(--round-control);
+    color: var(--ink); background: var(--panel); font: inherit;
+}
+.feed-filters > summary, .followed-controls > summary { cursor: pointer; }
+.feed-filters[open] > summary { margin-bottom: 12px; }
+.directory #channel-alerts, .directory #watches { scroll-margin-top: 16px; }
+.directory-signin {
+    display: inline-flex; margin-block: 8px; padding: 9px 16px; border-radius: var(--round-control);
+    background: var(--accent-fill); color: var(--accent-ink); font-weight: 600;
+}

@@ -1,7 +1,7 @@
 """Shared public feeds and channel discovery."""
 
 import from react { useEffect, useRef }
-import from .auth { AuthPanel, SESSION_EVENT }
+import from .auth { sign_in_url, SESSION_EVENT }
 import from .navigation { Navigation }
 import from .public_data {
     SECTORS,
@@ -23,10 +23,14 @@ import "./directory.css";
 import "./reading_desk.css";
 
 def ChannelRow(
-    channel: any, watch: any, sector: str = "", onClicks: any = None
+    channel: any,
+    watch: any,
+    sector: str = "",
+    onClicks: any = None,
+    restored: bool = False
 ) -> JsxElement {
     has clicks: int = int(channel.clicks or 0);
-    counted: any = useRef(False);
+    counted: any = useRef(restored);
     useEffect(lambda { clicks = int(channel.clicks or 0); }, [channel.clicks]);
     async def opened(e: any) {
         if not e.currentTarget.open or counted.current {
@@ -54,7 +58,12 @@ def ChannelRow(
     }
     headlines = channel_preview(channel, sector);
     <li>
-        <details className="channel-disclosure" onToggle={opened}>
+        <details
+            className="channel-disclosure"
+            open={restored}
+            data-channel={channel.slug}
+            onToggle={opened}
+        >
             <summary>
                 <div className="row-info">
                     <span className="channel-meta">
@@ -99,7 +108,11 @@ def ChannelRow(
 }
 
 def ChannelList(
-    channels: list[any], watch: any, sector: str = "", onClicks: any = None
+    channels: list[any],
+    watch: any,
+    sector: str = "",
+    onClicks: any = None,
+    expanded: any = None
 ) -> JsxElement {
     <ul className="channel-list" aria-label="Channels">
         {for ch in channels {
@@ -109,6 +122,7 @@ def ChannelList(
                 channel={ch}
                 sector={sector}
                 onClicks={onClicks}
+                restored={bool(expanded and str(ch.slug) in expanded)}
             />
         }}
     </ul>
@@ -216,22 +230,80 @@ def Home(channels: list[any], watch: any) -> JsxElement {
     </main>
 }
 
+# Store the directory view on its own browser history entry. A new visit
+# starts fresh, while Back can restore cards after async channel loading.
+def discover_entry -> any {
+    win: any = window;
+    state: any = win.history.state or {};
+    return state.discover or {};
+}
+
 def Discover(channels: list[any], onClicks: any, watch: any) -> JsxElement {
-    has tab: str = "all",
-        sortOrder: str = "name",
-        sector: str = "";
+    restoration: any = useRef(discover_entry());
+    has tab: str = str(restoration.current.tab or "all"),
+        sortOrder: str = str(restoration.current.sortOrder or "name"),
+        sector: str = str(restoration.current.sector or ""),
+        query: str = str(restoration.current.query or "");
+    useEffect(
+        lambda {
+            win: any = window;
+            frame = win.requestAnimationFrame(
+                lambda { if restoration.current.scrollY {
+                    win.scrollTo(0, restoration.current.scrollY);
+                }}
+            );
+            return lambda { win.cancelAnimationFrame(frame); };
+        },
+        []
+    );
+    useEffect(
+        lambda {
+            win: any = window;
+            doc: any = document;
+            save_view = lambda {
+                expanded = [
+                    str(row.dataset.channel)
+                    for row in doc.querySelectorAll(".channel-disclosure[open]")
+                ];
+                state: any = win.history.state or {};
+                win.history.replaceState(
+                    {
+                        ** state,
+                        "discover": {
+                            "tab": tab,
+                            "sortOrder": sortOrder,
+                            "sector": sector,
+                            "query": query,
+                            "expanded": expanded,
+                            "scrollY": win.scrollY
+                        }
+                    },
+                    ""
+                );
+            };
+            win.addEventListener("pagehide", save_view);
+            return lambda { win.removeEventListener("pagehide", save_view); };
+        },
+        [tab, sortOrder, sector, query]
+    );
+    needle = query.strip().lower();
     # New uses publication time. Trending is an explicit view of recorded clicks.
     order = sortOrder if tab == "all" else ("new" if tab == "new" else "clicks");
     rows = [
         c
         for c in (by_sector(channels, sector) if sector else channels)
-        if tab != "trending" or c.clicks > 0
+        if (tab != "trending" or c.clicks > 0) and needle in str(c.name).lower()
     ];
     content = <main className="directory">
         <header className="directory-heading">
             <h1>Discover</h1>
-            <p>
-                {count_label(len(channels), "published channel", "published channels")}
+            <p role="status">
+                {count_label(len(rows), "channel", "channels")
+                    + (
+                        " of " + str(len(channels)) + " published"
+                            if sector or needle or tab == "trending"
+                            else " published"
+                    )}
             </p>
         </header>
         <div className="discover-controls">
@@ -250,6 +322,15 @@ def Discover(channels: list[any], onClicks: any, watch: any) -> JsxElement {
                     </button>
                 }}
             </div>
+            <label className="discover-sort channel-search">
+                Search channels
+                <input
+                    type="search"
+                    placeholder="Channel name"
+                    value={query}
+                    onChange={lambda (e: any) { query = e.target.value; }}
+                />
+            </label>
             <label className="discover-sort">
                 Category
                 <select
@@ -289,12 +370,13 @@ def Discover(channels: list[any], onClicks: any, watch: any) -> JsxElement {
                 channels={order_channels(rows, order)}
                 sector={sector}
                 onClicks={onClicks}
+                expanded={restoration.current.expanded}
             />
         } else {
             <p className="public-empty">
-                {"Trending channels will appear as readers open them."
-                    if tab == "trending"
-                    else "No channels match this category."}
+                {"No channels match your search or filters."
+                    if sector or needle
+                    else "Trending channels will appear as readers open them."}
             </p>
         } }
     </main>;
@@ -308,6 +390,48 @@ def Discover(channels: list[any], onClicks: any, watch: any) -> JsxElement {
 def Following(data: any, reload: any, watch: any) -> JsxElement {
     has saving: bool = False,
         issue: str = "";
+    anchorsReady = bool(watch.data);
+    useEffect(
+        lambda {
+            win: any = window;
+            doc: any = document;
+            def reveal {
+                fragment = str(win.location.hash);
+                if fragment == "#watches" {
+                    target = doc.querySelector("#watches .topic-directory");
+                } elif fragment in ["#channel-alerts", "#followed-channels"] {
+                    target = doc.querySelector("#channel-alerts");
+                } else {
+                    return;
+                }
+                if target {
+                    target.open = True;
+                    summary = target.querySelector("summary");
+                    summary.focus({"preventScroll": True});
+                    summary.scrollIntoView({"block": "start"});
+                }
+            }
+            frame = win.requestAnimationFrame(reveal);
+            win.addEventListener("hashchange", reveal);
+            # Re-open a disclosure when the reader follows the same fragment again.
+            def same_fragment(e: any) {
+                link = e.target.closest("a");
+                if link
+                    and link.hash
+                    and link.hash == win.location.hash
+                    and link.pathname == win.location.pathname {
+                    reveal();
+                }
+            }
+            doc.addEventListener("click", same_fragment);
+            return lambda {
+                win.cancelAnimationFrame(frame);
+                win.removeEventListener("hashchange", reveal);
+                doc.removeEventListener("click", same_fragment);
+            };
+        },
+        [anchorsReady]
+    );
     names: dict[str, str] = {str(c.slug): str(c.name) for c in data.channels};
     categories = data.categories or [];
     async def save(path: str, body: any) {
@@ -329,7 +453,15 @@ def Following(data: any, reload: any, watch: any) -> JsxElement {
             <h1>Following</h1>
             <p>Your followed channels and private sources in one feed.</p>
         </header>
-        <section className="coverage-panel" aria-label="Feed preferences">
+        <details className="coverage-panel feed-filters">
+            <summary>
+                {"Feed categories · "
+                    + (
+                        ", ".join([sector_name(c) for c in categories])
+                            if len(categories)
+                            else "All categories"
+                    )}
+            </summary>
             <SectorPicker
                 label="Show updates and alerts for"
                 allowAll={True}
@@ -343,49 +475,17 @@ def Following(data: any, reload: any, watch: any) -> JsxElement {
             {if issue {
                 <p role="alert">{issue}</p>
             }}
-        </section>
-        <details className="followed-controls">
-            <summary>
-                {count_label(
-                    len(data.channels), "followed channel", "followed channels"
-                )
-                    + " · Manage alerts"}
-            </summary>
-            <div id="followed-channels" tabIndex={-1}>
-                {for ch in data.channels {
-                    <div className="followed-channel" key={ch.slug}>
-                        <div>
-                            <a href={"/channels/" + str(ch.slug)}>{ch.name}</a>
-                            <SectorTags tags={ch.tags or [ch.category]}/>
-                        </div>
-                        <button
-                            type="button"
-                            aria-pressed={bool(ch.notifications_enabled)}
-                            aria-label={"Alerts for " + str(ch.name)}
-                            disabled={saving}
-                            onClick={lambda { save(
-                                "/api/channels/" + str(ch.slug) + "/notifications",
-                                {"enabled": not ch.notifications_enabled}
-                            ); }}
-                        >
-                            {"Alerts on" if ch.notifications_enabled else "Alerts off"}
-                        </button>
-                    </div>
-                }}
-                <div className="home-links">
-                    <a href="/discover">Find channels →</a>
-                    <a href="/sources">Manage private sources →</a>
-                </div>
-            </div>
         </details>
-        <WatchManager watch={watch}/>
         <section className="news-section">
             <h2>Latest updates</h2>
             {if not len(data.items) {
                 <p className="directory-muted">
                     {"No updates match these categories yet."
                         if len(categories)
-                        else "No updates yet. Explore Discover or add a private source in My Sources."}
+                        else "No updates yet."}{" "}
+                    <a href="/discover">Discover channels</a>
+                    {" · "}
+                    <a href="/sources">Manage private sources</a>
                 </p>
             }}
             {for item in data.items {
@@ -422,7 +522,7 @@ def Following(data: any, reload: any, watch: any) -> JsxElement {
                         <a
                             href={"/channels/"
                                 + str(item.channel_slug)
-                                + "#story-"
+                                + "#discussion-"
                                 + str(item.id)}
                         >
                             Open discussion →
@@ -431,6 +531,41 @@ def Following(data: any, reload: any, watch: any) -> JsxElement {
                 </div>
             }}
         </section>
+        <details id="channel-alerts" className="followed-controls">
+            <summary>
+                {count_label(
+                    len(data.channels), "followed channel", "followed channels"
+                )
+                    + " · Manage alerts"}
+            </summary>
+            <div id="followed-channels" tabIndex={-1}>
+                {for ch in data.channels {
+                    <div className="followed-channel" key={ch.slug}>
+                        <div>
+                            <a href={"/channels/" + str(ch.slug)}>{ch.name}</a>
+                            <SectorTags tags={ch.tags or [ch.category]}/>
+                        </div>
+                        <button
+                            type="button"
+                            aria-pressed={bool(ch.notifications_enabled)}
+                            aria-label={"Alerts for " + str(ch.name)}
+                            disabled={saving}
+                            onClick={lambda { save(
+                                "/api/channels/" + str(ch.slug) + "/notifications",
+                                {"enabled": not ch.notifications_enabled}
+                            ); }}
+                        >
+                            {"Alerts on" if ch.notifications_enabled else "Alerts off"}
+                        </button>
+                    </div>
+                }}
+                <div className="home-links">
+                    <a href="/discover">Find channels →</a>
+                    <a href="/sources">Manage private sources →</a>
+                </div>
+            </div>
+        </details>
+        <WatchManager watch={watch}/>
     </main>
 }
 
@@ -523,7 +658,9 @@ def Browse(path: str, watch: any) -> JsxElement {
             <main className="directory directory-reading">
                 <h1>Following</h1>
                 <p>Sign in to see updates from the channels you follow.</p>
-                <AuthPanel/>
+                <a className="directory-signin" href={sign_in_url()}>
+                    Log in or register
+                </a>
             </main>;
     }
     if error {

@@ -36,9 +36,20 @@
     #reading-insights:not([hidden]) { grid-column: 2; grid-row: 1; border-left: 1px solid var(--border); padding-left: clamp(16px, 2.3vw, 32px); }
     .desk-reading { grid-column: 1; grid-row: 1; }
 }
-@media (max-width: 1119px) {
-    #reading-insights:not([hidden]) { padding: 18px; border: 1px solid var(--border); border-radius: var(--round-card); background: var(--panel); }
+.insights-drawer {
+    position: fixed; inset: auto 0 0 auto; margin: 0; padding: 0;
+    width: min(100%, 420px); max-width: 100%; max-height: min(85dvh, 760px);
+    border: 1px solid var(--border); border-radius: var(--round-card) var(--round-card) 0 0;
+    background: var(--panel); color: var(--text); overflow-y: auto; overscroll-behavior: contain;
 }
+.insights-drawer::backdrop { background: rgb(6 13 22 / 65%); }
+.insights-drawer-content { padding: 18px 20px max(22px, env(safe-area-inset-bottom)); }
+.insights-close {
+    display: block; margin: 0 0 12px auto; padding: 7px 11px; border: 1px solid var(--border);
+    background: transparent; color: var(--text); font: inherit; font-size: 13px;
+    border-radius: var(--round-control); cursor: pointer;
+}
+body:has(.insights-drawer[open]) { overflow: hidden; }
 .insights-body { overflow-wrap: anywhere; font-size: 13px; line-height: 1.5; }
 .insights-body h2, .insights-body h3 { margin: 0; font-weight: 600; letter-spacing: -.025em; }
 .insights-body h2 { font-size: 19px; }

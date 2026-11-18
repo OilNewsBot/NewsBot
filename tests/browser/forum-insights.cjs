@@ -37,7 +37,7 @@ async function check() {
         const panel = page.getByRole("complementary", {name: "Reading insights"});
         const toggle = page.getByRole("button", {name: "Insights", exact: true});
         await panel.waitFor();
-        assert.equal(await page.title(), "NewsDrop");
+        assert.equal(await page.title(), "Discover · NewsDrop");
         assert.equal(await page.getByRole("link", {name: "NewsDrop home"}).locator("img").getAttribute("src"),
             "/brand/drop.svg");
         assert.deepEqual(await panel.locator("dd").allTextContents(), ["2", "4"]);
@@ -53,6 +53,34 @@ async function check() {
         assert.deepEqual(await panel.locator("dd").allTextContents(), ["0", "0"]);
         assert.equal(await panel.locator(".source-mix li").count(), 0);
 
+        assert.match(await page.locator(".directory-heading [role=status]").innerText(), /0 channels of 2/);
+
+        await page.getByRole("button", {name: "All channels", exact: true}).click();
+        const search = page.getByRole("searchbox", {name: "Search channels"});
+        const sort = page.getByLabel("Sort by", {exact: true});
+        const firstCard = page.locator('.channel-disclosure[data-channel="desk"]');
+        await search.fill("FIRST");
+        await sort.selectOption("category");
+        assert.equal(await page.locator(".channel-disclosure").count(), 1);
+        assert.match(await page.locator(".directory-heading [role=status]").innerText(), /1 channel of 2/);
+        await firstCard.locator(":scope > summary").click();
+        await firstCard.getByRole("link", {name: "Open channel"}).click();
+        await page.waitForURL("**/channels/desk");
+        await page.goBack();
+        await firstCard.locator(".channel-actions a").waitFor();
+        assert.equal(await search.inputValue(), "FIRST");
+        assert.equal(await sort.inputValue(), "category");
+        assert.equal(await page.getByLabel("Category", {exact: true}).inputValue(), "tech");
+
+        await page.getByRole("button", {name: "New channels", exact: true}).click();
+        await firstCard.getByRole("link", {name: "Open channel"}).click();
+        await page.goBack();
+        await firstCard.locator(".channel-actions a").waitFor();
+        assert.equal(await page.getByRole("button", {name: "New channels"}).getAttribute("aria-pressed"), "true");
+        await search.fill("unmatched channel");
+        assert.equal(await page.locator(".channel-disclosure").count(), 0);
+        assert.equal(await page.getByText("No channels match your search or filters.").isVisible(), true);
+
         await toggle.focus();
         await page.keyboard.press("Enter");
         assert.equal(await toggle.getAttribute("aria-expanded"), "false");
@@ -64,9 +92,21 @@ async function check() {
         await page.reload();
         await toggle.waitFor();
         assert.equal(await toggle.getAttribute("aria-expanded"), "false");
+        const heading = page.getByRole("heading", {name: "Discover", exact: true});
+        const headingTop = () => heading.evaluate(node => node.getBoundingClientRect().top + scrollY);
+        const before = await headingTop();
         await toggle.click();
-        await panel.waitFor();
+        const drawer = page.getByRole("dialog", {name: "Reading insights"});
+        await drawer.waitFor();
+        assert.equal(await headingTop(), before);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        await page.keyboard.press("Escape");
+        await drawer.waitFor({state: "hidden"});
+        assert.equal(await toggle.getAttribute("aria-expanded"), "false");
+        assert.equal(await toggle.evaluate(node => node === document.activeElement), true);
+        await toggle.click();
+        await drawer.getByRole("button", {name: "Close insights"}).click();
+        await drawer.waitFor({state: "hidden"});
         assert.deepEqual(errors, []);
     } finally {
         await browser.close();
