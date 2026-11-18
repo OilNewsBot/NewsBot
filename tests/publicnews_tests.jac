@@ -22,3 +22,8 @@ test "story evidence, topic follows and briefing checkpoints persist" {
     cases: any = importlib.import_module("tests.briefing_cases");
     asyncio.run(cases.briefing_regressions());
 }
+
+test "public preview classification follows channel tags, report edits and reader filters" {
+    cases: any = importlib.import_module("tests.publicnews_cases");
+    asyncio.run(cases.preview_classification_regressions());
+}
