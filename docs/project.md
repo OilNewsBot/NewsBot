@@ -38,7 +38,7 @@ flowchart LR
 
 The public catalog separates the feed or publisher (`news_sources`), the channel a reader subscribes to (`news_channels`), and the original report (`news_items`). Channels pointing to the same RSS URL can share collection. A timeline has its own identity in `news_stories`. Membership in `news_story_items` and the dated evidence in `news_developments` let a follow survive a headline correction.
 
-Private items and developments retain the account owner in the `personal_*` tables. When Home reads a briefing, it combines eligible public developments with those belonging to that account. Displaying the snapshot acknowledges both sets of changes in one SQLite transaction. Visit positions belong to the account, so another signed-in device picks up from the saved position. [API contracts](contracts.md)
+Private items and developments retain the account owner in the `personal_*` tables. When Home reads a briefing, it combines eligible public developments with those belonging to that account. When the reader marks the briefing as read, the service acknowledges both sets of changes in one SQLite transaction. Visit positions belong to the account, so another signed-in device picks up from the saved position. [API contracts](contracts.md)
 
 ## Components
 

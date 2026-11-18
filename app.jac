@@ -197,7 +197,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
                 )
             );
         }
-        log.info("newsstream up at http://%s:%d", settings.host, settings.port);
+        log.info("NewsDrop up at http://%s:%d", settings.host, settings.port);
         try {
             yield ;
         } finally {

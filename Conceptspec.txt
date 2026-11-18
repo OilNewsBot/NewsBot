@@ -1,7 +1,7 @@
-Newsstream product concept
+NewsDrop product concept
 
 A reader following a market wants to know which developments deserve a closer
-look. Newsstream brings publisher reporting, community discussion and private
+look. NewsDrop brings publisher reporting, community discussion and private
 sources into one workspace. A channel identifies who to read, a topic watch
 identifies subjects of interest, and a story follow tracks a developing event.
 

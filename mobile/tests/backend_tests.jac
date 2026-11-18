@@ -67,7 +67,7 @@ test "mobile_pipeline_delivery" {
             await service.send_pending(client);
             assert len(client.calls) == 1;
             assert client.calls[0]["data"]["notification_id"] == nid;
-            assert client.calls[0]["title"] == "NewsBot";
+            assert client.calls[0]["title"] == "NewsDrop";
             assert client.calls[0]["channelId"] == "newsbot";
             await service.send_pending(client);
             # Even a new worker / DB connection uses the persisted claim.
@@ -81,7 +81,7 @@ test "mobile_pipeline_delivery" {
             await publish(repo, bus, "UNFILTERED");
             await service.send_pending(client);
             assert client.calls[1]["body"] == "Details confirmed";
-            assert client.calls[2]["title"] == "NewsBot · Unfiltered";
+            assert client.calls[2]["title"] == "NewsDrop · Unfiltered";
         }
     }
     asyncio.run(run());

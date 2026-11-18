@@ -1,6 +1,6 @@
-# Newsstream service contracts
+# NewsDrop service contracts
 
-Newsstream serves the web client and JSON APIs from the same origin. The public catalog, account-owned sources and shared market monitor have separate storage identities and notification cursors. A channel slug identifies a published channel. An item ID identifies one source record. A story ID identifies a timeline that may contain several public source records and revisions.
+NewsDrop serves the web client and JSON APIs from the same origin. The public catalog, account-owned sources and shared market monitor have separate storage identities and notification cursors. A channel slug identifies a published channel. An item ID identifies one source record. A story ID identifies a timeline that may contain several public source records and revisions.
 
 ## Browser and account
 

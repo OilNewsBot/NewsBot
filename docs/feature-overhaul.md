@@ -1,12 +1,12 @@
 # Read and publish with NewsDrop
 
-You can browse public channels and read discussions without signing in. Open **My Sources** to create an account or sign in. Your subscriptions, watches and private sources are available on other devices that use the same NewsDrop server.
+You can browse public channels and read discussions without signing in. Use the sign-in link in the navigation to sign in or create an account. If you start from a channel or discussion, the app takes you back there afterward. Your subscriptions, watches and private sources are available on other devices that use the same NewsDrop server.
 
 ## Find a channel
 
 **Home** lists the eight market sectors and a separate link to General News. Choose a sector to see channels covering it. Reader recommendations also appear on Home when channels have received votes. [Default channels and publisher links](default-sources.md)
 
-In **Discover**, choose a category or leave **All categories** selected. **All channels** sorts by name, category or clicks. **New channels** shows the most recently published channels first. **Trending** ranks channels with at least one click by their total recorded clicks.
+In **Discover**, search by channel name, choose a category, or combine the two. The results count reflects the current view. Returning from a channel restores the view you opened it from. **All channels** sorts by name, category or clicks. **New channels** shows the most recently published channels first. **Trending** ranks channels with at least one click by their total recorded clicks.
 
 Expand a channel to see its publisher, coverage tags, click count, recommendations and up to three recent items. Opening the preview records a click. Continue to **Open channel** for the full discussion, or use **Copy link** to share its address. On the channel page, **Follow channel** adds it to your feed. **Recommend** adds one vote for your account and can be toggled off.
 
@@ -14,7 +14,7 @@ Expand a channel to see its publisher, coverage tags, click count, recommendatio
 
 Select **Insights** on Home, Discover, or a sector page to see the number of channels and distinct reports in the current channel previews. The source mix shows how many of those channels use RSS, X, Telegram, or community posts. The three latest dated story timelines open the underlying reporting. Changing a Discover tab or sector updates the panel.
 
-On **Following**, Insights shows your followed channels, the updates in your current feed, channel alert settings, and saved story and topic counts. The panel opens at the side on wide screens and above the feed on smaller screens. NewsDrop remembers your choice in this browser.
+On **Following**, Insights shows your followed channels, the updates in your current feed, channel alert settings, and saved story and topic counts. The panel opens beside the feed on wide screens. On a smaller screen, Insights opens in a separate dialog that you can dismiss to resume reading.
 
 ## Set up your feed and alerts
 
@@ -33,7 +33,7 @@ On an article, open **Story timeline** for dated reports, revisions and original
 
 ## Read your Home briefing
 
-Your first signed-in visit shows recent reports from your sources and watches. If you have none, Home draws from the public directory. Each briefing card explains why it appeared and links to the evidence. Later visits show developments received since your last displayed briefing, including new reporting and material revisions. Visible briefings save the visit on your account across devices. A background tab waits until you view it.
+Your first signed-in visit shows recent reports from your sources and watches. If you have none, Home draws from the public directory. Each briefing card explains why it appeared and links to the evidence. Review the edition at your own pace. It stays available when you leave Home or refresh. Mark the briefing as read when you finish. Subsequent briefings cover newer developments, and you can reopen the previous edition.
 
 Following a topic or story adds matches to Home. Channel alert settings control notifications. Publisher text is available when AI is off or a summary is pending. When NewsDrop generates a summary, the article displays **AI summary**, its generation date and the available source link.
 

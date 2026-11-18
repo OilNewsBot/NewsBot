@@ -1,4 +1,4 @@
-"""Expo push fan-out of persisted NewsBot notifications. No second news pipeline.
+"""Expo push fan-out of persisted NewsDrop notifications. No second news pipeline.
 
 Claims are durable before HTTP submission. Ambiguous submissions are never retried:
 Expo has no idempotency key, so retrying a timeout could show duplicate phone alerts.
@@ -25,10 +25,10 @@ glob log: logging.Logger = logging.getLogger("newsstream.mobile"),
 def push_message(row: Row) -> Row {
     card = json.loads(row["payload"]);
     kind = str(card.get("kind", "NEW_EVENT"));
-    body = str(card.get("what_changed") or card.get("one_line") or "NewsBot update");
+    body = str(card.get("what_changed") or card.get("one_line") or "NewsDrop update");
     return {
         "to": row["token"],
-        "title": "NewsBot"
+        "title": "NewsDrop"
             + (
                 " · Update"
                     if kind == "UPDATE"

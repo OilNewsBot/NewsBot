@@ -75,7 +75,7 @@ A creator supplies the channel name, description, source type and sector tags. P
 
 ## 15. Visit tracking
 
-Home saves its displayed position once the briefing becomes visible. Older tabs cannot move that position backward. A return visit with no matching developments shows a caught-up state. Public and private changes have separate checkpoints, so an update from an owner-only source can appear alongside a public story while retaining its access controls.
+Home saves the visit position when the reader explicitly marks the briefing as read. Older tabs cannot move that position backward. A return visit with no matching developments shows a caught-up state with access to the previous edition. Public and private changes have separate checkpoints, so an update from an owner-only source can appear alongside a public story while retaining its access controls.
 
 ## 16. Market monitoring and trading
 

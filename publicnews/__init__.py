@@ -1,1 +1,1 @@
-"""Shared public channel catalog for Newsstream."""
+"""Shared public channel catalog for NewsDrop."""

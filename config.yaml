@@ -1,4 +1,4 @@
-# Newsstream user-editable configuration. Secrets live in .env, never here.
+# NewsDrop user-editable configuration. Secrets live in .env, never here.
 
 markets:
   crude_oil:

@@ -2127,7 +2127,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 
 [[package]]
-name = "newsbot-desktop"
+name = "newsdrop-desktop"
 version = "0.1.0"
 dependencies = [
  "ctrlc",

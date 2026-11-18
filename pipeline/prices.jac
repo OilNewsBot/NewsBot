@@ -34,7 +34,7 @@ obj PriceFeed {
         if self.http is None {
             # Yahoo rejects requests without a browser-like user agent.
             self.http = httpx.AsyncClient(
-                timeout=10, headers={"User-Agent": "Mozilla/5.0 (newsstream)"}
+                timeout=10, headers={"User-Agent": "Mozilla/5.0 (NewsDrop)"}
             );
         }
         return self.http;

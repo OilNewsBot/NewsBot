@@ -25,7 +25,7 @@ export const subscription = new Subscription({
     // Android 13's permission prompt requires a notification channel first.
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('newsbot', {
-        name: 'NewsBot', importance: Notifications.AndroidImportance.HIGH,
+        name: 'NewsDrop', importance: Notifications.AndroidImportance.HIGH,
       });
     }
     let permission = await Notifications.getPermissionsAsync();
@@ -53,7 +53,7 @@ export const subscription = new Subscription({
       base === 'http://10.0.2.2:8000';
 
     if (!base?.startsWith('https://') && !localDevBackend) {
-      throw new Error('This build needs an HTTPS NewsBot API URL. See mobile/README.md.');
+      throw new Error('This build needs an HTTPS NewsDrop API URL. See mobile/README.md.');
     }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
@@ -64,7 +64,7 @@ export const subscription = new Subscription({
         body: JSON.stringify({ enabled: value.enabled, ...(value.enabled ? { token: value.token } : {}) }),
         signal: controller.signal,
       });
-      if (!response.ok) throw new Error(`NewsBot could not save your setting (HTTP ${response.status}).`);
+      if (!response.ok) throw new Error(`NewsDrop could not save your setting (HTTP ${response.status}).`);
     } finally { clearTimeout(timer); }
   },
 }, () => listeners.forEach(listener => listener()));

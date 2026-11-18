@@ -1,7 +1,7 @@
 [package]
-name = "newsbot-desktop"
+name = "newsdrop-desktop"
 version = "0.1.0"
-description = "Desktop window for the NewsBot / newsstream service"
+description = "Desktop window for the NewsDrop service"
 edition = "2021"
 
 [build-dependencies]

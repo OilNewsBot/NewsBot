@@ -19,7 +19,7 @@ python scripts/bootstrap.py
 wsl -d Ubuntu sh -c 'PATH="$HOME/.local/bin:$PATH" jac run'
 ```
 
-Open [NewsDrop on localhost](http://127.0.0.1:8000). Open **Discover** to browse immediately, or open **My Sources** to register and sign in. Keep the server terminal open. The Tauri desktop window uses the same web interface and can attach to an existing local service. [Desktop setup](../desktop/README.md)
+Open [NewsDrop on localhost](http://127.0.0.1:8000). Open **Discover** to browse immediately, or use the sign-in link in the navigation to register or sign in. Keep the server terminal open. The Tauri desktop window uses the same web interface and can attach to an existing local service. [Desktop setup](../desktop/README.md)
 
 ## Try the bundled edition offline
 

@@ -8,7 +8,7 @@ The directory starts with **42 channels** across eight sectors and General News.
 
 1. Open **Discover**. Filter by sector, then expand a channel to see its recent reports, source and click count. Open its page to follow it.
 2. In **Following**, open **Browse and combine topics**. Choose **Semiconductor equipment** and **Export restrictions** to follow reports that mention both. On an individual report, **Follow story** tracks future developments on its timeline.
-3. Return to **Home**. Your first briefing offers recent coverage. Subsequent visits highlight new reports and material revisions, with links to the original sources.
+3. Return to **Home**. Your first briefing offers recent coverage. Mark an edition as read when you finish. The next briefing highlights newer reports and material revisions, with links to the original sources.
 4. Open **My Sources** to publish a community, RSS, X or Telegram channel. Private connections have their own feed and controls. You choose which eligible private items to publish.
 
 ## Run locally

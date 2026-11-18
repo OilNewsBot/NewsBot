@@ -76,7 +76,7 @@ export class Subscription {
           await this.persist({ ...this.value!, enabled: false, pending: true });
           await this.synchronize();
         }
-        throw new Error('Allow NewsBot notifications in your phone’s Settings, then enable this switch.');
+        throw new Error('Allow NewsDrop notifications in your phone’s Settings, then enable this switch.');
       }
       // Persist intent before network work; a lost response is reconciled on restart.
       await this.persist({ ...this.value!, enabled, pending: true });

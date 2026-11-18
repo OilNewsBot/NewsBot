@@ -1,19 +1,19 @@
-# Newsstream mobile alerts
+# NewsDrop mobile alerts
 
-This iOS and Android companion delivers **shared market-event notifications** through Expo. The installed app is named **NewsBot**. Its single switch controls push delivery to that installation. For account-specific channels, private sources, story watches and the personal briefing, open Newsstream in a browser or the desktop app.
+This iOS and Android companion delivers **shared market-event notifications** through Expo. The installed app is named **NewsDrop**. Its single switch controls push delivery to that installation. For account-specific channels, private sources, story watches and the personal briefing, open NewsDrop in a browser or the desktop app.
 
 Notifications start off. The app stores the preference and a random installation secret in Expo SecureStore. Enable the switch and grant notification permission to register the phone with the backend. A pending change retries while the app is active or when it resumes. If a phone goes offline before disabling succeeds, system notification settings can silence delivery immediately.
 
 ## Backend setup
 
-Run the Newsstream backend with persistent SQLite storage and outbound HTTPS access to `exp.host`. Set these variables in the server environment or its ignored `.env`, then run `jac run` from the repository root.
+Run the NewsDrop backend with persistent SQLite storage and outbound HTTPS access to `exp.host`. Set these variables in the server environment or its ignored `.env`, then run `jac run` from the repository root.
 
 ```dotenv
 NEWSBOT_MOBILE_PUSH=1
 EXPO_ACCESS_TOKEN=
 ```
 
-Set the server-only Expo access token when using enhanced push security. The backend exposes `PUT /mobile/subscription` when mobile push is enabled. Configure a reachable HTTPS address for the phone. If the feed is private, restrict enrollment through your access gateway or VPN. Registration grants access to shared alerts. Newsstream account sign-in gates personal news separately.
+Set the server-only Expo access token when using enhanced push security. The backend exposes `PUT /mobile/subscription` when mobile push is enabled. Configure a reachable HTTPS address for the phone. If the feed is private, restrict enrollment through your access gateway or VPN. Registration grants access to shared alerts. NewsDrop account sign-in gates personal news separately.
 
 The app sends `{"enabled":true,"token":"ExpoPushToken[...]"}` to enable delivery or `{"enabled":false}` to disable it. The bearer credential is a random installation secret. The server stores its hash. Re-registering the same installation handles a rotated Expo token.
 
@@ -32,7 +32,7 @@ On Windows, `Copy-Item .env.example .env` creates the local config. Set the same
 
 | Variable | Value |
 | --- | --- |
-| `EXPO_PUBLIC_API_URL` | HTTPS base URL of the running Newsstream backend, reachable from the phone |
+| `EXPO_PUBLIC_API_URL` | HTTPS base URL of the running NewsDrop backend, reachable from the phone |
 | `EXPO_PUBLIC_EAS_PROJECT_ID` | EAS project UUID |
 | `NEWSBOT_IOS_BUNDLE_ID` | Your Apple bundle identifier |
 | `NEWSBOT_ANDROID_PACKAGE` | Your Android application ID |

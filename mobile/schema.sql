@@ -1,4 +1,4 @@
--- Additive tables: safe on existing NewsBot databases. No feed schema changes.
+-- Additive tables: safe on existing NewsDrop databases. No feed schema changes.
 CREATE TABLE IF NOT EXISTS mobile_subscriptions (
     device_id TEXT PRIMARY KEY, -- SHA-256 of the installation's random bearer secret
     token TEXT UNIQUE,

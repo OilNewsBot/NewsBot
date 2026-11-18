@@ -1,6 +1,6 @@
 //! NewsDrop desktop window.
 //!
-//! Starts the existing newsstream service (`jac run` in the repository root),
+//! Starts the existing NewsDrop service (`jac run` in the repository root),
 //! waits for it to listen, and shows its page in a native window. Quitting the
 //! window stops the service it started. If a service is already listening on
 //! the configured port, the window reuses it and leaves it running on quit.
