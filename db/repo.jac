@@ -309,6 +309,22 @@ obj Repo {
         return out;
     }
 
+    async def notification_head -> int {
+        row = await self._one("SELECT COALESCE(MAX(id),0) AS head FROM notifications");
+        return int(row["head"]) if row else 0;
+    }
+
+    async def unfiltered_feed(limit: int = 100) -> list[Row] {
+        rows = await self._all(
+            "SELECT id, payload FROM notifications WHERE kind='UNFILTERED' ORDER BY id DESC LIMIT ?",
+            (limit, )
+        );
+        return [
+            {** json.loads(row["payload"]), "notification_id": row["id"]}
+            for row in rows
+        ];
+    }
+
     # -- trading ----------------------------------------------------------------
 
     async def get_portfolio -> Row | None {
