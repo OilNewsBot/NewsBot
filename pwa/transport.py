@@ -116,6 +116,8 @@ class WebPush:
                 "TTL": "300",
             },
         )
+        if response.status_code == 429:
+            response.raise_for_status()
         return response.status_code
 
 

@@ -20,10 +20,14 @@ glob API: str = "/api/me/web-push",
 obj MockPush {
     has public_key: str = PUBLIC_KEY,
         calls: list[Row] = [],
-        gone: str = "";
+        gone: str = "",
+        limited: bool = False;
 
     async def send(_client: any, subscription: Row, ticket: str) -> int {
         self.calls.append({"endpoint": subscription["endpoint"], "ticket": ticket});
+        if self.limited {
+            return 429;
+        }
         return 410 if self.gone == subscription["endpoint"] else 201;
     }
 }
@@ -181,6 +185,34 @@ test "web_push_routes_personal_fixture_only_to_eligible_active_devices" {
                 assert (await bob.get("/api/me/notifications")).json()["notifications"]
                     == [];
                 assert len((await bob.get("/api/me/feed")).json()["items"]) == 1;
+                oldest = alerts[0]["id"];
+                # A notification may outlive the latest hundred news items.
+                for i in range(101) {
+                    await store.db.execute(
+                        "INSERT INTO personal_items(user_id,source_id,external_id,title,text,url,posted_at,received_at) VALUES (?,?,?,'fixture','','','2099-01-01','2099-01-01')",
+                        (a_uid, a_src["id"], f"recent-{i}")
+                    );
+                }
+                await store.db.commit();
+                latest = (await alice.get("/api/me/feed")).json()["items"];
+                assert len(latest) == 100
+                    and oldest not in [item["id"] for item in latest];
+                linked = (await alice.get(f"/api/me/feed?linked_id={oldest}")).json()[
+                    "items"
+                ];
+                assert len(linked) == 101 and linked[-1]["id"] == oldest;
+                other_feed = (await bob.get(f"/api/me/feed?linked_id={oldest}")).json()[
+                    "items"
+                ];
+                assert oldest not in [item["id"] for item in other_feed];
+                mock.limited = True;
+                await service.send_pending(None);
+                assert len(mock.calls) == 2;
+                await service.send_pending(None);
+                assert len(mock.calls) == 2;  # both devices are in backoff
+                mock.limited = False;
+                mock.calls.clear();
+                await service.db.execute("UPDATE web_push_deliveries SET retry_at=0");
                 await asyncio.gather(
                     service.send_pending(None), service.send_pending(None)
                 );

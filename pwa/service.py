@@ -3,6 +3,8 @@
 import asyncio
 import logging
 import secrets
+import time
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 import aiosqlite
@@ -43,6 +45,10 @@ class PushService:
         await self.db.execute("PRAGMA busy_timeout = 5000")
         await self.db.execute("PRAGMA foreign_keys = ON")
         await self.db.executescript(SCHEMA)
+        # Earlier installations have only the original permanent claim fields.
+        fields = await self.db.execute_fetchall("PRAGMA table_info(web_push_deliveries)")
+        if "retry_at" not in {field["name"] for field in fields}:
+            await self.db.execute("ALTER TABLE web_push_deliveries ADD COLUMN retry_at INTEGER")
 
     async def close(self):
         await self.db.close()
@@ -104,7 +110,8 @@ class PushService:
         rows = await self.db.execute_fetchall(
             f"""SELECT d.*, n.id AS notification_id {self.eligible} AND {FRESH}
                 AND NOT EXISTS (SELECT 1 FROM web_push_deliveries claim
-                  WHERE claim.subscription_id = d.id AND claim.notification_id = n.id)
+                  WHERE claim.subscription_id = d.id AND claim.notification_id = n.id
+                  AND (claim.retry_at IS NULL OR claim.retry_at > unixepoch()))
                 ORDER BY n.id, d.id LIMIT 64""",
             (self.public_key,),
         )
@@ -116,21 +123,43 @@ class PushService:
         # Recheck preferences and session atomically before claiming. Commit before I/O.
         cursor = await self.db.execute(
             f"""INSERT OR IGNORE INTO web_push_deliveries (subscription_id, notification_id, ticket)
-                SELECT d.id, n.id, ? {self.eligible} AND {FRESH} AND d.id = ? AND n.id = ?""",
+                SELECT d.id, n.id, ? {self.eligible} AND {FRESH} AND d.id = ? AND n.id = ?
+                ON CONFLICT(subscription_id, notification_id) DO UPDATE SET
+                  retry_at = NULL, ticket = excluded.ticket
+                WHERE web_push_deliveries.retry_at <= unixepoch()""",
             (ticket, self.public_key, row["id"], row["notification_id"]),
         )
         if cursor.rowcount != 1:
             return
-        # No retries after a submission attempt: a lost response may already have
-        # produced an OS notification. Requests in flight carry no private content.
+        # A definitive rate-limit refusal is safe to retry. Ambiguous submissions
+        # keep their permanent claim, including on process shutdown.
+        retry_after = None
         try:
             status = await self.transport.send(client, row, ticket)
-            if status in (404, 410):
-                await self.db.execute("DELETE FROM web_push_subscriptions WHERE id = ?", (row["id"],))
-            elif not 200 <= status < 300:
-                LOG.warning("browser push service rejected notification (%d)", status)
+        except httpx.HTTPStatusError as error:
+            status = error.response.status_code
+            retry_after = error.response.headers.get("Retry-After")
         except Exception:
             LOG.warning("browser push submission failed")
+            return
+        if status == 429:
+            # The freshness condition still applies after the delay and on restart.
+            now = int(time.time())
+            try:
+                due = now + max(1, int(retry_after))
+            except (TypeError, ValueError):
+                try:
+                    due = max(now + 1, int(parsedate_to_datetime(retry_after).timestamp()))
+                except (TypeError, ValueError, OverflowError, AttributeError):
+                    due = now + 15
+            await self.db.execute(
+                "UPDATE web_push_deliveries SET retry_at=? WHERE ticket=?",
+                (min(due, now + 86400), ticket),
+            )
+        elif status in (404, 410):
+            await self.db.execute("DELETE FROM web_push_subscriptions WHERE id = ?", (row["id"],))
+        elif not 200 <= status < 300:
+            LOG.warning("browser push service rejected notification (%d)", status)
 
     async def run(self):
         async with httpx.AsyncClient(

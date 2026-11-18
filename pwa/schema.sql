@@ -14,5 +14,6 @@ CREATE TABLE IF NOT EXISTS web_push_deliveries (
     subscription_id INTEGER NOT NULL REFERENCES web_push_subscriptions(id) ON DELETE CASCADE,
     notification_id INTEGER NOT NULL REFERENCES personal_notifications(id) ON DELETE CASCADE,
     ticket TEXT NOT NULL UNIQUE,
+    retry_at INTEGER, -- NULL while in flight or after a terminal result
     PRIMARY KEY (subscription_id, notification_id)
 );

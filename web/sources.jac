@@ -348,6 +348,7 @@ def:pub SourcesPage -> JsxElement {
         connections: list[any] = [],
         sources: list[any] = [],
         feed: list[any] = [],
+        linkedMissing: bool = False,
         alerts: list[any] = [],
         loaded: bool = False,
         busy: bool = False,
@@ -393,6 +394,7 @@ def:pub SourcesPage -> JsxElement {
         connections = [];
         sources = [];
         feed = [];
+        linkedMissing = False;
         alerts = [];
         loaded = False;
         busy = False;
@@ -423,8 +425,15 @@ def:pub SourcesPage -> JsxElement {
         }
         _ps_refresh_revision += 1;
         revision = _ps_refresh_revision;
+        hash: str = window.location.hash;
+        prefix = "#personal-item-";
+        linked = Number(hash[len(prefix):]) if hash.startswith(prefix) else 0;
+        lookup = bool(Number.isSafeInteger(linked) and linked > 0);
         for endpoint in ["connections", "sources", "feed"] {
-            response = await personal_request("/api/me/" + endpoint);
+            suffix = "?linked_id=" + str(linked)
+                if lookup and endpoint == "feed"
+                else "";
+            response = await personal_request("/api/me/" + endpoint + suffix);
             if epoch != _ps_epoch or revision != _ps_refresh_revision {
                 return;
             }
@@ -453,6 +462,7 @@ def:pub SourcesPage -> JsxElement {
                 alerts = _ps_alerts;
             } else {
                 feed = response.data.items or [];
+                linkedMissing = lookup and linked not in [item.id for item in feed];
             }
         }
         loaded = True;
@@ -734,9 +744,12 @@ def:pub SourcesPage -> JsxElement {
             check_session();
             timer = setInterval(lambda { periodic_refresh(); }, 15000);
             focus = lambda { check_session(); };
+            on_hash = lambda { refresh(_ps_epoch); };
+            window.addEventListener("hashchange", on_hash);
             window.addEventListener("focus", focus);
             return lambda {
                 clearInterval(timer);
+                window.removeEventListener("hashchange", on_hash);
                 window.removeEventListener("focus", focus);
                 clear_session();
             };
@@ -1095,6 +1108,11 @@ def:pub SourcesPage -> JsxElement {
                                     </div>
                                 }}
                             </div>
+                        }}
+                        {if linkedMissing {
+                            <p role="status">
+                                This article is no longer available in your sources.
+                            </p>
                         }}
                         {for item in feed {
                             <FeedItem key={item.id} item={item}/>

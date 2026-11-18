@@ -637,11 +637,23 @@ obj PersonalStore {
         }
     }
 
-    async def feed(user_id: int, after: int = 0, limit: int = 100) -> list[Row] {
-        return await self._all(
-            "SELECT i.*,s.name AS source_name,c.provider FROM personal_items i JOIN personal_sources s ON s.id=i.source_id JOIN personal_connections c ON c.id=s.connection_id WHERE i.user_id=? AND s.deleted_at IS NULL AND c.deleted_at IS NULL AND i.id>? ORDER BY i.posted_at DESC,i.id DESC LIMIT ?",
+    async def feed(
+        user_id: int, after: int = 0, limit: int = 100, linked_id: int = 0
+    ) -> list[Row] {
+        visible = "SELECT i.*,s.name AS source_name,c.provider FROM personal_items i JOIN personal_sources s ON s.id=i.source_id JOIN personal_connections c ON c.id=s.connection_id WHERE i.user_id=? AND s.deleted_at IS NULL AND c.deleted_at IS NULL";
+        rows = await self._all(
+            visible + " AND i.id>? ORDER BY i.posted_at DESC,i.id DESC LIMIT ?",
             (user_id, max(0, after), min(200, max(1, limit)))
         );
+        if linked_id and not `any(item["id"] == linked_id for item in rows) {
+            linked = await self._read_one(
+                visible + " AND i.id=?", (user_id, linked_id)
+            );
+            if linked is not None {
+                rows.append(linked);
+            }
+        }
+        return rows;
     }
 
     async def notifications_since(

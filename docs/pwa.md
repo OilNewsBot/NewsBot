@@ -198,8 +198,7 @@ cannot validate this flow. No JacHammer services are needed for local tests.
 - New subscriptions skip existing history. Workers consider alerts created
   during the previous five minutes and request a five-minute provider TTL.
   An ambiguous response or crash after the claim can lose a banner. The
-  original post remains in My Sources. Earlier articles outside the current
-  feed window open My Sources without highlighting a card.
+  original post remains in My Sources. An explicit rate-limit refusal schedules another attempt while the alert is fresh. Older alert links also load the addressed article outside the latest feed window. If it is unavailable, My Sources explains that the article is unavailable.
 - The authenticated, same-origin, no-store API is under `/api/me/web-push`.
   `POST /status` accepts an optional endpoint and returns a public key, an
   opaque session binding and the device state. `PUT /subscription` accepts the

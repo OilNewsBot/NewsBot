@@ -407,10 +407,17 @@ def install_personal_routes(
     }
 
     @app.get("/api/me/feed")
-    async def feed(request: Request, after: int = 0, limit: int = 100) -> Row {
+    async def feed(
+        request: Request, after: int = 0, limit: int = 100, linked_id: int = 0
+    ) -> Row {
         user = await require_user(request, repo);
         validate_page(after, limit);
-        return {"items": await store.feed(int(user["user_id"]), after, limit)};
+        if linked_id < 0 or linked_id > 9007199254740991 {
+            raise HTTPException(422, "Invalid article ID");
+        }
+        return {
+            "items": await store.feed(int(user["user_id"]), after, limit, linked_id)
+        };
     }
 
     @app.get("/api/me/notifications")
