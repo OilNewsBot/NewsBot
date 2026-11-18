@@ -1,8 +1,45 @@
 import hashlib;
 import hmac;
+import os;
 import secrets;
 import from fastapi { HTTPException, Request }
 import from db.repo { Repo, Row }
+
+glob LOOPBACK_HOSTS: tuple[str, str, str] = ("127.0.0.1", "::1", "localhost");
+
+"""Admin routes (POST /ingest) on any server reachable beyond this machine.
+With NEWSBOT_ADMIN_TOKEN set, the X-Admin-Token header must match it from
+every client; without one, only loopback clients (local replay) qualify."""
+def admin_allowed(
+    client_host: str | None, header_token: str | None, configured: str
+) -> bool {
+    if configured {
+        return bool(header_token)
+            and hmac.compare_digest(str(header_token).encode(), configured.encode());
+    }
+    return client_host in LOOPBACK_HOSTS;
+}
+
+def is_admin(request: Request) -> bool {
+    return admin_allowed(
+        request.client.host if request.client else None,
+        request.headers.get("x-admin-token"),
+        os.environ.get("NEWSBOT_ADMIN_TOKEN", "")
+    );
+}
+
+async def require_admin(request: Request) {
+    if not is_admin(request) {
+        raise HTTPException(403, "admin token required");
+    }
+}
+
+"""Signed-in users (the UI) or an admin client."""
+async def require_user_or_admin(request: Request, repo: Repo) {
+    if not is_admin(request) {
+        await require_user(request, repo);
+    }
+}
 
 """Resolve ownership from the authenticated cookie, never a request user_id."""
 async def require_user(request: Request, repo: Repo) -> Row {
