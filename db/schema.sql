@@ -144,3 +144,25 @@ CREATE TABLE IF NOT EXISTS trade_suggestions (
     post_id         INTEGER REFERENCES posts (id)
 );
 CREATE INDEX IF NOT EXISTS idx_trade_suggestions_created ON trade_suggestions (created_at);
+
+-- Accepting a raw post and queuing its classification are one SQLite operation.
+CREATE TABLE IF NOT EXISTS pipeline_pending (
+    post_id INTEGER PRIMARY KEY REFERENCES posts(id),
+    retry_at REAL NOT NULL DEFAULT 0
+);
+CREATE TRIGGER IF NOT EXISTS queue_ingested_post AFTER INSERT ON posts
+BEGIN
+    INSERT INTO pipeline_pending(post_id) VALUES (NEW.id);
+END;
+
+-- Recover raw inputs stranded before the durable queue was introduced.
+CREATE TABLE IF NOT EXISTS pipeline_migrations (version INTEGER PRIMARY KEY);
+BEGIN IMMEDIATE;
+INSERT OR IGNORE INTO pipeline_pending(post_id)
+SELECT p.id FROM posts p
+WHERE NOT EXISTS (SELECT 1 FROM pipeline_migrations WHERE version=1)
+  AND NOT EXISTS (SELECT 1 FROM decisions d WHERE d.post_id=p.id AND d.is_final=1)
+  AND NOT EXISTS (SELECT 1 FROM event_posts e WHERE e.post_id=p.id)
+  AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.post_id=p.id);
+INSERT OR IGNORE INTO pipeline_migrations VALUES (1);
+COMMIT;

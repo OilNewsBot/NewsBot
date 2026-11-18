@@ -36,6 +36,8 @@ handle, tier, url, posted_at, received_at, platform_latency_s,
 event_id, event_title, what_changed, badges
 ```
 
+Ingestion acknowledges a normalized post after SQLite commits its raw input and pending job. The worker resumes pending jobs in receipt order after restart. It commits the final classification, event membership, notification, and removal of the pending job in one transaction before broadcasting a card.
+
 Kinds are `NEW_EVENT`, `UPDATE`, and `UNFILTERED`; category/score/event_id may be
 null on the relevant paths. Do not assume every notification is classified.
 
