@@ -75,7 +75,7 @@ obj ModelStub {
 
     async def call_json(
         purpose: str, model: str, system: str, user: str, *, max_tokens: int
-    ) -> dict {
+    ) -> dict[str, any] {
         self.calls += 1;
         assert purpose == "forum_routing" and model == "test-small";
         return {"labels": {"0": "industrials", "1": "unknown"}};
