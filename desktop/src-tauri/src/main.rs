@@ -19,6 +19,7 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
 
+use tauri::ipc::CapabilityBuilder;
 use tauri::webview::NewWindowResponse;
 use tauri::{Manager, RunEvent, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
@@ -341,14 +342,37 @@ fn connect(app: tauri::AppHandle, root: PathBuf, host: String, port: u16) {
     let _ = window.navigate(page);
 }
 
+/// Lets the service's pages (a remote origin to Tauri) send notifications and
+/// nothing else. Built at startup because the port comes from config.yaml.
+fn service_notifications(host: &str, port: u16) -> CapabilityBuilder {
+    let mut capability = CapabilityBuilder::new("service-notifications")
+        .local(false)
+        .window("main")
+        .permission("notification:allow-is-permission-granted")
+        .permission("notification:allow-request-permission")
+        .permission("notification:allow-notify");
+    let mut hosts = vec!["127.0.0.1", "localhost"];
+    if !hosts.contains(&host) {
+        hosts.push(host);
+    }
+    for h in hosts {
+        capability = capability.remote(format!("http://{h}:{port}/*"));
+    }
+    capability
+}
+
 fn main() {
     let root = repo_root();
     let (host, port) = server_address(&root);
     let service_root = root.clone();
 
     let app = tauri::Builder::default()
+        // Replaces the page's Notification API (which these webviews lack) with
+        // native system notifications, so the existing page checkboxes work.
+        .plugin(tauri_plugin_notification::init())
         .manage(Service(Mutex::new(None)))
         .setup(move |app| {
+            app.add_capability(service_notifications(&host, port))?;
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("NewsBot")
                 .inner_size(1280.0, 860.0)

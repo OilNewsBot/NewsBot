@@ -20,6 +20,12 @@ entry-point = "web.main"
 kind = "cli"
 entry-point = "replay"
 
+# `jac run fake_tweets` injects five test tweets through a fake twitterapi.io
+# into an isolated NewsBot (see fake_tweets.jac).
+[apps.fake_tweets]
+kind = "cli"
+entry-point = "fake_tweets"
+
 # Python packages, used from Jac through plain imports. Pinned to the exact
 # versions the Python edition ran on (its uv.lock), so the port changes the
 # language and not the libraries underneath. Loosen these to upgrade.
