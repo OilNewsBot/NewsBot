@@ -118,28 +118,6 @@ async def _guarded(adapter: SourceAdapter, work: Awaitable[None]) {
     }
 }
 
-"""Resolve configured handles to stable IDs once and store both (Â§4)."""
-async def _resolve_x_accounts(settings: Settings, repo: Repo, x_api: XApiAdapter) {
-    known_handles = {str(a["handle"]).lower() for a in await repo.get_accounts("x")};
-    for acct in settings.accounts {
-        if acct.source != "x" or acct.handle.lower() in known_handles {
-            continue;
-        }
-        try {
-            (account_id, canonical) = await x_api.resolve_account(acct.handle);
-            await repo.upsert_account("x", account_id, canonical, acct.tier);
-            log.info("resolved @%s -> id %s", canonical, account_id);
-        } except Exception as e {
-            log.error(
-                "could not resolve X handle @%s: %s (renamed? update config.yaml)",
-                acct.handle,
-                e
-            );
-        }
-    }
-}
-
-
 def create_app(settings: Settings | None = None) -> FastAPI {
     settings = settings or load_settings();
     repo = Repo(settings.db_path);
@@ -189,9 +167,6 @@ def create_app(settings: Settings | None = None) -> FastAPI {
             asyncio.create_task(personal_worker.run(), name="personal-sources"),
             asyncio.create_task(run_catalog(catalog), name="public-news")
         ];
-        if settings.x_api_enabled and settings.x_bearer_token {
-            await _resolve_x_accounts(settings, repo, x_api);
-        }
         for adapter in adapters {
             tasks.append(
                 asyncio.create_task(

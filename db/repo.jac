@@ -435,6 +435,45 @@ obj Repo {
 
     # -- x read budget --------------------------------------------------------
 
+    async def reserve_x_reads(day: str, count: int, budget: int) -> bool {
+        cur = await self._run(
+            """INSERT INTO x_reads(day,reads) SELECT ?,? WHERE ? <= ?
+               ON CONFLICT(day) DO UPDATE SET reads=reads+excluded.reads
+               WHERE reads+excluded.reads <= ?""",
+            (day, count, count, budget, budget)
+        );
+        await self.db.commit();
+        return cur.rowcount == 1;
+    }
+
+    async def refund_x_reads(day: str, count: int) {
+        if count > 0 {
+            await self._run(
+                "UPDATE x_reads SET reads=reads-? WHERE day=?", (count, day)
+            );
+            await self.db.commit();
+        }
+    }
+
+    async def x_poll_cursor(account_id: str) -> Row {
+        return await self._one(
+            "SELECT * FROM x_poll_cursors WHERE account_id=?", (account_id, )
+        )
+            or {"since_id": "", "next_token": "", "pages": "[]"};
+    }
+
+    async def save_x_poll_cursor(
+        account_id: str, since: str, token: str, pages: list[Row]
+    ) {
+        await self._run(
+            """INSERT INTO x_poll_cursors(account_id,since_id,next_token,pages) VALUES(?,?,?,?)
+               ON CONFLICT(account_id) DO UPDATE SET since_id=excluded.since_id,
+               next_token=excluded.next_token,pages=excluded.pages""",
+            (account_id, since, token, json.dumps(pages))
+        );
+        await self.db.commit();
+    }
+
     """Add n reads for today (UTC); returns the new daily total."""
     async def add_x_reads(n: int) -> int {
         day = utcnow().strftime("%Y-%m-%d");
