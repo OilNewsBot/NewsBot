@@ -266,6 +266,43 @@ test "mobile_http_contract" {
     asyncio.run(run());
 }
 
+test "mobile_reinstall_after_disabling_releases_token_with_no_historical_alerts" {
+    async def run {
+        async with open_repo(make_settings()) as repo {
+            service = PushService(repo);
+            await service.initialize();
+            token = "ExpoPushToken[retained]";
+            await service.subscribe("original", token, True);
+            await service.subscribe("original", None, False);
+            await publish(repo, Bus());
+            await service.subscribe("reinstalled", token, True);
+            client = ExpoStub();
+            await service.send_pending(client);
+            assert not client.calls;
+            # Previous owner remains off; a stale receipt cannot invalidate the new owner.
+            await service.invalidate({"device_id": "original", "token": token});
+            await publish(repo, Bus());
+            await service.send_pending(client);
+            assert len(client.calls) == 1 and client.calls[0]["to"] == token;
+            # Simulate upgrading the on-disk schema from a release retaining disabled tokens.
+            await repo._run(
+                "UPDATE mobile_subscriptions SET token=? WHERE device_id='original'",
+                ("ExpoPushToken[legacy]", )
+            );
+            await repo.db.commit();
+            await service.initialize();
+            await service.subscribe("migrated", "ExpoPushToken[legacy]", True);
+            assert (
+                await repo._one(
+                    "SELECT token FROM mobile_subscriptions WHERE device_id='reinstalled'"
+                )
+            )["token"]
+                == token;
+        }
+    }
+    asyncio.run(run());
+}
+
 test "mobile_multiple_devices_and_successful_receipt" {
     async def run {
         async with open_repo(make_settings()) as repo {
