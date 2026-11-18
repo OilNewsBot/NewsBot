@@ -126,7 +126,7 @@
   .ps-auth .auth-panel:not(:has(form)) button { margin-left: auto; }
 }
 
-/* NewsStream — My Sources page heading */
+/* NewsDrop — My Sources page heading */
 
 .ps-intro {
     align-items: flex-start;
@@ -164,7 +164,7 @@
     margin-top: 0;
 }
 
-/* NewsStream — My Sources dashboard layout */
+/* NewsDrop — My Sources dashboard layout */
 
 .ps-grid {
     display: flex;
@@ -190,7 +190,7 @@
     }
 }
 
-/* NewsStream — source overview statistics */
+/* NewsDrop — source overview statistics */
 
 .ps-overview {
     display: grid;

@@ -35,7 +35,7 @@ The initial directory has **22 RSS channels and 20 X profiles**. It covers Energ
 
 ## 6. From report to briefing
 
-NewsDrop saves the source report before enrichment. It associates the item with a story timeline, identifies mentions in the text and records substantive developments. The first signed-in briefing offers recent matching reports, or editorial coverage for a new reader with no sources or watches. Later briefings show matching developments received since the previous displayed briefing. Each card explains why it appeared and links to its evidence.
+NewsDrop saves the source report before enrichment. It associates the item with a story timeline, identifies mentions in the text and records substantive developments. The first signed-in briefing offers recent matching reports, or editorial coverage for a new reader with no sources or watches. Later briefings show matching developments received since the previous briefing the reader marked as read. Each card explains why it appeared and links to its evidence.
 
 The shared market monitor has a separate flow. It persists incoming posts, scores materiality, clusters events and emits notifications.
 

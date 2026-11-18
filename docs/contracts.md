@@ -8,7 +8,8 @@ The application serves Home at `/`, Discover at `/discover`, Following at `/foll
 
 | Endpoint | Behavior |
 | --- | --- |
-| `POST /register` | Create an account with `username`, `email` and a password of at least 12 characters. Login is a separate request. |
+| `POST /register` | Create an account with `username`, `email` and a password of at least 12 characters. The browser then calls the login endpoint to start the new session. |
+| `GET /login` | Shows the sign-in form. An optional local `next` destination returns the reader to the originating view after authentication. |
 | `POST /login` | Authenticate with email and password. Issues a seven-day HTTP-only `session` cookie and revokes any session previously supplied by the same browser. |
 | `GET /me`, `POST /logout` | Read the session's `user_id`, `username` and `email`, or revoke the session and clear its cookie. |
 
@@ -19,7 +20,7 @@ Account-scoped operations derive ownership from the session cookie. Missing or e
 | Endpoint | Behavior |
 | --- | --- |
 | `GET /api/channels` | Returns `channels` with tags, type, curator, publisher, click/subscriber/recommendation counts and recent headlines. A session adds the reader's ownership, subscription, recommendation and notification flags. Discover sorts this collection in the client. |
-| `GET /api/channels/{slug}` | Returns `channel` and `comments`. Recent items retain their publisher or author, source links, publication and collection times, sector, optional topic, labels and summary status. |
+| `GET /api/channels/{slug}` | Returns `channel` and `comments`. The optional `item` query parameter includes a specific report belonging to the channel, including older reports beyond the recent list. Recent items retain their publisher or author, source links, publication and collection times, sector, optional topic, labels and summary status. |
 | `GET /api/directory` | Returns the editorial edition grouped by category. Multi-topic publishers expose up to 24 recent stories and may appear in multiple categories with up to three matching headlines per category. Routed headlines carry `section` and `routed_by`. |
 | `POST /api/channels` | Publish a channel. Required fields are `name`, `description`, `category` and `source_type`. Optional `tags` add sectors. RSS uses a public `source_url`. X and Telegram support `mode` values `embed` and `api`. Community channels need only channel metadata. Returns `channel` and HTTP 201. |
 | `POST /api/channels/{slug}/click` | Record one opening and return `clicks`. Available to same-origin visitors, including signed-out readers. |
@@ -33,8 +34,8 @@ Normalized public items have a stable source-local identity. Redelivery reuses t
 
 | Endpoint | Behavior |
 | --- | --- |
-| `GET /api/briefing` | Returns the signed-in reader's `user_id`, `first_visit`, previous visit time in `since`, `cards`, `through`, `private_through` when the personal store is installed, and `has_more`. A read offers a snapshot and leaves the acknowledged visit intact. |
-| `POST /api/briefing/seen` | Acknowledge a displayed snapshot using its `through`, `private_through` when present, and displayed `user_id`. Provided cursors advance together in one transaction. A stale tab cannot rewind the visit or mark a later development seen. After acknowledgement, fetch again if `has_more` was true. |
+| `GET /api/briefing` | Returns the signed-in reader's `user_id`, `first_visit`, previous visit time in `since`, `cards`, `through`, `private_through` when the personal store is installed, and `has_more`. A read offers a snapshot and leaves the acknowledged visit intact. When caught up, `previous_cards` contains the reader’s last nonempty edition with private sources checked against current ownership. |
+| `POST /api/briefing/seen` | Mark an edition as read at the reader’s request using its `through`, `private_through` when present, and displayed `user_id`. Provided cursors advance together in one transaction. A stale tab cannot rewind the visit or mark a later development seen. After acknowledgement, fetch again if `has_more` was true. |
 | `GET /api/watches` | Returns `user_id`, saved `topics` and `stories`, the sector `taxonomy` and the available event, entity and place `facets`. |
 | `PUT /api/watches/topics/{topic_id}` | Set `enabled` for a label or a combination of two to four distinct label IDs joined by `~`. The server canonicalizes order. Every label in a combination must match the same report. |
 | `PUT /api/watches/stories/{story_id}` | Set `enabled` for one story timeline. Public story IDs are numeric. Private story IDs use `private-<item_id>` and require the owner's session. |

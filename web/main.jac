@@ -1,4 +1,4 @@
-"""Newsstream browser entry point (docs/spec.md §10).
+"""NewsDrop browser entry point (docs/spec.md §10).
 
 The compiled web client opens the briefing or sector directory on Home. It also
 routes Discover, Following, My Sources, channels and story timelines. Market
@@ -176,7 +176,7 @@ def notify_api -> any {
     return globalThis.Notification or None;  # jac:ignore[E1053]
 }
 
-"""System notification for a new event, only when the NewsBot page is not in
+"""System notification for a new event, only when the NewsDrop page is not in
 front; clicking it brings the page forward."""
 def screen_notify(n: Notification) {
     api = notify_api();

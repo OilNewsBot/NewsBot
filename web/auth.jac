@@ -1,4 +1,4 @@
-"""Registration and login UI for NewsBot."""
+"""Registration and login UI for NewsDrop."""
 import from react { useEffect, useRef }
 
 """Window event fired after a login or logout, so the sign-in gate in
