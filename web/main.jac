@@ -95,6 +95,7 @@ obj Status {
         llm_fail_open: bool,
         x_reads_today: int,
         refetch_running: bool,
+        refetch_configured: bool,
         x_daily_read_budget: int,
         threshold: int,
         max_stacked: int,
@@ -145,7 +146,7 @@ def plural(n: int, word: str) -> str {
 async def get_json(path: str) -> any {
     try {
         resp = await fetch(path);
-        return await resp.json();
+        return await resp.json() if resp.ok else None;
     } except Exception {
         return None;
     }
@@ -230,7 +231,11 @@ def TrayCard(n: Notification, onAck: Callable[[int], None]) -> JsxElement {
             {if n.kind == "UNFILTERED" {
                 <span className="badge warn">unfiltered</span>
             }}
-            {for b in (n.badges or []) {
+            {for b in [
+                b
+                for b in (n.badges or [])
+                if not (n.kind == "UNFILTERED" and b == "unfiltered")
+            ] {
                 <span key={b} className="badge warn">{b}</span>
             }}
             <TierChip tier={n.tier}/>
@@ -257,13 +262,15 @@ def TrayCard(n: Notification, onAck: Callable[[int], None]) -> JsxElement {
     </div>
 }
 
-def PostRow(p: FeedPost) -> JsxElement {
+def PostRow(p: FeedPost, showText: bool = True) -> JsxElement {
     <div className="post">
         <span className={"role " + p.role}>{p.role}</span>{" "}
         <a href={p.url} target="_blank" rel="noopener">{"@" + p.account_handle}</a>{" "}
         <TierChip tier={p.tier}/>{" "}
         <span className="dim">{rel(p.posted_at)}</span>
-        <div>{p.one_line or p.text[:220]}</div>
+        {if showText {
+            <div>{p.one_line or p.text[:220]}</div>
+        }}
     </div>
 }
 
@@ -294,9 +301,15 @@ def EventBlock(ev: FeedEvent) -> JsxElement {
             <span className="badge">{ev.category}</span>
             {" " + ev.title}
         </h3>
-        <div className="summary">{ev.summary}</div>
+        {if ev.summary and ev.summary != ev.title {
+            <div className="summary">{ev.summary}</div>
+        }}
         {for p in origin {
-            <PostRow key={p.id} p={p}/>
+            <PostRow
+                key={p.id}
+                p={p}
+                showText={(p.one_line or p.text[:220]) not in (ev.title, ev.summary)}
+            />
         }}
         {if len(extras) > 0 {
             <details className="extras">
@@ -337,10 +350,10 @@ def SuppressedRow(p: SuppressedPost) -> JsxElement {
 
 def Footer(s: Status | None, unreachable: bool) -> JsxElement {
     if unreachable {
-        return <footer>server unreachable</footer>;
+        return <footer className="news-status">server unreachable</footer>;
     }
     if s is None {
-        return <footer>connecting…</footer>;
+        return <footer className="news-status">connecting…</footer>;
     }
     lat = s.latency;
     platform = "platform p50 "
@@ -358,7 +371,7 @@ def Footer(s: Status | None, unreachable: bool) -> JsxElement {
         + " today";
     reads = "X reads " + str(s.x_reads_today) + "/" + str(s.x_daily_read_budget);
 
-    <footer>
+    <footer className="news-status">
         {for a in s.adapters {
             <span key={a.name} title={a.detail}>
                 <span className={"dot " + a.state}></span>
@@ -490,13 +503,19 @@ def NewsPage -> JsxElement {
             "busy": False,
             "requested": False,
             "stream": None,
-            "timer": None
+            "timer": None,
+            "feedRequest": 0,
+            "suppressedRequest": 0
         }
     );
     has tray: list[Notification] = [],  # newest first
         expanded: bool = False,
         timeline: list[any] = [],
         feedLoaded: bool = False,
+        feedError: bool = False,
+        suppressedLoaded: bool = False,
+        suppressedError: bool = False,
+        streamLive: bool = False,
         suppressed: list[SuppressedPost] = [],
         showSuppressed: bool = False,
         sound: bool = False,  # chime is off by default
@@ -504,23 +523,42 @@ def NewsPage -> JsxElement {
         screenHint: str = "",  # why the screen checkbox could not be turned on
         status: Status | None = None,
         unreachable: bool = False,
-        refetch: str = "idle",  # idle | running | failed
+        refetch: str = "idle",
+        refetchError: str = "",
         clock: int = 0;  # bumped every 30 s so relative times refresh
 
     max_stacked = (status.max_stacked or 5) if status else 5;
     visible = tray if expanded else tray[:max_stacked];
     hidden = len(tray) - len(visible);
-    banner = banner_text(status);
+    banner = banner_text(status) if not unreachable else "";
+    monitoring = "Checking monitoring...";
+    if unreachable {
+        monitoring = "Server unreachable";
+    } elif status {
+        monitoring = "No live feeds";
+        for adapter in status.adapters {
+            if adapter.state == "live" {
+                monitoring = "Live monitoring"
+                    if streamLive
+                    else "Connecting to alerts...";
+                break;
+            }
+        }
+    }
     refetch_label = REFETCH_LABEL;
     if refetch == "running" {
         refetch_label = "refetching…";
-    } elif refetch == "failed" {
-        refetch_label = "refetch failed";
     }
 
     async def load_feed {
+        sync.current.feedRequest += 1;
+        request_id = sync.current.feedRequest;
         data = await get_json("/feed");
-        if not sync.current.active or not data or not Array.isArray(data.events) {
+        if not sync.current.active or request_id != sync.current.feedRequest {
+            return;
+        }
+        feedError = not data or not Array.isArray(data.events);
+        if feedError {
             return;
         }
         rows: list[any] = [
@@ -541,7 +579,7 @@ def NewsPage -> JsxElement {
                 }
             );
         }
-        rows.sort(key=lambda (row: any) -> float { return row.time; }, reverse=True);
+        rows.sort(key=lambda (row: any) -> float { return -row.time; });
         rows.sort(key=lambda (row: any) -> int { return 1 if row.stale else 0; });
         timeline = rows;
         feedLoaded = True;
@@ -555,6 +593,9 @@ def NewsPage -> JsxElement {
         data = await get_json("/status");
         if not data {
             unreachable = True;
+            return;
+        }
+        if not sync.current.active {
             return;
         }
         s = data as Status;
@@ -648,7 +689,11 @@ def NewsPage -> JsxElement {
                 }
             }
         );
-        stream.onopen = lambda { backfill(); };
+        stream.onopen = lambda {
+            streamLive = True;
+            backfill();
+        };
+        stream.onerror = lambda { streamLive = False; };
     }
 
     def on_key(e: KeyboardEvent) {
@@ -657,13 +702,27 @@ def NewsPage -> JsxElement {
         }
     }
 
-    async def toggle_suppressed(e: ChangeEvent) {
-        showSuppressed = e.target.checked;
-        if not showSuppressed {
+    async def load_suppressed {
+        sync.current.suppressedRequest += 1;
+        request_id = sync.current.suppressedRequest;
+        data = await get_json("/suppressed");
+        if not sync.current.active
+            or not showSuppressed
+            or request_id != sync.current.suppressedRequest {
             return;
         }
-        data = await get_json("/suppressed");
-        suppressed = (data.posts if data else []) as list[SuppressedPost];
+        suppressedError = not data or not Array.isArray(data.posts);
+        if not suppressedError {
+            suppressed = data.posts as list[SuppressedPost];
+            suppressedLoaded = True;
+        }
+    }
+
+    def toggle_suppressed(e: ChangeEvent) {
+        showSuppressed = e.target.checked;
+        if showSuppressed {
+            load_suppressed();
+        }
     }
 
     def toggle_sound(e: ChangeEvent) {
@@ -691,14 +750,22 @@ def NewsPage -> JsxElement {
 
     async def do_refetch {
         refetch = "running";
-        ok = False;
+        refetchError = "";
         try {
             resp = await fetch("/refetch?hours=12", {"method": "POST"});
-            ok = resp.ok;
-        } except Exception {}
-        if not ok {
-            refetch = "failed";
-            setTimeout(lambda { refetch = "idle"; }, 4000);
+            if not resp.ok {
+                refetch = "idle";
+                refetchError = "Could not refetch posts. Try again.";
+                reason: any = await resp.json();
+                if reason.detail and isinstance(reason.detail, str) {
+                    refetchError = reason.detail;
+                }
+            }
+        } except Exception {
+            refetch = "idle";
+            if not refetchError {
+                refetchError = "Could not reach Newsstream to refetch posts.";
+            }
         }
         # On success, load_status puts the button back when the run finishes.
     }
@@ -722,7 +789,10 @@ def NewsPage -> JsxElement {
             status_timer = setInterval(
                 lambda {
                     load_status();
-                    if sync.current.cursor is None {
+                    if showSuppressed {
+                        load_suppressed();
+                    }
+                    if sync.current.cursor is None or feedError {
                         load_feed();
                     } elif sync.current.requested {
                         backfill();
@@ -755,9 +825,13 @@ def NewsPage -> JsxElement {
                 <TrayCard key={n.notification_id} n={n} onAck={ack}/>
             }}
             {if hidden > 0 {
-                <div id="morepill" onClick={lambda { expanded = True; }}>
+                <button
+                    type="button"
+                    id="morepill"
+                    onClick={lambda { expanded = True; }}
+                >
                     {"+" + str(hidden) + " more"}
-                </div>
+                </button>
             }}
         </div>
         <main>
@@ -770,21 +844,35 @@ def NewsPage -> JsxElement {
                     </p>
                 </div>
             </div>
-            <AuthPanel/>
             <div className="news-toolbar">
                 <div className="news-toolbar-left">
-                    <span className="news-live-indicator"></span>
-                    <span className="news-live-label">Live monitoring</span>
+                    <span
+                        className={"news-live-indicator live"
+                            if monitoring == "Live monitoring"
+                            else "news-live-indicator"}
+                    ></span>
+                    <span className="news-live-label">{monitoring}</span>
                 </div>
                 <button
                     className="news-refetch"
                     title="Re-pull the last 12 hours and process new events"
-                    disabled={refetch != "idle"}
+                    disabled={refetch != "idle"
+                        or not status
+                        or not status.refetch_configured
+                        or unreachable}
                     onClick={lambda { do_refetch(); }}
                 >
                     {refetch_label}
                 </button>
             </div>
+            {if status and not status.refetch_configured {
+                <p className="news-refetch-note">
+                    Configure the X push provider to refetch posts.
+                </p>
+            }}
+            {if refetchError {
+                <p className="news-refetch-note" role="status">{refetchError}</p>
+            }}
             <div className="controls news-settings">
                 <label>
                     <input
@@ -813,7 +901,20 @@ def NewsPage -> JsxElement {
                     {for p in suppressed {
                         <SuppressedRow key={p.id} p={p}/>
                     }}
-                    {if len(suppressed) == 0 {
+                    {if suppressedError {
+                        <p role="status">
+                            Could not load suppressed posts.{" "}
+                            <button
+                                type="button"
+                                onClick={lambda { load_suppressed(); }}
+                            >
+                                Retry suppressed posts
+                            </button>
+                        </p>
+                    }}
+                    {if suppressedLoaded
+                        and not suppressedError
+                        and len(suppressed) == 0 {
                         <div className="dim">Nothing suppressed yet.</div>
                     }}
                 </div>
@@ -828,7 +929,15 @@ def NewsPage -> JsxElement {
                         } }
                     </div>
                 }}
-                {if feedLoaded and len(timeline) == 0 {
+                {if feedError {
+                    <p role="status">
+                        Could not load the news feed.{" "}
+                        <button type="button" onClick={lambda { load_feed(); }}>
+                            Retry feed
+                        </button>
+                    </p>
+                }}
+                {if feedLoaded and not feedError and len(timeline) == 0 {
                     <div className="news-empty">
                         <div className="news-empty-icon">◇</div>
                         <h2>No market events yet</h2>
