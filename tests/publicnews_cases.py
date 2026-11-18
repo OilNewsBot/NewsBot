@@ -158,6 +158,47 @@ async def catalog_regressions():
         assert not (await opted_in.detail(tg["slug"]))["channel"]["headlines"][0]["ai_generated"]
 
 
+async def preview_classification_regressions():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "news.db"
+        with sqlite3.connect(path) as db:
+            db.execute("CREATE TABLE users(id INTEGER PRIMARY KEY)")
+            db.executemany("INSERT INTO users VALUES(?)", [(1,), (2,)])
+        edition = {"curator": "Editors", "captured_at": now(), "categories": [], "publishers": []}
+        catalog = Catalog(path, edition)
+        await catalog.start()
+        shared = {"category": "energy", "description": "Shared feed", "source_type": "rss",
+                  "source_url": "https://example.org/feed"}
+        energy = await catalog.create(1, "alice", {**shared, "name": "Energy"})
+        tagged = await catalog.create(1, "alice", {**shared, "name": "Multiple sectors", "tags": ["tech"]})
+        await catalog.toggle(tagged["slug"], 2, "subscription", True)
+        await catalog.set_preferences(2, ["tech"])
+
+        def report(db, text):
+            source = db.execute("SELECT source_id FROM news_channels WHERE slug=?", (energy["slug"],)).fetchone()[0]
+            return catalog._item(db, source, "original-guid", "https://example.org/one", "Update", text,
+                                 "Publisher", edition["captured_at"], "general", False, now())
+
+        item = await catalog.run_db(report, "Nvidia expands semiconductor equipment production.", write=True)
+        first = (await catalog.detail(tagged["slug"], 2))["channel"]
+        headline = first["headlines"][0]
+        assert first["subscribed"] and headline["section"] == "tech" and headline["labels"]["subsectors"]
+        misses = (catalog._preview_topic.cache_info().misses, catalog._preview_labels.cache_info().misses)
+        headline["labels"]["subsectors"][0]["id"] = "reader modification"
+        second = (await catalog.detail(tagged["slug"], 1))["channel"]
+        assert (catalog._preview_topic.cache_info().misses, catalog._preview_labels.cache_info().misses) == misses
+        assert not second["subscribed"]
+        assert second["headlines"][0]["labels"]["subsectors"][0]["id"] != "reader modification"
+        assert (await catalog.detail(energy["slug"]))["channel"]["headlines"][0]["section"] == "energy"
+        assert [r["id"] for r in (await catalog.following(2))["items"]] == [item]
+
+        assert await catalog.run_db(report, "Oil refinery expands crude production.", write=True) == item
+        revised = (await catalog.detail(tagged["slug"]))["channel"]["headlines"][0]
+        assert revised["section"] == "energy"
+        assert any(label["id"] == "energy.refining" for label in revised["labels"]["subsectors"])
+        assert not (await catalog.following(2))["items"]
+
+
 async def sector_regressions():
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "sectors.db"

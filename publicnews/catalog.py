@@ -6,7 +6,9 @@ import re
 import sqlite3
 import uuid
 from contextlib import closing
+from copy import deepcopy
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit, urlunsplit
 
@@ -93,6 +95,10 @@ class Catalog:
         self.edition = edition
         self.editorial_slugs = {}
         self.x_accounts = {}
+        # Only public preview classification is shared. Per-channel and per-reader
+        # state still comes from the current SQLite read transaction.
+        self._preview_topic = lru_cache(maxsize=1024)(channel_topic)
+        self._preview_labels = lru_cache(maxsize=1024)(article_labels)
         self.model = model
         self.ai_enabled = bool(model)
         self.summary_sources = frozenset(summary_sources.lower().replace(" ", "").split(",")) & {"rss", "x", "community"}
@@ -281,8 +287,9 @@ class Catalog:
                           ORDER BY i.published DESC,i.id DESC LIMIT ?""",
                           (PROMPT_VERSION, self.model, not self.ai_enabled, self.model, source, item_id, item_id, -1 if selected else limit))
         stories = []
+        channel_tags = tuple(tags)
         for row in rows:
-            section, topic = channel_topic(row["title"], row["text"], row["section"], category, tags, mixed)
+            section, topic = self._preview_topic(row["title"], row["text"], row["section"], category, channel_tags, mixed)
             if selected and section not in selected:
                 continue
             data = dict(row)
@@ -296,7 +303,7 @@ class Catalog:
             tries = data.pop("attempts") or 0
             eligible = data.pop("eligible")
             data.update(summary=summary, ai_generated=generated, generated_at=data["generated_at"] or "",
-                        labels=article_labels(row["title"], row["text"], section),
+                        labels=deepcopy(self._preview_labels(row["title"], row["text"], section)),
                         channel_slug=slug, source_type=kind, section=section, topic=topic,
                         status=("summarized" if generated else "retry" if tries else
                                 "pending" if eligible and self.ai_enabled and kind in self.summary_sources else "source"))
