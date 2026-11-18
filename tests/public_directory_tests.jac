@@ -82,8 +82,18 @@ test "the public snapshot has dated headlines and unique channel addresses" {
                         slugs.add(channel["slug"]);
                         if channel.get("source_type") == "x" {
                             assert channel["source_url"].startswith("https://x.com/");
-                            assert not stories and not channel.get("feed_url");
+                            assert stories and not channel.get("feed_url");
                             assert channel["mode"] == "embed";
+                            assert str(channel["platform_account_id"]).isdigit();
+                            for story in stories {
+                                assert story["url"].startswith(
+                                    channel["source_url"] + "/status/"
+                                );
+                                assert story["url"].split("/")[-1].isdigit();
+                                assert story["title"] and story["summary"];
+                                assert datetime.fromisoformat(story["published"])
+                                    <= datetime.fromisoformat(channel["checked_at"]);
+                            }
                             continue;
                         }
                         assert len(stories) == 3;
@@ -178,6 +188,7 @@ test "a public RSS refresh keeps offline channels and survives a restart" {
         energy = directory.catalog["categories"][0]["channels"];
         first = energy[0];
         other = energy[1]["headlines"];
+        other_checked = energy[1].get("checked_at");
         first["headlines"] = [];
         async def fixture(url: str) -> any {
             if url != first["feed_url"] {
@@ -193,7 +204,7 @@ test "a public RSS refresh keeps offline channels and survives a restart" {
         assert first["headlines"][0]["summary"] == "A solar plant opened.";
         assert first["headlines"][0]["url"] == "https://www.eia.gov/new";
         assert energy[1]["headlines"] == other;
-        assert "checked_at" not in energy[1];
+        assert energy[1].get("checked_at") == other_checked;
         # Model a refresh newer than the seed even when CI has an earlier clock.
         saved = json.loads(cache.read_text());
         saved[first["feed_url"]]["checked_at"] = "2099-01-01T00:00:00+00:00";

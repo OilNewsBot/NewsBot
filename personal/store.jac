@@ -96,8 +96,9 @@ obj PersonalStore {
 
     async def _all(sql: str, args: tuple[any, ...] = ()) -> list[Row] {
         assert self._reader is not None;
-        cursor = (await self._reader.execute(sql, args)) as aiosqlite.Cursor;
-        return [dict(r) for r in await cursor.fetchall()];
+        # Exhaust the read before the next queued operation can reuse its snapshot.
+        rows = await self._reader.execute_fetchall(sql, args);
+        return [dict(r) for r in rows];
     }
 
     async def _read_one(sql: str, args: tuple[any, ...] = ()) -> Row | None {
@@ -106,8 +107,8 @@ obj PersonalStore {
     }
 
     async def _one(sql: str, args: tuple[any, ...] = ()) -> Row | None {
-        row = await (await self._run(sql, args)).fetchone();
-        return dict(row) if row else None;
+        rows = [dict(r) for r in await self.db.execute_fetchall(sql, args)];
+        return rows[0] if rows else None;
     }
 
     static def _connection(row: Row) -> Row {

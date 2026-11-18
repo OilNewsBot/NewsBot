@@ -197,17 +197,16 @@ def PostForm(slug: str, onChange: any) -> JsxElement {
                 />
             </label>
             <label>
-                Post
+                Post text (optional with a source link)
                 <textarea
                     value={textBody}
-                    required
                     rows={4}
                     maxLength={8000}
                     onChange={lambda (e: any) { textBody = e.target.value; }}
                 />
             </label>
             <label>
-                Source link (optional)
+                Source link (optional with post text)
                 <input
                     type="url"
                     value={url}
@@ -219,7 +218,9 @@ def PostForm(slug: str, onChange: any) -> JsxElement {
             }}
             <button
                 type="submit"
-                disabled={busy or not title.strip() or not textBody.strip()}
+                disabled={busy
+                    or not title.strip()
+                    or not (textBody.strip() or url.strip())}
             >
                 Publish post
             </button>

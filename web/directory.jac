@@ -94,7 +94,11 @@ def ChannelRow(
                         }}
                     </div>
                 } else {
-                    <p className="directory-muted">No published updates yet.</p>
+                    <p className="directory-muted">
+                        {"No recent updates in " + sector_name(sector) + "."
+                            if sector and len(channel.headlines)
+                            else "No published updates yet."}
+                    </p>
                 } }
                 <div className="channel-actions">
                     <a href={"/channels/" + str(channel.slug)} onClick={navigate}>

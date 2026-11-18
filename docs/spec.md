@@ -23,7 +23,7 @@ The browser and desktop window use the same Jac web interface. FastAPI handles s
 | Source | What NewsDrop can display or collect |
 | --- | --- |
 | RSS | The backend retrieves public feeds and stores dated headlines, publisher text and original links. Readers need no API key. |
-| X | Official timeline embeds display public profiles. An authorized personal provider connection can collect structured posts for private use and selective sharing. Timelines themselves supply no post text to the collector. |
+| X | Default channels show saved public X posts and their original dates. Matching deliveries from the configured market monitor extend those editions. Readers can also open the official live timeline. An authorized personal provider connection can collect structured posts for private use and selective sharing. Timelines themselves supply no post text to the collector. |
 | Telegram | Public message links can be embedded. A paired account can send or forward permitted text to a dedicated bot, review the private inbox and publish a selection. |
 | Community | Signed-in readers can post a title with text or a source link, comment on a channel or report and reply in a thread. |
 

@@ -66,13 +66,15 @@ obj Repo {
     }
 
     async def _all(sql: str, args: Params = ()) -> list[Row] {
-        rows = await (await self._run(sql, args)).fetchall();
+        # Execute and exhaust the SELECT on the SQLite worker in one queue turn.
+        # A pending read cursor can prevent a later write from upgrading its WAL snapshot.
+        rows = await self.db.execute_fetchall(sql, args);
         return [dict(r) for r in rows];
     }
 
     async def _one(sql: str, args: Params = ()) -> Row | None {
-        row = await (await self._run(sql, args)).fetchone();
-        return dict(row) if row else None;
+        rows = await self._all(sql, args);
+        return rows[0] if rows else None;
     }
 
     # -- users ----------------------------------------------------------------

@@ -11,6 +11,7 @@ from pathlib import Path
 
 from fastapi import HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from starlette.requests import ClientDisconnect
 
 from .service import LOG, PushService
 from .transport import WebPush, browser_key, decode, endpoint_url
@@ -58,10 +59,13 @@ async def read_json(request):
     if request.headers.get("content-type", "").split(";", 1)[0] != "application/json":
         raise HTTPException(415, "Expected JSON")
     data = bytearray()
-    async for chunk in request.stream():
-        if len(data) + len(chunk) > 4096:
-            raise HTTPException(413, "Request body too large")
-        data.extend(chunk)
+    try:
+        async for chunk in request.stream():
+            if len(data) + len(chunk) > 4096:
+                raise HTTPException(413, "Request body too large")
+            data.extend(chunk)
+    except ClientDisconnect:
+        raise HTTPException(400, "Incomplete request body") from None
     try:
         body = json.loads(data)
         if isinstance(body, dict):

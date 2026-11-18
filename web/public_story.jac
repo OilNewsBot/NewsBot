@@ -121,6 +121,7 @@ def:pub ShareChannel(slug: str) -> JsxElement {
 }
 
 def:pub SourceEmbed(channel: any) -> JsxElement {
+    has showTimeline: bool = False;
     # Keep third-party scripts off the application's origin. Only characters
     # valid in a public handle can enter the widget's embedded document.
     url = str(channel.source_url or "");
@@ -144,14 +145,22 @@ def:pub SourceEmbed(channel: any) -> JsxElement {
             + "</a><script async src='https://platform.twitter.com/widgets.js'></script>";
         return
             <section className="source-embed">
-                <h2>Account activity</h2>
-                <iframe
-                    title={"X timeline for @" + handle}
-                    srcDoc={frame}
-                    sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                />
+                <button
+                    type="button"
+                    aria-expanded={showTimeline}
+                    onClick={lambda { showTimeline = not showTimeline; }}
+                >
+                    {"Hide live X timeline" if showTimeline else "Show live X timeline"}
+                </button>
+                {if showTimeline {
+                    <iframe
+                        title={"X timeline for @" + handle}
+                        srcDoc={frame}
+                        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                    />
+                }}
                 <a href={profile} target="_blank" rel="noopener noreferrer">
                     {"Open @" + handle + " on X ↗"}
                 </a>

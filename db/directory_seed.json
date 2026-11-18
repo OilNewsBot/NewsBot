@@ -109,7 +109,22 @@
             "energy"
           ],
           "description": "Federal energy production, consumption, prices and forecasts.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Natural gas inventories finish injection season above average",
+              "url": "https://x.com/EIAgov/status/2123056709220417945",
+              "published": "2026-11-18T14:12:18+00:00",
+              "summary": "Working #naturalgas in storage in the Lower 48 states ended the injection season at 3,810 Bcf, exceeding the five-year average…"
+            },
+            {
+              "title": "How EIA accounts for monthly supply and demand differences",
+              "url": "https://x.com/EIAgov/status/2122697654412927026",
+              "published": "2026-11-17T14:25:33+00:00",
+              "summary": "Our Monthly Energy Review includes a stock change and other data series, a grouping of items that account for the…"
+            }
+          ],
+          "platform_account_id": "57111966",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         },
         {
           "slug": "x-hormuzletter",
@@ -122,7 +137,22 @@
             "energy"
           ],
           "description": "Independent commentary on Middle East energy markets and trade through Hormuz.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Account shares Apple’s explanation for service outages",
+              "url": "https://x.com/HormuzLetter/status/2122786246292623517",
+              "published": "2026-11-17T20:17:35+00:00",
+              "summary": "BREAKING: Apple says an \"internal update\" caused the major international outages of many of its services, and claims \"the outages…"
+            },
+            {
+              "title": "Initial report on an emergency response in Virginia",
+              "url": "https://x.com/HormuzLetter/status/2122829822212612417",
+              "published": "2026-11-17T23:10:44+00:00",
+              "summary": "BREAKING: Fire at CIA headquarters in Langley, Virginia, with Fairfax County firefighters responding, per initial reports."
+            }
+          ],
+          "platform_account_id": "2004722276659593216",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         },
         {
           "slug": "x-tankertrackers",
@@ -136,7 +166,22 @@
             "industrials"
           ],
           "description": "Independent tanker tracking and analysis of seaborne petroleum shipments.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Empty tanker availability puts Gulf oil flows at risk",
+              "url": "https://x.com/TankerTrackers/status/2122713981374853313",
+              "published": "2026-11-17T15:30:25+00:00",
+              "summary": "Bloomberg: Gulf Oil Flow at Risk From Lack of Empty Tankers, Tracker Says"
+            },
+            {
+              "title": "Counting oil shipments with satellite imagery",
+              "url": "https://x.com/TankerTrackers/status/2121591486584107057",
+              "published": "2026-11-14T13:10:02+00:00",
+              "summary": "This is the most wonderful time of year for counting oil barrels from space!☀️ 🛰️ 🚢 🛢️"
+            }
+          ],
+          "platform_account_id": "784455407486009344",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         },
         {
           "slug": "x-crudeoil231",
@@ -150,7 +195,22 @@
             "materials"
           ],
           "description": "Independent commentary on crude oil and other commodity markets.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Copper premiums point to a split between markets",
+              "url": "https://x.com/CRUDEOIL231/status/2123026064343798162",
+              "published": "2026-11-18T12:10:32+00:00",
+              "summary": "Tale of two copper markets rn. West dumps it, China vacuums it all up. Yangshan premiums are mooning and SHFE…"
+            },
+            {
+              "title": "Positioning across commodity markets",
+              "url": "https://x.com/CRUDEOIL231/status/2122459705536905722",
+              "published": "2026-11-16T22:40:01+00:00",
+              "summary": "Here ur. Global commodities CTA positioning. #oott #gold #copper"
+            }
+          ],
+          "platform_account_id": "1422933169100054530",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         },
         {
           "slug": "x-hfi-research",
@@ -163,7 +223,22 @@
             "energy"
           ],
           "description": "Investment research and analysis focused on oil and gas markets.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Research account questions terms of a proposed agreement",
+              "url": "https://x.com/HFI_Research/status/2123007124368216219",
+              "published": "2026-11-18T10:55:16+00:00",
+              "summary": "You don’t have to be a rocket scientist to realize that what Iran is asking for on the 7 point,…"
+            },
+            {
+              "title": "HFI shares its weekly crude estimate",
+              "url": "https://x.com/HFI_Research/status/2122889279244542336",
+              "published": "2026-11-18T03:07:00+00:00",
+              "summary": "This is our crude estimate for this week’s report."
+            }
+          ],
+          "platform_account_id": "4337909658",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         }
       ]
     },
@@ -303,7 +378,22 @@
             "tech"
           ],
           "description": "Company updates on internet infrastructure, networking and security.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Cloudflare Connect session recordings are available",
+              "url": "https://x.com/Cloudflare/status/2123021503138505100",
+              "published": "2026-11-18T11:52:24+00:00",
+              "summary": "We literally painted San Francisco orange for #CloudflareConnect 🧡🏙️ Missed the action in SF—or want to relive the best moments?…"
+            },
+            {
+              "title": "Cloudflare weighs in on DNS blocking in France",
+              "url": "https://x.com/Cloudflare/status/2122957323849314810",
+              "published": "2026-11-18T07:37:23+00:00",
+              "summary": "Quad9's forced withdrawal from France highlights the dangers of mandating DNS-level blocking. Read more:"
+            }
+          ],
+          "platform_account_id": "32499999",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         }
       ]
     },
@@ -413,7 +503,22 @@
             "healthcare"
           ],
           "description": "Reporting on providers, insurers and the economics of healthcare.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Novant Health names an interim chief executive",
+              "url": "https://x.com/healthcaredive/status/2120949783485354309",
+              "published": "2026-11-12T18:40:08+00:00",
+              "summary": "John Gizdic will serve as Novant Health’s interim chief executive when the health system’s current CEO, Carl Armato, retires at…"
+            },
+            {
+              "title": "Broadband gaps limit access to telehealth",
+              "url": "https://x.com/healthcaredive/status/2101031450589946030",
+              "published": "2026-09-18T19:31:47+00:00",
+              "summary": "About 12 million Americans can’t access telehealth because broadband is unavailable or slow, according to new research."
+            }
+          ],
+          "platform_account_id": "1564072062",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         }
       ]
     },
@@ -523,7 +628,22 @@
             "industrials"
           ],
           "description": "Manufacturing companies, factories, procurement and industrial policy.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Commerce rule addresses overseas data center exports",
+              "url": "https://x.com/ManufactureDive/status/2122769502832046507",
+              "published": "2026-11-17T19:11:03+00:00",
+              "summary": "A new DOC rule restricts exports, reexports and in-country transfers to overseas data centers that remotely supply significant volumes of…"
+            },
+            {
+              "title": "Manufacturing speaker discusses recruiting and retaining workers",
+              "url": "https://x.com/ManufactureDive/status/2122458696273805597",
+              "published": "2026-11-16T22:36:01+00:00",
+              "summary": "\"“A kid can’t do something that they don’t know that they are equipped to do. A person will not do…"
+            }
+          ],
+          "platform_account_id": "1568254968829825024",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         },
         {
           "slug": "x-uk-mto",
@@ -537,7 +657,22 @@
             "energy"
           ],
           "description": "Official UK maritime security updates and incident notices for commercial shipping routes.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "UKMTO shares a Joint Maritime Information Centre advisory",
+              "url": "https://x.com/UK_MTO/status/2123087225411809593",
+              "published": "2026-11-18T16:13:34+00:00",
+              "summary": "JMIC Advisory 017-26 (Blockade Update) Distributed by UKMTO on behalf of the Joint Maritime Information Centre Click here to view…"
+            },
+            {
+              "title": "UKMTO publishes maritime warning 211-26",
+              "url": "https://x.com/UK_MTO/status/2122993996255338573",
+              "published": "2026-11-18T10:03:06+00:00",
+              "summary": "UKMTO WARNING 211-26 Click here to view the full product⤵️ #MaritimeSecurity #MarSec"
+            }
+          ],
+          "platform_account_id": "1362764389548494854",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         }
       ]
     },
@@ -617,7 +752,22 @@
             "consumer-discretionary"
           ],
           "description": "Retail earnings, consumer brands and store operations.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Furniture imports face a tariff investigation",
+              "url": "https://x.com/RetailDive/status/1960119124035621074",
+              "published": "2025-08-25T23:16:31+00:00",
+              "summary": "President Donald Trump said his administration has begun a “tariff investigation” into furniture imports, with plans to levy duties on…"
+            },
+            {
+              "title": "Dillard’s and Trademark Property buy Longview Mall",
+              "url": "https://x.com/RetailDive/status/1960081012915916978",
+              "published": "2025-08-25T20:45:04+00:00",
+              "summary": "Dillard's teamed up with mixed-use developer Trademark Property to acquire the 646,000-square-foot Longview Mall in Texas."
+            }
+          ],
+          "platform_account_id": "226024854",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         }
       ]
     },
@@ -697,7 +847,22 @@
             "materials"
           ],
           "description": "Metals markets, mining operations and company announcements.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Publisher reports a lower London gold fixing",
+              "url": "https://x.com/mining/status/2123088906606252223",
+              "published": "2026-11-18T16:20:15+00:00",
+              "summary": "Gold's LBMA afternoon price fell to $3,858.10 an ounce on Nov. 17, its lowest fix since Sept. 30, 2025, as…"
+            },
+            {
+              "title": "Copper prices fall as traders reassess demand",
+              "url": "https://x.com/mining/status/2123086349368484163",
+              "published": "2026-11-18T16:10:05+00:00",
+              "summary": "Copper price craters as AI, tariff trades unwind and Asia Copper Week hears of ‘recessionary-like’ demand"
+            }
+          ],
+          "platform_account_id": "18452059",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         }
       ]
     },
@@ -777,7 +942,22 @@
             "utilities"
           ],
           "description": "Electric utilities, regulation, grid investment and power markets.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Advocacy group grades state community power policies",
+              "url": "https://x.com/UtilityDive/status/2122819614300111326",
+              "published": "2026-11-17T22:30:10+00:00",
+              "summary": "Most states fail ‘community power’ test, advocacy group says The Institute for Local Self-Reliance issued letter grades based on the…"
+            },
+            {
+              "title": "Storage operators share a checklist for grid reliability",
+              "url": "https://x.com/UtilityDive/status/2122772846891938234",
+              "published": "2026-11-17T19:24:20+00:00",
+              "summary": "Batteries included: A practical checklist for storage owners, operators to boost reliability Market participants and grid operators need timely, accurate…"
+            }
+          ],
+          "platform_account_id": "284638893",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         }
       ]
     },
@@ -857,7 +1037,22 @@
             "real-estate"
           ],
           "description": "Apartment markets, development and property operations.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "RADCO outlines its apartment portfolio plans",
+              "url": "https://x.com/multifamilydive/status/1684263563505070082",
+              "published": "2023-07-26T18:05:00+00:00",
+              "summary": "RADCO’s new senior vice president of operations discusses the company’s plan to reach 25,000 units."
+            },
+            {
+              "title": "Survey tracks expectations for assisted living growth",
+              "url": "https://x.com/multifamilydive/status/1684247960744501248",
+              "published": "2023-07-26T17:03:00+00:00",
+              "summary": "Almost one-third of CBRE survey respondents are underwriting growth of 7% or more for assisted living."
+            }
+          ],
+          "platform_account_id": "1460648111613874187",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         }
       ]
     },
@@ -877,7 +1072,22 @@
             "energy"
           ],
           "description": "Global news and open-source reporting, including geopolitical events affecting energy supply.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Account rounds up early Grand Theft Auto VI reviews",
+              "url": "https://x.com/FaytuksNetwork/status/2123015835614650853",
+              "published": "2026-11-18T11:29:53+00:00",
+              "summary": "BREAKING: Grand Theft Auto VI reviews are out, with Rockstar's long-awaited title debuting to overwhelming critical acclaim and an initial…"
+            },
+            {
+              "title": "Account cites Jordanian statement on a training accident",
+              "url": "https://x.com/FaytuksNetwork/status/2122965809215758484",
+              "published": "2026-11-18T08:11:06+00:00",
+              "summary": "Black Hawk down in Jordan during training, Jordanian Military statement."
+            }
+          ],
+          "platform_account_id": "1795547119840821249",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         },
         {
           "slug": "x-molowarmonitor",
@@ -891,7 +1101,22 @@
             "energy"
           ],
           "description": "Independent conflict monitoring. Regional developments may affect energy markets.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Account reports another round of sirens in Bahrain",
+              "url": "https://x.com/MoloWarMonitor/status/2122856219492729243",
+              "published": "2026-11-18T00:55:38+00:00",
+              "summary": "At this moment, sirens are sounding in Bahrain for the third time in the last 24 hours. This retaliation by…"
+            },
+            {
+              "title": "Publisher announces a weekly newsletter",
+              "url": "https://x.com/MoloWarMonitor/status/2112595373097095565",
+              "published": "2026-10-20T17:22:41+00:00",
+              "summary": "I am pleased to announce that I am launching a Substack newsletter where I will publish detailed weekly insights. I…"
+            }
+          ],
+          "platform_account_id": "1481649681390133249",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         },
         {
           "slug": "x-osint613",
@@ -905,7 +1130,22 @@
             "energy"
           ],
           "description": "Open-source reporting on regional conflicts and geopolitics in the Middle East.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Account shares political reporting from The New York Times",
+              "url": "https://x.com/Osint613/status/2123099672059560151",
+              "published": "2026-11-18T17:03:01+00:00",
+              "summary": "New York Times Report: Trump is growing frustrated with JD Vance over his criticism of the Iran war and has…"
+            },
+            {
+              "title": "Account reports regional security talks",
+              "url": "https://x.com/Osint613/status/2123094699011453303",
+              "published": "2026-11-18T16:43:16+00:00",
+              "summary": "IDF: CENTCOM chief Adm. Brad Cooper held talks in Israel Wednesday with Chief of Staff Zamir and Mossad chief Gofman.…"
+            }
+          ],
+          "platform_account_id": "1212783083272855552",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         },
         {
           "slug": "x-gavmccracken",
@@ -920,7 +1160,22 @@
             "materials"
           ],
           "description": "Independent commodities and macroeconomic commentary.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Commentary on dollar strength and US debt",
+              "url": "https://x.com/GavMcCracken/status/2123070702626705890",
+              "published": "2026-11-18T15:07:54+00:00",
+              "summary": "USD strengthening so much while USA adds debt faster than ever before, at a rate of like $3000/tax payer each…"
+            },
+            {
+              "title": "Commentary on energy prices and markets",
+              "url": "https://x.com/GavMcCracken/status/2116238662656741729",
+              "published": "2026-10-30T18:39:49+00:00",
+              "summary": "Energy has now started to break the market. I predicted this on day 1 of the USA + Israel vs…"
+            }
+          ],
+          "platform_account_id": "1486417511763656706",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         },
         {
           "slug": "x-menchosint",
@@ -934,7 +1189,22 @@
             "energy"
           ],
           "description": "Independent open-source commentary on conflicts in the Middle East and other regions.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Commentary on tanker crew rescues",
+              "url": "https://x.com/MenchOsint/status/2123098544210895281",
+              "published": "2026-11-18T16:58:32+00:00",
+              "summary": "Notice how it's never the US who is saving the crew of these tankers that they send in the strait..."
+            },
+            {
+              "title": "Commentary on regional humanitarian aid",
+              "url": "https://x.com/MenchOsint/status/2123026360499052895",
+              "published": "2026-11-18T12:11:42+00:00",
+              "summary": "Erdogan, the king of speeches and slogans. Apparently it's easier to bomb Yemen than to deliver aid to Gaza.."
+            }
+          ],
+          "platform_account_id": "1560062743604068358",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         },
         {
           "slug": "x-financialjuice",
@@ -948,7 +1218,22 @@
             "energy"
           ],
           "description": "Cross-market headlines on macroeconomics, commodities, equities and rates.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Mullin announces industry call on outages",
+              "url": "https://x.com/financialjuice/status/2123099093912133694",
+              "published": "2026-11-18T17:00:43+00:00",
+              "summary": "US' Mullin: We are convening a phone call with the tech industry on the recent outages."
+            },
+            {
+              "title": "FinancialJuice shares reporting on an administration disagreement",
+              "url": "https://x.com/financialjuice/status/2123098397246956021",
+              "published": "2026-11-18T16:57:57+00:00",
+              "summary": "Trump grows frustrated with Vance over Iran war critique - NYT."
+            }
+          ],
+          "platform_account_id": "381696140",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         },
         {
           "slug": "x-ab4-ali3",
@@ -962,7 +1247,22 @@
             "energy"
           ],
           "description": "Regional affairs and Middle East news from an independent account.",
-          "headlines": []
+          "headlines": [
+            {
+              "title": "Account reports a pause in air traffic at Riyadh airport",
+              "url": "https://x.com/AB4_Ali3/status/2123087195883905534",
+              "published": "2026-11-18T16:13:27+00:00",
+              "summary": "توقف حركة الملاحة الجوية في مطار الرياض الآن."
+            },
+            {
+              "title": "Account relays a US statement on cyber incidents",
+              "url": "https://x.com/AB4_Ali3/status/2123077058779603426",
+              "published": "2026-11-18T15:33:10+00:00",
+              "summary": "وزير الأمن القومي الأميركي: جهات سيبرانية تابعة لإيران هاجـ.. مت البنية التحتية لأميركا. الهجما.. السيبرانية الإيرانية تزايدت بقطاعات النقل والطاقة…"
+            }
+          ],
+          "platform_account_id": "1716589395950850048",
+          "checked_at": "2026-11-18T17:08:18+00:00"
         }
       ]
     }

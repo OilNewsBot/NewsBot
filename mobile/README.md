@@ -2,7 +2,7 @@
 
 This iOS and Android companion delivers **shared market-event notifications** through Expo. The installed app is named **NewsDrop**. Its single switch controls push delivery to that installation. For account-specific channels, private sources, story watches and the personal briefing, open NewsDrop in a browser or the desktop app.
 
-Notifications start off. The app stores the preference and a random installation secret in Expo SecureStore. Enable the switch and grant notification permission to register the phone with the backend. A pending change retries while the app is active or when it resumes. If a phone goes offline before disabling succeeds, system notification settings can silence delivery immediately.
+Notifications start off. The app stores the preference and a random installation secret in Expo SecureStore. Enable the switch and grant notification permission to register the phone with the backend. Turning alerts off saves the preference even while Expo is looking up a device token. A pending change retries while the app is active or when it resumes. Disabling the installation also releases its token for a later installation. If a phone goes offline before disabling succeeds, system notification settings can silence delivery immediately.
 
 ## Backend setup
 
