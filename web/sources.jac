@@ -379,7 +379,7 @@ def:pub SourcesPage -> JsxElement {
         newTags: list[any] = [],
         newInclude: str = "",
         newExclude: str = "",
-        streamStatus: str = "Connecting",
+        streamStatus: str = "connecting",
         screenEnabled: bool = False,
         screenHint: str = "";
 
@@ -540,7 +540,7 @@ def:pub SourcesPage -> JsxElement {
         if _ps_stream {
             _ps_stream.close();
         }
-        streamStatus = "Connecting";
+        streamStatus = "connecting";
         _ps_stream = new(EventSource, "/api/me/stream?since=" + str(_ps_cursor));  # jac:ignore[E1053]
         _ps_stream.addEventListener(
             "notification",
@@ -553,11 +553,9 @@ def:pub SourcesPage -> JsxElement {
         _ps_stream.addEventListener(
             "session_expired", lambda { if epoch == _ps_epoch { expire(); }}
         );
-        _ps_stream.onopen = lambda { if epoch == _ps_epoch {
-            streamStatus = "Live alerts";
-        }};
+        _ps_stream.onopen = lambda { if epoch == _ps_epoch { streamStatus = "live"; }};
         _ps_stream.onerror = lambda { if epoch == _ps_epoch {
-            streamStatus = "Reconnecting";
+            streamStatus = "reconnecting";
             check_session();
         }};
     }
@@ -814,9 +812,13 @@ def:pub SourcesPage -> JsxElement {
                     <p>Connect private sources and publish channels.</p>
                 </div>
                 {if user {
-                    <span className="ps-live">
+                    <span className="ps-live" data-state={streamStatus} role="status">
                         <span className="ps-live-dot"/>
-                        {streamStatus}
+                        {{
+                            "connecting": "Connecting",
+                            "live": "Live alerts",
+                            "reconnecting": "Reconnecting"
+                        }[streamStatus]}
                     </span>
                 }}
             </div>

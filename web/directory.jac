@@ -139,7 +139,7 @@ def SectorIcon(sector: str) -> JsxElement {
         "utilities": "M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0V8z M12 17v4",
         "real-estate": "M3 21h18M5 21V7l9-4v18m0-11h5v11M8 10h2m-2 4h2m-2 4h2"
     };
-    <span className={"sector-icon sector-icon-" + sector} aria-hidden="true">
+    <span className="sector-icon" data-sector={sector} aria-hidden="true">
         <svg
             width="23"
             height="23"

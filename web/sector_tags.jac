@@ -6,7 +6,9 @@ import "./sector_tags.css";
 def:pub SectorTags(tags: list[any], topic: str = "") -> JsxElement {
     <span className="sector-labels" aria-label="Coverage">
         {for tag in tags {
-            <span key={str(tag)} className="sector-label">{sector_name(str(tag))}</span>
+            <span key={str(tag)} className="sector-label" data-sector={str(tag)}>
+                {sector_name(str(tag))}
+            </span>
         }}
         {if topic {
             <span className="topic-label">{topic}</span>
@@ -52,6 +54,7 @@ def:pub SectorPicker(
                 <button
                     type="button"
                     key={slug}
+                    data-sector={slug}
                     className="sector-option"
                     aria-pressed={slug == primary or slug in selected}
                     disabled={slug == primary}
