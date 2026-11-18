@@ -8,7 +8,7 @@ import from fastapi { FastAPI, HTTPException, Request }
 import from fastapi.responses { StreamingResponse }
 import from auth { require_user }
 import from db.repo { Repo, Row, iso, utcnow }
-import from personal.store { PersonalStore }
+import from personal.store { PersonalStore, source_tags }
 import from personal.providers { ProviderError, resolve_source }
 
 type Resolver = Callable[[str, str, str], Row];
@@ -87,6 +87,9 @@ def keywords(value: any) -> list[str] {
 
 def source_preferences(body: Row) -> Row {
     changes: Row = {};
+    if "tags" in body {
+        changes["tags"] = source_tags(body["tags"]);
+    }
     for key in ["enabled", "alerts_enabled"] {
         if key in body {
             if not isinstance(body[key], bool) {
@@ -291,6 +294,7 @@ def install_personal_routes(
             [
                 "connection_id",
                 "locator",
+                "tags",
                 "alerts_enabled",
                 "include_keywords",
                 "exclude_keywords"
@@ -335,7 +339,8 @@ def install_personal_routes(
                 alerts_enabled=bool(preferences.get("alerts_enabled", True)),
                 include_keywords=preferences.get("include_keywords", []),
                 exclude_keywords=preferences.get("exclude_keywords", []),
-                connection_revision=revision
+                connection_revision=revision,
+                tags=preferences.get("tags")
             );
         } except KeyError {
             raise HTTPException(404, "Connection not found");
@@ -376,7 +381,14 @@ def install_personal_routes(
         user = await require_user(request, repo);
         check_origin(request);
         allowed_fields(
-            body, ["enabled", "alerts_enabled", "include_keywords", "exclude_keywords"]
+            body,
+            [
+                "tags",
+                "enabled",
+                "alerts_enabled",
+                "include_keywords",
+                "exclude_keywords"
+            ]
         );
         changes = source_preferences(body);
         if not changes {

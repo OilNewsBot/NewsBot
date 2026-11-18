@@ -507,7 +507,7 @@ def:pub TradingPage -> JsxElement {
             <div>
                 <h1>Trading Insights</h1>
                 <p className="dim">
-                    {"Explore oil-market charts, review AI-generated trade ideas, and manage your simulated portfolio inputs."}
+                    {"Explore market charts, review AI-generated trade ideas, and manage your simulated portfolio inputs."}
                 </p>
             </div>
         </div>

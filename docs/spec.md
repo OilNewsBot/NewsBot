@@ -2,13 +2,13 @@
 
 ## 1. Purpose
 
-Newsstream helps people follow market-moving news across Energy, Tech, Healthcare and Industrials. A reader can find a source, inspect the original report, discuss it and follow subsequent updates. A clinical trial result, a change in manufacturing capacity and a grid investment decision each belong in the same news experience.
+Newsstream helps people follow market-moving news across Energy, Tech, Healthcare, Industrials, Consumer Discretionary, Materials, Utilities and Real Estate. A reader can find a source, inspect the original report, discuss it and follow subsequent updates. A clinical trial result, a change in manufacturing capacity and a grid investment decision each belong in the same news experience.
 
 ## 2. Public and personal views
 
 | View | Reader action |
 | --- | --- |
-| Home | Browse the four sectors, their editorial channels and recommendations. General News collects stories from multi-topic publishers that have no clear sector fit. |
+| Home | Browse the eight sectors, their editorial channels and recommendations. General News collects stories from multi-topic publishers that have no clear sector fit. |
 | Discover | Browse the complete public catalog, sort by name, category or clicks, and switch to New or Trending. Display click totals in channel disclosures. Use observable activity for the initial lists. More elaborate trending logic is a later product decision. |
 | Following | Read updates from the signed-in user's subscriptions and open the originating channel or publisher. |
 | My Sources | Manage private connections, publish channels and select content to share. Connecting a source grants no public access to its history or credential. |
@@ -31,7 +31,7 @@ The separate event monitor also supports configured Telegram, X push and budgete
 
 ## 5. Directory and ownership
 
-The initial edition includes three dedicated RSS channels in each primary sector and a multi-topic publisher. A public channel has a stable shareable URL. Each subscriber and recommender contributes at most one active relation per channel. Article references keep their publisher attribution across channels.
+The initial edition includes dedicated RSS and official X timeline channels in each sector, along with multi-topic publishers. A public channel has a stable shareable URL. Each subscriber and recommender contributes at most one active relation per channel. Article references keep their publisher attribution across channels.
 
 ## 6. Processing
 

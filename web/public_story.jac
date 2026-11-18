@@ -1,18 +1,31 @@
 """Attributed stories, source links and official social embeds."""
 
 import from .public_data { display_date, public_url }
+import from .sector_tags { SectorTags }
 
 def:pub Story(item: any, channel_name: str = "", full: bool = False) -> JsxElement {
     href = public_url(item.url);
+    published = item.published or item.published_at;
+    original = item.text or item.body;
     <article className="public-story" id={"story-" + str(item.id)}>
         <div className="story-byline">
             {if channel_name {
-                <a href={"/channels/" + str(item.channel_slug)}>{channel_name}</a>
+                <a
+                    href={"/sources"
+                        if item.private_source
+                        else "/channels/" + str(item.channel_slug)}
+                >
+                    {channel_name}
+                </a>
             } else {
                 <span>{item.author}</span>
             } }
-            {if item.published {
-                <time dateTime={item.published}>{display_date(item.published)}</time>
+            <SectorTags
+                tags={[item.section] if item.section else (item.tags or [])}
+                topic={item.topic or ""}
+            />
+            {if published {
+                <time dateTime={published}>{display_date(published)}</time>
             }}
         </div>
         <h3>
@@ -31,17 +44,17 @@ def:pub Story(item: any, channel_name: str = "", full: bool = False) -> JsxEleme
                     else ""}
             </span>
         }}
-        {if item.summary or item.text {
+        {if item.summary or original {
             <p>
-                {item.text
-                    if full and not item.ai_generated and item.text
-                    else (item.summary or item.text)}
+                {original
+                    if full and not item.ai_generated and original
+                    else (item.summary or original)}
             </p>
         }}
-        {if full and item.ai_generated and item.text {
+        {if full and item.ai_generated and original {
             <details>
                 <summary>Source text</summary>
-                <p>{item.text}</p>
+                <p>{original}</p>
             </details>
         }}
         {if href {

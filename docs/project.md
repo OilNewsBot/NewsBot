@@ -1,6 +1,6 @@
 # Newsstream implementation map
 
-Newsstream serves a public news directory for Energy, Tech, Healthcare and Industrials. The same backend handles channel publishing, private source management, discussion and subscriptions for every browser connected to it. The [channel and demo guide](feature-overhaul.md) describes setup and usage.
+Newsstream serves a public news directory for Energy, Tech, Healthcare, Industrials, Consumer Discretionary, Materials, Utilities and Real Estate. The same backend handles channel publishing, private source management, discussion and subscriptions for every browser connected to it. The [channel and demo guide](feature-overhaul.md) describes setup and usage.
 
 | Area | Entry points and responsibilities |
 | --- | --- |

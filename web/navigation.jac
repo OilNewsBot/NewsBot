@@ -1,5 +1,6 @@
 """Navigation shared by public pages and the private workspace."""
 
+import from .channel_alerts { ChannelAlerts }
 import from react { useEffect, useRef }
 
 def NavLink(path: str, title: str, active: bool, icon: str) -> JsxElement {
@@ -111,6 +112,7 @@ def:pub Navigation(active: str) -> JsxElement {
                 active={active == "sources"}
                 icon="M3 5h7l2 2h9v13H3z M8 13h8 M12 9v8"
             />
+            <ChannelAlerts/>
         </div>
         <button
             className="site-nav-collapse"

@@ -33,8 +33,8 @@ def make_catalog(settings: any, directory: any, llm: any) -> any {
     return catalog;
 }
 
-def install_catalog_routes(app: any, repo: any, catalog: any) {
-    news_routes.install(app, repo, catalog, require_user, check_origin);
+def install_catalog_routes(app: any, repo: any, catalog: any, personal: any = None) {
+    news_routes.install(app, repo, catalog, require_user, check_origin, personal);
 }
 
 async def run_catalog(catalog: any) {

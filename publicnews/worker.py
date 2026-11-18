@@ -33,7 +33,9 @@ class PublicWorker:
     async def refresh_one(self):
         epoch = int(time.time())
         def claim(db):
-            row = db.execute("""SELECT s.* FROM news_sources s WHERE kind='rss' AND next_poll<=?
+            row = db.execute("""SELECT s.*,EXISTS(SELECT 1 FROM news_channels c WHERE
+                c.source_id=s.id AND c.category='general') AS general_channel
+                FROM news_sources s WHERE kind='rss' AND next_poll<=?
                 AND (? OR EXISTS(SELECT 1 FROM news_channels c WHERE c.source_id=s.id AND c.owner_id IS NOT NULL))
                 ORDER BY next_poll,id LIMIT 1""",
                 (epoch, os.getenv("NEWSSTREAM_DEMO_RSS", "1") != "0")).fetchone()
@@ -66,7 +68,8 @@ class PublicWorker:
                     continue
                 title = story.get("title", "")[:300]
                 body = story.get("text", "")[:12000]
-                section = self.local_section({"title": title, "summary": body}, list(SECTORS)) if source["mixed"] else ""
+                section = self.local_section({"title": title, "summary": body}, list(SECTORS)) if (
+                    source["mixed"] or source["general_channel"]) else ""
                 prepared.append((story, url, title, body, section))
             def save(db):
                 if validators:
@@ -84,7 +87,7 @@ class PublicWorker:
                         posted = prior[0] if prior else collected
                     self.catalog._item(db, source["id"], external, url, title, body,
                                        story.get("author") or publisher or source["publisher"], posted,
-                                       section, bool(body), collected, rss_alias=True)
+                                       section, bool(body), collected, rss_alias=True, notify=bool(source["checked_at"]))
                 db.execute("UPDATE news_sources SET checked_at=?,next_poll=?,failures=0 WHERE id=?",
                            (collected, epoch + 900, source["id"]))
             await self.catalog.run_db(save, write=True)

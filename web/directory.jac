@@ -13,6 +13,7 @@ import from .public_data {
     request_json
 }
 import from .public_channel { ChannelPage }
+import from .sector_tags { SectorTags, SectorPicker }
 import from .public_story { ShareChannel, Story }
 import "./directory.css";
 
@@ -47,17 +48,18 @@ def ChannelRow(channel: any, sector: str = "", onClicks: any = None) -> JsxEleme
     headlines = [
         item
         for item in channel.headlines
-        if not sector or channel.category == sector or item.section == sector
+        if not sector
+            or item.section == sector
+            or (not item.section and sector in (channel.tags or [channel.category]))
     ][:3];
     <li>
         <details className="channel-disclosure" onToggle={opened}>
             <summary>
                 <div className="row-info">
                     <span className="channel-meta">
-                        {sector_name(channel.category)
-                            + " · "
-                            + source_name(channel.source_type)}
+                        {source_name(channel.source_type)}
                     </span>
+                    <SectorTags tags={channel.tags or [channel.category]}/>
                     <span className="channel-name">{channel.name}</span>
                     <span className="channel-description">{channel.description}</span>
                 </div>
@@ -169,12 +171,13 @@ def Home(channels: list[any]) -> JsxElement {
 
 def Discover(channels: list[any], onClicks: any) -> JsxElement {
     has tab: str = "all",
-        sortOrder: str = "name";
+        sortOrder: str = "name",
+        sector: str = "";
     # New uses publication time. Trending is an explicit view of recorded clicks.
     order = sortOrder if tab == "all" else ("new" if tab == "new" else "clicks");
     rows = [
         c
-        for c in channels
+        for c in (by_sector(channels, sector) if sector else channels)
         if tab != "trending" or c.clicks > 0
     ];
     <main className="directory">
@@ -200,6 +203,19 @@ def Discover(channels: list[any], onClicks: any) -> JsxElement {
                     </button>
                 }}
             </div>
+            <label className="discover-sort">
+                Category
+                <select
+                    aria-label="Category"
+                    value={sector}
+                    onChange={lambda (e: any) { sector = e.target.value; }}
+                >
+                    <option value="">All categories</option>
+                    {for slug in SECTORS + ["general"] {
+                        <option key={slug} value={slug}>{sector_name(slug)}</option>
+                    }}
+                </select>
+            </label>
             {if tab == "all" {
                 <label className="discover-sort">
                     Sort by
@@ -221,68 +237,131 @@ def Discover(channels: list[any], onClicks: any) -> JsxElement {
             <p className="list-note">Ranked by total channel clicks.</p>
         }}
         {if len(rows) {
-            <ChannelList channels={order_channels(rows, order)} onClicks={onClicks}/>
+            <ChannelList
+                channels={order_channels(rows, order)}
+                sector={sector}
+                onClicks={onClicks}
+            />
         } else {
             <p className="public-empty">
                 {"Trending channels will appear as readers open them."
                     if tab == "trending"
-                    else "No channels have been published yet."}
+                    else "No channels match this category."}
             </p>
         } }
     </main>
 }
 
-def Following(data: any) -> JsxElement {
+def Following(data: any, reload: any) -> JsxElement {
+    has saving: bool = False,
+        issue: str = "";
     names: dict[str, str] = {str(c.slug): str(c.name) for c in data.channels};
+    categories = data.categories or [];
+    async def save(path: str, body: any) {
+        if saving {
+            return;
+        }
+        saving = True;
+        issue = "";
+        res = await request_json(path, "PUT", body);
+        if res.ok or res.status == 401 {
+            await reload();
+        } else {
+            issue = res.error;
+        }
+        saving = False;
+    }
     <main className="directory directory-reading">
         <header className="directory-heading">
             <h1>Following</h1>
-            <p>
-                {count_label(
-                    len(data.channels), "channel followed", "channels followed"
-                )}
-            </p>
+            <p>Your followed channels and private sources in one feed.</p>
         </header>
-        {if len(data.channels) {
-            <details className="followed-list">
-                <summary>Followed channels</summary>
-                <ChannelList channels={data.channels}/>
-            </details>
-            <section className="news-section">
-                <h2>Latest updates</h2>
-                {if not len(data.items) {
-                    <p className="directory-muted">
-                        Your followed channels haven't published any updates yet.
-                    </p>
-                }}
-                {for item in data.items {
-                    <div
-                        className="following-story"
-                        key={str(item.channel_slug) + "/" + str(item.id)}
+        <section className="coverage-panel" aria-label="Feed preferences">
+            <SectorPicker
+                label="Show updates and alerts for"
+                allowAll={True}
+                selected={categories}
+                disabled={saving}
+                onChange={lambda (values: any) { save(
+                    "/api/me/feed-preferences", {"categories": values}
+                ); }}
+            />
+            <p>Choose any combination. Your selection is saved across devices.</p>
+            {if issue {
+                <p role="alert">{issue}</p>
+            }}
+        </section>
+        <details className="followed-controls">
+            <summary>
+                {count_label(
+                    len(data.channels), "followed channel", "followed channels"
+                )
+                    + " · Manage alerts"}
+            </summary>
+            {for ch in data.channels {
+                <div className="followed-channel" key={ch.slug}>
+                    <div>
+                        <a href={"/channels/" + str(ch.slug)}>{ch.name}</a>
+                        <SectorTags tags={ch.tags or [ch.category]}/>
+                    </div>
+                    <button
+                        type="button"
+                        aria-pressed={bool(ch.notifications_enabled)}
+                        aria-label={"Alerts for " + str(ch.name)}
+                        disabled={saving}
+                        onClick={lambda { save(
+                            "/api/channels/" + str(ch.slug) + "/notifications",
+                            {"enabled": not ch.notifications_enabled}
+                        ); }}
                     >
-                        <Story
-                            item={item}
-                            channel_name={names.get(
+                        {"Alerts on" if ch.notifications_enabled else "Alerts off"}
+                    </button>
+                </div>
+            }}
+            <div className="home-links">
+                <a href="/discover">Find channels →</a>
+                <a href="/sources">Manage private sources →</a>
+            </div>
+        </details>
+        <section className="news-section">
+            <h2>Latest updates</h2>
+            {if not len(data.items) {
+                <p className="directory-muted">
+                    {"No updates match these categories yet."
+                        if len(categories)
+                        else "No updates yet. Explore Discover or add a private source in My Sources."}
+                </p>
+            }}
+            {for item in data.items {
+                <div
+                    className="following-story"
+                    key={str(item.channel_slug or "private") + "/" + str(item.id)}
+                >
+                    <Story
+                        item={item}
+                        channel_name={item.source_name
+                            if item.private_source
+                            else names.get(
                                 str(item.channel_slug), str(item.channel_slug)
                             )}
-                        />
-                        {if item.sources and len(item.sources) > 1 {
-                            <div
-                                className="channel-byline"
-                                aria-label="Source references"
-                            >
-                                <span>Sources</span>
-                                {for ref in item.sources {
-                                    <a
-                                        key={str(ref.channel_slug) + str(ref.url)}
-                                        href={ref.url
-                                            or ("/channels/" + str(ref.channel_slug))}
-                                    >
-                                        {ref.name}
-                                    </a>
-                                }}
-                            </div>
-                        }}
+                    />
+                    {if item.sources and len(item.sources) > 1 {
+                        <div className="channel-byline" aria-label="Source references">
+                            <span>Sources</span>
+                            {for ref in item.sources {
+                                <a
+                                    key={str(ref.channel_slug) + str(ref.url)}
+                                    href={ref.url
+                                        or ("/channels/" + str(ref.channel_slug))}
+                                >
+                                    {ref.name}
+                                </a>
+                            }}
+                        </div>
+                    }}
+                    {if item.private_source {
+                        <a href="/sources">Private source →</a>
+                    } else {
                         <a
                             href={"/channels/"
                                 + str(item.channel_slug)
@@ -291,15 +370,10 @@ def Following(data: any) -> JsxElement {
                         >
                             Open discussion →
                         </a>
-                    </div>
-                }}
-            </section>
-        } else {
-            <p className="public-empty">
-                Follow a channel to see its latest stories here.
-            </p>
-            <a className="button-link" href="/discover">Discover channels</a>
-        } }
+                    } }
+                </div>
+            }}
+        </section>
     </main>
 }
 
@@ -332,7 +406,12 @@ def Browse(path: str) -> JsxElement {
     useEffect(
         lambda {
             load();
-            on_change = lambda { load(); };
+            on_change = lambda {
+                data = None;
+                unauthorized = False;
+                error = "";
+                load();
+            };
             window.addEventListener(SESSION_EVENT, on_change);
             timer = setInterval(lambda { load(); }, 120000);
             return lambda {
@@ -388,7 +467,7 @@ def Browse(path: str) -> JsxElement {
         return <Discover channels={data.channels} onClicks={change_clicks}/>;
     }
     if path == "/following" {
-        return <Following data={data}/>;
+        return <Following data={data} reload={load}/>;
     }
     slug = path.split("/")[2] if path.startswith("/categories/") else "";
     if slug in SECTORS or slug == "general" {

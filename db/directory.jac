@@ -75,6 +75,14 @@ obj PublicDirectory {
             + self.catalog.get("publishers", []);
     }
 
+    def rss_channels -> list[Row] {
+        return [
+            channel
+            for channel in self.channels()
+            if channel.get("feed_url")
+        ];
+    }
+
     def view -> Row {
         categories: list[Row] = [];
         for category in self.catalog["categories"] {
@@ -108,7 +116,7 @@ obj PublicDirectory {
         }
         publishers = self.catalog.get("publishers", []);
         sections = self.sections();
-        for channel in self.channels() {
+        for channel in self.rss_channels() {
             edition = saved.get(channel["feed_url"])
                 if isinstance(saved, dict)
                 else None;
@@ -142,7 +150,7 @@ obj PublicDirectory {
                 "checked_at": channel["checked_at"],
                 "headlines": channel["headlines"]
             }
-            for channel in self.channels()
+            for channel in self.rss_channels()
             if channel.get("checked_at")
         };
         self.cache.parent.mkdir(parents=True, exist_ok=True);
@@ -163,7 +171,7 @@ obj PublicDirectory {
     async def refresh(fetcher: any = fetch_feed) -> None {
         updated = False;
         publishers = self.catalog.get("publishers", []);
-        for channel in self.channels() {
+        for channel in self.rss_channels() {
             mixed = channel in publishers;
             try {
                 (body, _, base) = await fetcher(channel["feed_url"]);

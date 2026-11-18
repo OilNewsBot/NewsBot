@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-11-18T00:23:50+00:00",
+  "captured_at": "2026-11-18T03:41:39+00:00",
   "curator": "Newsstream editors",
   "categories": [
     {
@@ -32,6 +32,9 @@
               "published": "2026-11-12T14:00:00+00:00",
               "summary": "Two North Slope projects are driving Alaska’s rebound. EIA expects output to reach 505,000 barrels a day in 2027, the highest level since 2014."
             }
+          ],
+          "tags": [
+            "energy"
           ]
         },
         {
@@ -59,6 +62,9 @@
               "published": "2026-11-02T19:55:00+00:00",
               "summary": "MIT researchers discussed technologies moving into service today, alongside longer-term work in nuclear energy and quantum computing."
             }
+          ],
+          "tags": [
+            "energy"
           ]
         },
         {
@@ -86,7 +92,78 @@
               "published": "2026-11-17T15:44:48+00:00",
               "summary": "A guest contributor outlines how storage operators can use telemetry and escalation procedures to respond to grid conditions."
             }
+          ],
+          "tags": [
+            "energy",
+            "utilities"
           ]
+        },
+        {
+          "slug": "x-eiagov",
+          "name": "U.S. Energy Information Administration",
+          "publisher": "U.S. Energy Information Administration",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/EIAgov",
+          "tags": [
+            "energy"
+          ],
+          "description": "Federal energy production, consumption, prices and forecasts.",
+          "headlines": []
+        },
+        {
+          "slug": "x-hormuzletter",
+          "name": "The Hormuz Letter",
+          "publisher": "The Hormuz Letter",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/HormuzLetter",
+          "tags": [
+            "energy"
+          ],
+          "description": "Independent commentary on Middle East energy markets and trade through Hormuz.",
+          "headlines": []
+        },
+        {
+          "slug": "x-tankertrackers",
+          "name": "TankerTrackers.com",
+          "publisher": "TankerTrackers.com",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/TankerTrackers",
+          "tags": [
+            "energy",
+            "industrials"
+          ],
+          "description": "Independent tanker tracking and analysis of seaborne petroleum shipments.",
+          "headlines": []
+        },
+        {
+          "slug": "x-crudeoil231",
+          "name": "@CRUDEOIL231",
+          "publisher": "@CRUDEOIL231",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/CRUDEOIL231",
+          "tags": [
+            "energy",
+            "materials"
+          ],
+          "description": "Independent commentary on crude oil and other commodity markets.",
+          "headlines": []
+        },
+        {
+          "slug": "x-hfi-research",
+          "name": "HFI Research",
+          "publisher": "HFI Research",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/HFI_Research",
+          "tags": [
+            "energy"
+          ],
+          "description": "Investment research and analysis focused on oil and gas markets.",
+          "headlines": []
         }
       ]
     },
@@ -120,6 +197,9 @@
               "published": "2026-11-17T18:03:42+00:00",
               "summary": "GitHub’s Ignite announcement adds support for Azure DevOps repositories and GitHub Enterprise Server in the Copilot app."
             }
+          ],
+          "tags": [
+            "tech"
           ]
         },
         {
@@ -147,6 +227,9 @@
               "published": "2026-11-13T19:26:07+00:00",
               "summary": "Cloudflare reports on automated testing against exposed services and describes defensive changes for infrastructure teams."
             }
+          ],
+          "tags": [
+            "tech"
           ]
         },
         {
@@ -174,7 +257,53 @@
               "published": "2026-11-17T20:14:31+00:00",
               "summary": "The latest TotalView release adds Python to its parallel debugging support for high-performance computing."
             }
+          ],
+          "tags": [
+            "tech"
           ]
+        },
+        {
+          "slug": "nyt-technology",
+          "name": "The New York Times — Technology",
+          "publisher": "The New York Times",
+          "description": "Technology desk coverage of digital businesses, computing and the companies behind them.",
+          "feed_url": "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
+          "tags": [
+            "tech"
+          ],
+          "headlines": [
+            {
+              "title": "Apple Addresses Outages Affecting Apple Pay, iCloud and Apps",
+              "url": "https://www.nytimes.com/2026/11/17/technology/apple-down-outage-issues.html",
+              "published": "2026-11-17T23:17:38+00:00",
+              "summary": "Apple reported disruptions across payment, cloud and app services."
+            },
+            {
+              "title": "A More Precise Clock Is on Its Way",
+              "url": "https://www.nytimes.com/2026/11/17/fashion/optical-atomic-clocks-rolex.html",
+              "published": "2026-11-17T10:00:32+00:00",
+              "summary": "Scientists are developing an optical atomic clock as a future reference for measuring time."
+            },
+            {
+              "title": "Inside Microsoft’s Rush to Get Back Online After a Global Outage",
+              "url": "https://www.nytimes.com/2026/11/13/business/microsoft-outage.html",
+              "published": "2026-11-13T21:28:58+00:00",
+              "summary": "The Times examines how Microsoft responded to a prolonged disruption to email and other services."
+            }
+          ]
+        },
+        {
+          "slug": "x-cloudflare",
+          "name": "Cloudflare",
+          "publisher": "Cloudflare",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/Cloudflare",
+          "tags": [
+            "tech"
+          ],
+          "description": "Company updates on internet infrastructure, networking and security.",
+          "headlines": []
         }
       ]
     },
@@ -208,6 +337,9 @@
               "published": "2026-11-09T22:15:46+00:00",
               "summary": "The FDA approved asundexian alongside antiplatelet therapy for certain adults after an ischemic stroke or high-risk transient ischemic attack."
             }
+          ],
+          "tags": [
+            "healthcare"
           ]
         },
         {
@@ -235,6 +367,9 @@
               "published": "2026-11-03T21:00:00+00:00",
               "summary": "A documentary follows MIT researchers studying endometriosis and efforts to develop treatments for the condition."
             }
+          ],
+          "tags": [
+            "healthcare"
           ]
         },
         {
@@ -262,7 +397,23 @@
               "published": "2026-11-17T15:38:55+00:00",
               "summary": "The report examines updated health-record sharing rules and the access improvements HHS expects."
             }
+          ],
+          "tags": [
+            "healthcare"
           ]
+        },
+        {
+          "slug": "x-healthcaredive",
+          "name": "Healthcare Dive",
+          "publisher": "Healthcare Dive",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/healthcaredive",
+          "tags": [
+            "healthcare"
+          ],
+          "description": "Reporting on providers, insurers and the economics of healthcare.",
+          "headlines": []
         }
       ]
     },
@@ -296,6 +447,9 @@
               "published": "2026-11-10T22:00:00+00:00",
               "summary": "MIT introduced new engineering faculty and the research areas they bring to the school."
             }
+          ],
+          "tags": [
+            "industrials"
           ]
         },
         {
@@ -323,6 +477,9 @@
               "published": "2026-11-09T16:07:10+00:00",
               "summary": "The multi-day expo at Kennedy Space Center drew thousands to see NASA’s work in aviation, space and technology."
             }
+          ],
+          "tags": [
+            "industrials"
           ]
         },
         {
@@ -350,14 +507,464 @@
               "published": "2026-11-16T15:52:00+00:00",
               "summary": "Drew Crowe discusses how manufacturers recruit workers and the role he sees for AI in industry."
             }
+          ],
+          "tags": [
+            "industrials"
           ]
+        },
+        {
+          "slug": "x-manufacturedive",
+          "name": "Manufacturing Dive",
+          "publisher": "Manufacturing Dive",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/ManufactureDive",
+          "tags": [
+            "industrials"
+          ],
+          "description": "Manufacturing companies, factories, procurement and industrial policy.",
+          "headlines": []
+        },
+        {
+          "slug": "x-uk-mto",
+          "name": "UK Maritime Trade Operations",
+          "publisher": "UK Maritime Trade Operations",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/UK_MTO",
+          "tags": [
+            "industrials",
+            "energy"
+          ],
+          "description": "Official UK maritime security updates and incident notices for commercial shipping routes.",
+          "headlines": []
+        }
+      ]
+    },
+    {
+      "slug": "consumer-discretionary",
+      "name": "Consumer Discretionary",
+      "image_url": "/directory-images/consumer-discretionary.jpg",
+      "channels": [
+        {
+          "slug": "retail-dive",
+          "name": "Retail Dive",
+          "publisher": "Retail Dive",
+          "description": "Retail earnings, store operations and consumer brands.",
+          "feed_url": "https://www.retaildive.com/feeds/news/",
+          "tags": [
+            "consumer-discretionary"
+          ],
+          "headlines": [
+            {
+              "title": "How brands can welcome AI users onto their sites this holiday season",
+              "url": "https://www.retaildive.com/news/brands-welcome-ai-users-onto-sites-holiday-season/874725/",
+              "published": "2026-11-17T18:03:00+00:00",
+              "summary": "Retail Dive explores what shoppers using AI assistance need from retailers during holiday checkout."
+            },
+            {
+              "title": "Nike won’t return to growth for 3 more years",
+              "url": "https://www.retaildive.com/news/nike-return-sales-growth-three-years-strategic-turnaround-plan-full-stride-ahead/874901/",
+              "published": "2026-11-17T17:36:00+00:00",
+              "summary": "Nike outlined two more years of expected declines before a return to growth."
+            },
+            {
+              "title": "Home Depot names longtime company vet as CEO",
+              "url": "https://www.retaildive.com/news/home-depot-ceo-richard-mcphail-coo-cfo/874893/",
+              "published": "2026-11-17T17:28:00+00:00",
+              "summary": "Home Depot named CFO Richard McPhail as its next chief executive and Ann-Marie Campbell as operating chief."
+            }
+          ]
+        },
+        {
+          "slug": "restaurant-dive",
+          "name": "Restaurant Dive",
+          "publisher": "Restaurant Dive",
+          "description": "Restaurant chains, franchise operations and dining demand.",
+          "feed_url": "https://www.restaurantdive.com/feeds/news/",
+          "tags": [
+            "consumer-discretionary"
+          ],
+          "headlines": [
+            {
+              "title": "Burger King’s feedback campaign takes aim at its own restaurants",
+              "url": "https://www.restaurantdive.com/news/burger-kings-push-for-consumer-feedback-takes-aim-at-its-own-restaurants/874864/",
+              "published": "2026-11-17T14:48:00+00:00",
+              "summary": "Burger King’s marketing chief discusses how the chain uses customer feedback to change restaurant operations."
+            },
+            {
+              "title": "POS competition lightens up",
+              "url": "https://www.restaurantdive.com/news/pos-competition-lightens-up/874772/",
+              "published": "2026-11-16T16:54:00+00:00",
+              "summary": "Shift4’s CFO said competition among point-of-sale providers has eased as some venture-funded companies exit."
+            },
+            {
+              "title": "3 ways Dutch Bros is growing beyond drinks",
+              "url": "https://www.restaurantdive.com/news/dutch-bros-expansion-delivery-food-digital/874655/",
+              "published": "2026-11-16T16:47:00+00:00",
+              "summary": "Dutch Bros is testing delivery and expanding its food offering alongside plans to grow its store count."
+            }
+          ]
+        },
+        {
+          "slug": "x-retaildive",
+          "name": "Retail Dive",
+          "publisher": "Retail Dive",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/RetailDive",
+          "tags": [
+            "consumer-discretionary"
+          ],
+          "description": "Retail earnings, consumer brands and store operations.",
+          "headlines": []
+        }
+      ]
+    },
+    {
+      "slug": "materials",
+      "name": "Materials",
+      "image_url": "/directory-images/materials.jpg",
+      "channels": [
+        {
+          "slug": "canadian-mining-journal",
+          "name": "Canadian Mining Journal",
+          "publisher": "Canadian Mining Journal",
+          "description": "Mineral projects, mining technology and metal supply chains.",
+          "feed_url": "https://www.canadianminingjournal.com/feed/",
+          "tags": [
+            "materials"
+          ],
+          "headlines": [
+            {
+              "title": "Luck Stone, Epiroc to showcase remote-controlled drilling live at CES",
+              "url": "https://www.canadianminingjournal.com/news/luck-stone-epiroc-to-showcase-remote-controlled-drilling-live-at-ces/",
+              "published": "2026-11-17T18:59:55+00:00",
+              "summary": "Luck Stone and Epiroc plan to demonstrate remote drilling technology at the Consumer Electronics Show."
+            },
+            {
+              "title": "Satellite application tracks changes at Argentina lithium salt flat",
+              "url": "https://www.canadianminingjournal.com/news/satellite-application-tracks-changes-at-argentina-lithium-salt-flat/",
+              "published": "2026-11-17T18:20:18+00:00",
+              "summary": "A new monitoring tool uses satellite observations of surface changes at an Argentine lithium site."
+            },
+            {
+              "title": "Electra adds nickel to Positive Materials partnership",
+              "url": "https://www.canadianminingjournal.com/news/electra-adds-nickel-to-positive-materials-partnership/",
+              "published": "2026-11-17T16:27:23+00:00",
+              "summary": "Electra expanded a supply agreement to cover future nickel sulfate production."
+            }
+          ]
+        },
+        {
+          "slug": "materials-science",
+          "name": "ScienceDaily — Materials Science",
+          "publisher": "ScienceDaily",
+          "description": "Materials research, including polymers, metals and industrial processes.",
+          "feed_url": "https://www.sciencedaily.com/rss/matter_energy/materials_science.xml",
+          "tags": [
+            "materials"
+          ],
+          "headlines": [
+            {
+              "title": "This remarkable new material could solve a major carbon capture problem",
+              "url": "https://www.sciencedaily.com/releases/2026/11/261116023405.htm",
+              "published": "2026-11-17T11:29:36+00:00",
+              "summary": "Researchers report a reusable material that captures carbon dioxide even under humid conditions."
+            },
+            {
+              "title": "A material just one atom thick reveals a strange quantum secret",
+              "url": "https://www.sciencedaily.com/releases/2026/11/261115085554.htm",
+              "published": "2026-11-17T01:25:39+00:00",
+              "summary": "University of Osaka researchers observed a new electronic state at the interface between a thin layer and copper."
+            },
+            {
+              "title": "The secret to building Moon bases may be hiding in emergency blankets",
+              "url": "https://www.sciencedaily.com/releases/2026/11/261115085549.htm",
+              "published": "2026-11-16T03:51:01+00:00",
+              "summary": "Researchers tested stacked plastic films as pressure-resistant insulation for potential lunar habitats."
+            }
+          ]
+        },
+        {
+          "slug": "x-mining",
+          "name": "MINING.COM",
+          "publisher": "MINING.COM",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/mining",
+          "tags": [
+            "materials"
+          ],
+          "description": "Metals markets, mining operations and company announcements.",
+          "headlines": []
+        }
+      ]
+    },
+    {
+      "slug": "utilities",
+      "name": "Utilities",
+      "image_url": "/directory-images/utilities.jpg",
+      "channels": [
+        {
+          "slug": "power-magazine",
+          "name": "POWER Magazine",
+          "publisher": "POWER Magazine",
+          "description": "Power plants, storage projects and electricity markets.",
+          "feed_url": "https://www.powermag.com/feed/",
+          "tags": [
+            "utilities"
+          ],
+          "headlines": [
+            {
+              "title": "U.S. Exceeds 200 GWh of Installed Energy Storage Capacity",
+              "url": "https://www.powermag.com/u-s-exceeds-200-gwh-of-installed-energy-storage-capacity/",
+              "published": "2026-11-17T05:02:29+00:00",
+              "summary": "An SEIA and Benchmark Mineral Intelligence report put installed U.S. energy storage above 200 gigawatt-hours."
+            },
+            {
+              "title": "Exus Renewables North America Closes $345 Million in Financing to Support New Projects",
+              "url": "https://www.powermag.com/exus-renewables-north-america-closes-345-million-in-financing-to-support-new-projects/",
+              "published": "2026-11-16T20:40:36+00:00",
+              "summary": "Exus said it secured financing to help build and develop renewable generation and storage projects."
+            },
+            {
+              "title": "The Fastest New Capacity Is the Grid You Already Have",
+              "url": "https://www.powermag.com/the-fastest-new-capacity-is-the-grid-you-already-have/",
+              "published": "2026-11-16T18:15:00+00:00",
+              "summary": "POWER examines options for increasing grid capacity as surveyed energy executives anticipate higher demand."
+            }
+          ]
+        },
+        {
+          "slug": "power-engineering",
+          "name": "Power Engineering",
+          "publisher": "Power Engineering",
+          "description": "Utility generation projects, power plant equipment and operations.",
+          "feed_url": "https://www.power-eng.com/feed/",
+          "tags": [
+            "utilities"
+          ],
+          "headlines": [
+            {
+              "title": "TVA retains Mike Skaggs as CEO, promotes Tom Rice to president",
+              "url": "https://www.power-eng.com/business/people/tva-ceo-mike-skaggs-tom-rice-president/",
+              "published": "2026-11-16T11:02:07+00:00",
+              "summary": "The Tennessee Valley Authority is keeping Mike Skaggs as chief executive and appointing Tom Rice president."
+            },
+            {
+              "title": "OPG says Darlington SMR won’t meet 2030 start date or cost target",
+              "url": "https://www.power-eng.com/nuclear/smrs/darlington-smr-opg-delay-budget/",
+              "published": "2026-11-13T12:58:42+00:00",
+              "summary": "Ontario Power Generation expects its Darlington small modular reactor to exceed its budget and miss its 2030 target."
+            },
+            {
+              "title": "GE Vernova validates hydrogen capability for LM2500XPRESS and LM6000 turbines",
+              "url": "https://www.power-eng.com/hydrogen/ge-vernova-hydrogen-gas-turbines/",
+              "published": "2026-11-12T12:17:53+00:00",
+              "summary": "GE Vernova reported validating hydrogen capabilities on two turbine platforms. Fuel cost and availability remain obstacles."
+            }
+          ]
+        },
+        {
+          "slug": "x-utilitydive",
+          "name": "Utility Dive",
+          "publisher": "Utility Dive",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/UtilityDive",
+          "tags": [
+            "utilities"
+          ],
+          "description": "Electric utilities, regulation, grid investment and power markets.",
+          "headlines": []
+        }
+      ]
+    },
+    {
+      "slug": "real-estate",
+      "name": "Real Estate",
+      "image_url": "/directory-images/real-estate.jpg",
+      "channels": [
+        {
+          "slug": "housingwire",
+          "name": "HousingWire",
+          "publisher": "HousingWire",
+          "description": "Housing markets, mortgage lenders and residential real estate finance.",
+          "feed_url": "https://www.housingwire.com/feed/",
+          "tags": [
+            "real-estate"
+          ],
+          "headlines": [
+            {
+              "title": "Fitch affirms Finance of America’s CCC rating as key risks, leverage persist",
+              "url": "https://www.housingwire.com/articles/fitch-affirms-finance-of-america-ccc-positive-outlook/",
+              "published": "2026-11-17T22:01:45+00:00",
+              "summary": "Fitch kept its rating for Finance of America, citing its liquidity and profitability outlook."
+            },
+            {
+              "title": "Fitch warns of growing balance-sheet strain at top nonbank mortgage firms",
+              "url": "https://www.housingwire.com/articles/fitch-nonbank-mortgage-ratings-outlook/",
+              "published": "2026-11-17T21:21:09+00:00",
+              "summary": "Fitch highlighted leverage and exposure to mortgage servicing rights among nonbank mortgage companies."
+            },
+            {
+              "title": "Homebuilder confidence sinks to a 14-year low as buyers hibernate",
+              "url": "https://www.housingwire.com/articles/homebuilder-confidence-november-2026/",
+              "published": "2026-11-17T20:52:28+00:00",
+              "summary": "The homebuilder survey found widespread use of incentives as affordability weighed on buyers."
+            }
+          ]
+        },
+        {
+          "slug": "multifamily-dive",
+          "name": "Multifamily Dive",
+          "publisher": "Multifamily Dive",
+          "description": "Apartment development, ownership, leasing and property management.",
+          "feed_url": "https://www.multifamilydive.com/feeds/news/",
+          "tags": [
+            "real-estate"
+          ],
+          "headlines": [
+            {
+              "title": "Perennial Housing launches as affordable owner, operator",
+              "url": "https://www.multifamilydive.com/news/perennial-housing-launch-affordable-owner-operator/874932/",
+              "published": "2026-11-17T20:17:00+00:00",
+              "summary": "Perennial Housing started with 31 affordable housing properties and plans to expand its portfolio."
+            },
+            {
+              "title": "How multifamily operators leverage tech to oust fraudulent applications",
+              "url": "https://www.multifamilydive.com/news/multifamily-operators-ai-application-fraud/874921/",
+              "published": "2026-11-17T20:16:00+00:00",
+              "summary": "Apartment operators discussed fraud screening and moving some leasing approval decisions away from individual properties."
+            },
+            {
+              "title": "Sustainability pays dividends when integrated into asset lifecycle planning: BRE expert",
+              "url": "https://www.multifamilydive.com/news/sustainability-pays-dividends-asset-lifecycle-planning/874926/",
+              "published": "2026-11-17T19:14:00+00:00",
+              "summary": "A Building Research Establishment expert discussed how property owners can plan sustainability investments across an asset’s life."
+            }
+          ]
+        },
+        {
+          "slug": "x-multifamilydive",
+          "name": "Multifamily Dive",
+          "publisher": "Multifamily Dive",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/multifamilydive",
+          "tags": [
+            "real-estate"
+          ],
+          "description": "Apartment markets, development and property operations.",
+          "headlines": []
         }
       ]
     },
     {
       "slug": "general",
       "name": "General News",
-      "channels": []
+      "channels": [
+        {
+          "slug": "x-faytuksnetwork",
+          "name": "Faytuks Network",
+          "publisher": "Faytuks Network",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/FaytuksNetwork",
+          "tags": [
+            "general",
+            "energy"
+          ],
+          "description": "Global news and open-source reporting, including geopolitical events affecting energy supply.",
+          "headlines": []
+        },
+        {
+          "slug": "x-molowarmonitor",
+          "name": "@MoloWarMonitor",
+          "publisher": "@MoloWarMonitor",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/MoloWarMonitor",
+          "tags": [
+            "general",
+            "energy"
+          ],
+          "description": "Independent conflict monitoring. Regional developments may affect energy markets.",
+          "headlines": []
+        },
+        {
+          "slug": "x-osint613",
+          "name": "OSINT613",
+          "publisher": "OSINT613",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/Osint613",
+          "tags": [
+            "general",
+            "energy"
+          ],
+          "description": "Open-source reporting on regional conflicts and geopolitics in the Middle East.",
+          "headlines": []
+        },
+        {
+          "slug": "x-gavmccracken",
+          "name": "@GavMcCracken",
+          "publisher": "@GavMcCracken",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/GavMcCracken",
+          "tags": [
+            "general",
+            "energy",
+            "materials"
+          ],
+          "description": "Independent commodities and macroeconomic commentary.",
+          "headlines": []
+        },
+        {
+          "slug": "x-menchosint",
+          "name": "@MenchOsint",
+          "publisher": "@MenchOsint",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/MenchOsint",
+          "tags": [
+            "general",
+            "energy"
+          ],
+          "description": "Independent open-source commentary on conflicts in the Middle East and other regions.",
+          "headlines": []
+        },
+        {
+          "slug": "x-financialjuice",
+          "name": "FinancialJuice",
+          "publisher": "FinancialJuice",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/financialjuice",
+          "tags": [
+            "general",
+            "energy"
+          ],
+          "description": "Cross-market headlines on macroeconomics, commodities, equities and rates.",
+          "headlines": []
+        },
+        {
+          "slug": "x-ab4-ali3",
+          "name": "@AB4_Ali3",
+          "publisher": "@AB4_Ali3",
+          "source_type": "x",
+          "mode": "embed",
+          "source_url": "https://x.com/AB4_Ali3",
+          "tags": [
+            "general",
+            "energy"
+          ],
+          "description": "Regional affairs and Middle East news from an independent account.",
+          "headlines": []
+        }
+      ]
     }
   ],
   "publishers": [
@@ -404,6 +1011,9 @@
           "published": "2026-11-17T20:52:05+00:00",
           "summary": "The loss of measles elimination status marks a reversal for U.S. public health officials."
         }
+      ],
+      "tags": [
+        "general"
       ]
     }
   ]

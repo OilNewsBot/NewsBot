@@ -4,7 +4,7 @@ Read the implementation before changing a contract. Update this document and its
 consumers/tests together. Coordinate through the relevant task when another agent
 is changing a producer or consumer.
 
-## Adapter → pipeline
+## Adapter â†’ pipeline
 
 `adapters/base.jac` defines `NormalizedPost` and `SourceAdapter`.
 
@@ -21,7 +21,7 @@ An adapter runs asynchronously and delivers normalized posts to the sink.
 Account resolution returns a stable ID and canonical handle; adapter status is
 exposed in `/status`. Adding a source should preserve this boundary.
 
-## Pipeline → database → notification
+## Pipeline â†’ database â†’ notification
 
 `pipeline/classify.jac` owns classification results; `pipeline/dedup.jac` owns
 clustering. Database table definitions live in `db/schema.sql`; callers use
@@ -39,7 +39,7 @@ event_id, event_title, what_changed, badges
 Kinds are `NEW_EVENT`, `UPDATE`, and `UNFILTERED`; category/score/event_id may be
 null on the relevant paths. Do not assume every notification is classified.
 
-## HTTP / SSE → browser
+## HTTP / SSE â†’ browser
 
 | Endpoint | Current response/behavior |
 | --- | --- |
@@ -54,7 +54,7 @@ null on the relevant paths. Do not assume every notification is classified.
 | `GET /suppressed` | Object containing `posts` |
 | `GET /status` | Adapter states, latency/counts, estimated model spend, fail-open state, X budget/reads, UI threshold/settings, inactive accounts |
 | `POST /ingest` | Admin only: the `X-Admin-Token` header must equal `NEWSBOT_ADMIN_TOKEN` when that is set, otherwise only loopback clients are accepted (403 otherwise). A normalized-post JSON representation; parses ISO timestamps and queues it, returning `{"queued": true}` |
-| `POST /refetch?hours=12` | Signed-in session or admin client (401 otherwise). Starts source catch-up; clamps hours to 1–48; returns 409 when unconfigured or already running |
+| `POST /refetch?hours=12` | Signed-in session or admin client (401 otherwise). Starts source catch-up; clamps hours to 1â€“48; returns 409 when unconfigured or already running |
 | `GET /portfolio` | Admin access. Returns the shared operator portfolio and configured sizing rules. |
 | `PUT /portfolio` | Admin access. Accepts `portfolio_value`, `available_cash`, `aggressiveness` and `max_hold_minutes`. Returns 422 on invalid input. |
 | `GET /suggestions` | Object containing `suggestions`, newest first, each a `trade_suggestions` row plus `event_title` |
@@ -69,12 +69,15 @@ the producer and tests. For breaking changes, sequence dependent PRs explicitly.
 
 | Endpoint | Behavior |
 | --- | --- |
-| `GET /api/channels` | Lists public channel metadata, counts, and story previews. An authenticated session adds viewer-specific ownership and follow/recommend flags. |
+| `GET /api/channels` | Lists public channel metadata, counts, and story previews. An authenticated session adds viewer-specific ownership, follow/recommend flags and notification settings. Channel tags use canonical sector slugs. Items carry a section slug and an optional human-readable topic. |
 | `GET /api/channels/{slug}` | Channel details, source references, recent items and discussion. |
 | `POST /api/channels` | Publish a channel for the authenticated user with a name, description, category, source type, and source URL or API mode where applicable. |
 | `POST /api/channels/{slug}/click` | Record a channel opening. Returns the updated total. |
 | `PUT /api/channels/{slug}/subscription`, `PUT /api/channels/{slug}/recommendation` | Set the session user's choice with `{"enabled":true}` or `false`. Repeating the request is idempotent. |
-| `GET /api/following` | Signed-in user's subscribed channels and grouped news items. |
+| `GET /api/following` | Account subscriptions, saved category selection and up to 200 recent matching updates from followed channels and enabled private sources. Private rows carry `private_source: true`. |
+| `GET /api/me/feed-preferences`, `PUT /api/me/feed-preferences` | Read or replace the signed-in reader's category selection. Send `{"categories":["utilities","tech"]}` to include either sector, or an empty list for all. |
+| `PUT /api/channels/{slug}/notifications` | Opt a followed public channel into alerts or mute it using `{"enabled":true}` or `false`. |
+| `GET /api/following/notifications/head`, `GET /api/following/notifications?since=N` | Baseline and subsequent public subscription alerts for the current reader. Private source alerts use the existing authenticated personal stream. |
 | `POST /api/channels/{slug}/posts` | Publish a titled post with text or an optional source URL in an eligible channel. |
 | `POST /api/channels/{slug}/comments` | Post text on a channel, or attach to an item or parent comment in the same thread. |
 | `GET /api/me/telegram`, `POST /api/me/telegram/pair`, `DELETE /api/me/telegram` | Read the account's private Telegram inbox, issue an expiring pairing link, or disconnect. |
@@ -104,7 +107,7 @@ Every `/api/me/*` route derives ownership from the session cookie; no caller
 | `GET /api/me/notifications/head` | `{notification_id: N}` for silent initial baseline |
 | `GET /api/me/stream?since=N` | SSE notification events with stable personal notification IDs; supports Last-Event-ID replay |
 
-Personal item fields: `id`, `source_id`, `source_name`, `provider`, `title`,
+Private sources accept `tags` on creation and update. Existing untagged sources default to `general`. Personal item fields include `tags`, `category`, `section`, `topic`, `id`, `source_id`, `source_name`, `provider`, `title`,
 `text`, `url`, `posted_at`, `received_at`. Alerts add `notification_id` and
 `kind: SOURCE_POST`. These IDs belong to the personal notification table, not
 the legacy notification table. Empty/exhausted sessions receive 401; an already

@@ -56,3 +56,26 @@ CREATE TABLE IF NOT EXISTS news_comments (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS news_comments_thread ON news_comments(slug,item_id,id);
+
+-- Additive tables keep existing accounts, subscriptions, RSS items and summaries intact.
+CREATE TABLE IF NOT EXISTS news_channel_tags (
+    slug TEXT NOT NULL REFERENCES news_channels(slug) ON DELETE CASCADE,
+    category TEXT NOT NULL, PRIMARY KEY(slug,category)
+);
+CREATE TABLE IF NOT EXISTS news_feed_categories (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category TEXT NOT NULL, PRIMARY KEY(user_id,category)
+);
+CREATE TABLE IF NOT EXISTS news_alert_settings (
+    user_id INTEGER NOT NULL, slug TEXT NOT NULL, enabled_at TEXT NOT NULL,
+    PRIMARY KEY(user_id,slug),
+    FOREIGN KEY(user_id,slug) REFERENCES news_subscriptions(user_id,slug) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS news_alert_settings_slug ON news_alert_settings(slug);
+CREATE TABLE IF NOT EXISTS news_alerts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, slug TEXT NOT NULL,
+    item_id INTEGER NOT NULL REFERENCES news_items(id), section TEXT NOT NULL, topic TEXT NOT NULL,
+    FOREIGN KEY(user_id,slug) REFERENCES news_alert_settings(user_id,slug) ON DELETE CASCADE,
+    UNIQUE(user_id,item_id)
+);
+CREATE INDEX IF NOT EXISTS news_alerts_user_id ON news_alerts(user_id,id);

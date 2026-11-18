@@ -23,7 +23,17 @@ test "the public snapshot has dated headlines and unique channel addresses" {
             captured = datetime.fromisoformat(data["captured_at"]);
             categories = data["categories"];
             assert [c["name"] for c in categories]
-                == ["Energy", "Tech", "Healthcare", "Industrials", "General News"];
+                == [
+                    "Energy",
+                    "Tech",
+                    "Healthcare",
+                    "Industrials",
+                    "Consumer Discretionary",
+                    "Materials",
+                    "Utilities",
+                    "Real Estate",
+                    "General News"
+                ];
             slugs: set[str] = set();
             publisher = data["publishers"][0];
             assert publisher["slug"] == "new-york-times";
@@ -35,7 +45,19 @@ test "the public snapshot has dated headlines and unique channel addresses" {
                     if c["slug"] != publisher["slug"]
                 ];
                 if category["slug"] != "general" {
-                    assert len(dedicated) >= 3;
+                    rss = [
+                        c
+                        for c in dedicated
+                        if c.get("feed_url")
+                    ];
+                    assert len(rss)
+                        >= (
+                            3
+                                if category["slug"]
+                                    in ["energy", "tech", "healthcare", "industrials"]
+                                else 2
+                        );
+                    assert any(c.get("source_type") == "x" for c in dedicated);
                     image = await client.get(category["image_url"]);
                     assert image.status_code == 200;
                 }
@@ -49,6 +71,12 @@ test "the public snapshot has dated headlines and unique channel addresses" {
                     } else {
                         assert channel["slug"] not in slugs;
                         slugs.add(channel["slug"]);
+                        if channel.get("source_type") == "x" {
+                            assert channel["source_url"].startswith("https://x.com/");
+                            assert not stories and not channel.get("feed_url");
+                            assert channel["mode"] == "embed";
+                            continue;
+                        }
                         assert len(stories) == 3;
                     }
                     dates = [

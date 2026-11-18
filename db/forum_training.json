@@ -36,6 +36,34 @@
     "Logistics firms move cargo through warehouses as a dockworkers strike disrupts supply chains.",
     "A shipbuilder opens a shipyard to make vessels and transport equipment."
   ],
+  "consumer-discretionary": [
+    "Retailers report comparable store sales, apparel demand and department store spending.",
+    "Auto dealers say discretionary spending on cars and electric vehicles increased.",
+    "Hotel bookings, cruise line reservations and leisure travel demand lift tourism revenue.",
+    "Restaurants and fast food chains report same store sales and menu pricing.",
+    "Consumer brands and e-commerce merchants prepare for holiday shopping."
+  ],
+  "materials": [
+    "Mining companies develop copper, gold and iron ore mines and expand mineral reserves.",
+    "Steelmakers and aluminum smelters report lower output of primary metals.",
+    "Specialty chemicals producers and fertilizer manufacturers raise feedstock prices.",
+    "Paper mills and packaging suppliers increase paperboard and pulp production.",
+    "Cement and aggregates producers sell construction materials to contractors."
+  ],
+  "utilities": [
+    "Utility regulators approve electric utility rates and ratepayer bill increases.",
+    "Grid operators upgrade transmission lines and electricity distribution substations.",
+    "Water utilities invest in wastewater treatment plants and drinking water systems.",
+    "A public utility commission reviews cost recovery and the utility rate base.",
+    "Electric utilities restore power after outages and replace distribution poles."
+  ],
+  "real-estate": [
+    "Home sales, housing starts and mortgage rates shape the residential housing market.",
+    "Commercial real estate investors buy office buildings as lease vacancy rates rise.",
+    "A real estate investment trust reports occupancy and rents for multifamily apartments.",
+    "Property developers seek planning permission for industrial real estate and warehouses.",
+    "Homebuilders report house prices and residential construction permits."
+  ],
   "general": [
     "Voters decide a national election. Congress debates party leadership, policy and campaign spending.",
     "Diplomats discuss peace negotiations as a military conflict continues overseas.",

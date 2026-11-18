@@ -2,6 +2,7 @@
 
 import "./sources.css";
 import from react { useEffect }
+import from .sector_tags { SectorPicker, SectorTags }
 import from .publishing { PublishingPanel }
 
 # These values belong to this mounted page, never to persistent browser storage.
@@ -102,6 +103,7 @@ async def personal_request(path: str, method: str = "GET", body: any = None) -> 
 def SourceCard(source: any, busy: bool, onUpdate: any, onRemove: any) -> JsxElement {
     has includeText: str = ", ".join(source.include_keywords or []),
         excludeText: str = ", ".join(source.exclude_keywords or []),
+        tagChoices: list[any] = source.tags or [],
         confirmRemove: bool = False;
 
     def save(e: any) {
@@ -109,6 +111,7 @@ def SourceCard(source: any, busy: bool, onUpdate: any, onRemove: any) -> JsxElem
         onUpdate(
             source.id,
             {
+                "tags": tagChoices,
                 "include_keywords": keywords(includeText),
                 "exclude_keywords": keywords(excludeText)
             }
@@ -123,6 +126,7 @@ def SourceCard(source: any, busy: bool, onUpdate: any, onRemove: any) -> JsxElem
                 </span>
                 <div>
                     <strong>{source.name}</strong>
+                    <SectorTags tags={source.tags or ["general"]}/>
                     <div className="ps-muted ps-small">
                         {status_name(source.status) if source.enabled else "Paused"}{" · "
                             + source_time(source.last_success)
@@ -196,8 +200,13 @@ def SourceCard(source: any, busy: bool, onUpdate: any, onRemove: any) -> JsxElem
             </div>
         }}
         <details className="ps-filters">
-            <summary>Alert keyword filters</summary>
+            <summary>Categories and alert keywords</summary>
             <form onSubmit={save}>
+                <SectorPicker
+                    selected={tagChoices}
+                    label="Category tags"
+                    onChange={lambda (values: any) { tagChoices = values; }}
+                />
                 <label>
                     Include any of these keywords
                     <input
@@ -217,7 +226,7 @@ def SourceCard(source: any, busy: bool, onUpdate: any, onRemove: any) -> JsxElem
                     />
                 </label>
                 <p className="ps-help">
-                    Separate keywords with commas. Leave both empty to alert on every new post. Your feed keeps all collected posts.
+                    Separate keywords with commas. Leave both empty to receive all alerts in your selected categories.
                 </p>
                 <button type="submit" disabled={busy}>Save filters</button>
             </form>
@@ -326,6 +335,7 @@ def FeedItem(item: any) -> JsxElement {
                 {"X" if item.provider == "x" else "RSS"}
             </span>
             <strong>{item.source_name}</strong>
+            <SectorTags tags={item.tags or ["general"]}/>
             <time dateTime={item.posted_at}>{source_time(item.posted_at)}</time>
         </div>
         {if item.title {
@@ -360,6 +370,7 @@ def:pub SourcesPage -> JsxElement {
         selectedConnection: str = "",
         locator: str = "",
         newAlerts: bool = True,
+        newTags: list[any] = [],
         newInclude: str = "",
         newExclude: str = "",
         streamStatus: str = "Connecting",
@@ -401,6 +412,7 @@ def:pub SourcesPage -> JsxElement {
         dailyLimit = "200";
         locator = "";
         selectedConnection = "";
+        newTags = [];
         newInclude = "";
         newExclude = "";
         newAlerts = True;
@@ -658,11 +670,13 @@ def:pub SourcesPage -> JsxElement {
                 "connection_id": int(cid),
                 "locator": locator.strip(),
                 "alerts_enabled": newAlerts,
+                "tags": newTags,
                 "include_keywords": keywords(newInclude),
                 "exclude_keywords": keywords(newExclude)
             }
         ) {
             locator = "";
+            newTags = [];
             newInclude = "";
             newExclude = "";
             notice = "Source added. Recent posts will load quietly; alerts start with new posts.";
@@ -745,7 +759,7 @@ def:pub SourcesPage -> JsxElement {
                 <div>
                     <p className="ps-eyebrow">YOUR WORKSPACE</p>
                     <h1>My Sources</h1>
-                    <p>Manage your news intelligence.</p>
+                    <p>Connect private sources and publish channels.</p>
                 </div>
                 {if user {
                     <span className="ps-live">
@@ -782,6 +796,10 @@ def:pub SourcesPage -> JsxElement {
                     </div>
                 </div>
             } else {
+                <p className="ps-follow-link">
+                    <a href="/following">Open Following →</a>{" "}
+                    to read across your sources, choose categories, and manage channel alerts.
+                </p>
                 <PublishingPanel
                     key={user.user_id}
                     sources={sources}
@@ -946,7 +964,7 @@ def:pub SourcesPage -> JsxElement {
                             </section>
                             <section className="ps-panel">
                                 <div className="ps-section-heading">
-                                    <h2>Following</h2>
+                                    <h2>Private sources</h2>
                                     <span className="ps-count">{len(sources)}</span>
                                 </div>
                                 {for source in sources {
@@ -996,6 +1014,11 @@ def:pub SourcesPage -> JsxElement {
                                                 onChange={lambda (e: any) { locator = e.target.value; }}
                                             />
                                         </label>
+                                        <SectorPicker
+                                            selected={newTags}
+                                            label="Category tags"
+                                            onChange={lambda (values: any) { newTags = values; }}
+                                        />
                                         <details className="ps-filters">
                                             <summary>Optional alert keywords</summary>
                                             <label>
@@ -1039,8 +1062,7 @@ def:pub SourcesPage -> JsxElement {
                     <section className="ps-feed-panel">
                         <div className="ps-section-heading">
                             <div>
-                                <p className="ps-eyebrow">Your selected sources</p>
-                                <h2>Latest news</h2>
+                                <h2>Latest private updates</h2>
                             </div>
                             <button
                                 className="ps-quiet"
@@ -1058,7 +1080,7 @@ def:pub SourcesPage -> JsxElement {
                                     checked={screenEnabled}
                                     onChange={toggle_screen}
                                 />{" "}
-                                Screen notifications
+                                Private source screen notifications
                             </label>
                             <span className="ps-muted ps-small">
                                 While this page is open in the background

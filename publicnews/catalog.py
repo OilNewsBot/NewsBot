@@ -12,8 +12,9 @@ from urllib.parse import parse_qsl, urlsplit, urlunsplit
 
 from fastapi import HTTPException
 
+from personal.coverage import item_section
+from .topics import SECTORS, categories, channel_topic
 
-SECTORS = ("energy", "tech", "healthcare", "industrials", "general")
 PROMPT_VERSION = "attributed-v1"
 
 
@@ -89,6 +90,7 @@ class Catalog:
     def __init__(self, path, edition, model="", summary_sources="rss"):
         self.path = Path(path)
         self.edition = edition
+        self.editorial_slugs = {}
         self.model = model
         self.ai_enabled = bool(model)
         self.summary_sources = frozenset(summary_sources.lower().replace(" ", "").split(",")) & {"rss", "x", "community"}
@@ -108,26 +110,49 @@ class Catalog:
         def initialize(db):
             db.executescript(Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"))
             db.execute("BEGIN IMMEDIATE")
+            db.execute("INSERT OR IGNORE INTO news_channel_tags SELECT slug,category FROM news_channels")
             seed = self.edition
             existing = self._seed_channels(seed)
+            editorial_slugs = {}
             for category, entry, mixed in existing:
-                source = self._source(db, "rss", entry["feed_url"], entry["publisher"], mixed)
+                # An older user channel can already own a newly introduced default's slug.
+                slug = entry["slug"]
+                suffix = 1
+                while db.execute("SELECT 1 FROM news_channels WHERE slug=? AND owner_id IS NOT NULL", (slug,)).fetchone():
+                    slug = f"{entry['slug']}-newsstream" + (f"-{suffix}" if suffix > 1 else "")
+                    suffix += 1
+                editorial_slugs[entry["slug"]] = slug
+                kind = entry.get("source_type", "rss")
+                address = entry["feed_url"] if kind == "rss" else entry["source_url"]
+                source = self._source(db, kind, address, entry["publisher"], mixed)
                 inserted = db.execute(
                     """INSERT OR IGNORE INTO news_channels
                     (slug,name,description,category,curator,source_id,source_url,mode,created_at)
                     VALUES(?,?,?,?,?,?,?,?,?)""",
-                    (entry["slug"], entry["name"], entry["description"], category,
-                     seed["curator"], source, entry["feed_url"], "rss", seed["captured_at"]))
+                    (slug, entry["name"], entry["description"], category,
+                     seed["curator"], source, address, entry.get("mode", kind), seed["captured_at"]))
+                self._add_tags(db, slug, category, entry.get("tags", []))
                 if inserted.rowcount:
                     for story in entry["headlines"]:
                         self._item(db, source, story["url"], story["url"], story["title"],
                                    story["summary"], entry["publisher"], story["published"],
-                                   story.get("section", category), False, seed["captured_at"])
+                                   story.get("section", category), False, seed["captured_at"], notify=False)
                     if entry.get("checked_at"):
                         db.execute("UPDATE news_sources SET checked_at=? WHERE id=?",
                                    (entry["checked_at"], source))
-        await self.run_db(initialize, write=True)
+            return editorial_slugs
+        self.editorial_slugs = await self.run_db(initialize, write=True)
         self.ready = True
+
+    @staticmethod
+    def _add_tags(db, slug, primary, tags):
+        db.executemany("INSERT OR IGNORE INTO news_channel_tags(slug,category) VALUES(?,?)",
+                       [(slug, tag) for tag in [primary, *categories(tags)]])
+
+    @staticmethod
+    def _tags(db, slug, primary):
+        return [primary, *(r[0] for r in db.execute(
+            "SELECT category FROM news_channel_tags WHERE slug=? AND category<>? ORDER BY category", (slug, primary)))]
 
     @staticmethod
     def _seed_channels(seed):
@@ -145,7 +170,8 @@ class Catalog:
                           (kind, locator)).fetchone()[0]
 
     @staticmethod
-    def _item(db, source, external, url, title, body, author, published, section, eligible, collected, rss_alias=False):
+    def _item(db, source, external, url, title, body, author, published, section, eligible, collected,
+              rss_alias=False, notify=True):
         stable = digest(external)
         # A seed snapshot can identify a story by its URL before its feed GUID is known.
         original = db.execute("SELECT id FROM news_items WHERE source_id=? AND external_id=?",
@@ -164,9 +190,29 @@ class Catalog:
                        WHERE id=? AND (revision<>? OR published<>? OR url<>? OR eligible<>? OR section<>?)""",
                        (*values, original[0], signature, published, url, int(eligible), section))
             return original[0]
-        return db.execute("""INSERT INTO news_items(external_id,url,title,body,author,published,
+        item_id = db.execute("""INSERT INTO news_items(external_id,url,title,body,author,published,
                           collected_at,section,revision,story_key,eligible,source_id)
                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""", (*values, source)).lastrowid
+        if notify:
+            Catalog._notify(db, source, item_id, title, body, section, published)
+        return item_id
+
+    @staticmethod
+    def _notify(db, source, item_id, title, body, assigned, published):
+        subscribers = db.execute("""SELECT a.user_id,a.slug,c.category,s.mixed FROM news_alert_settings a
+            JOIN news_channels c ON c.slug=a.slug JOIN news_sources s ON s.id=c.source_id
+            WHERE c.source_id=? AND (s.kind<>'rss' OR julianday(?) >= julianday(a.enabled_at))
+            ORDER BY a.slug,a.user_id""", (source, published))
+        topics = {}
+        for uid, slug, category, mixed in subscribers:
+            if slug not in topics:
+                tags = Catalog._tags(db, slug, category)
+                topics[slug] = channel_topic(title, body, assigned, category, tags, mixed)
+            section, topic = topics[slug]
+            selected = Catalog._categories(db, uid)
+            if not selected or section in selected:
+                db.execute("""INSERT OR IGNORE INTO news_alerts(user_id,slug,item_id,section,topic)
+                    VALUES(?,?,?,?,?)""", (uid, slug, item_id, section, topic))
 
     @staticmethod
     def _by_slug(db, slug):
@@ -177,7 +223,9 @@ class Catalog:
             raise HTTPException(404, "Channel not found")
         return row
 
-    def _stories(self, db, source, slug, category, mixed, limit, kind):
+    def _stories(self, db, source, slug, category, tags, mixed, limit, kind, selected=()):
+        if selected and not mixed and category != "general" and set(tags).isdisjoint(selected):
+            return []
         rows = db.execute("""SELECT i.id,i.title,i.body AS text,i.url,i.author,i.published,i.collected_at,
                           i.section,i.story_key,i.eligible,k.summary AS ai,k.generated_at,k.attempts
                           FROM news_items i LEFT JOIN news_summaries k ON i.eligible=1 AND k.rowid=(
@@ -188,9 +236,12 @@ class Catalog:
                                        candidate.generated_at DESC LIMIT 1)
                           WHERE i.source_id=?
                           ORDER BY i.published DESC,i.id DESC LIMIT ?""",
-                          (PROMPT_VERSION, self.model, not self.ai_enabled, self.model, source, limit))
+                          (PROMPT_VERSION, self.model, not self.ai_enabled, self.model, source, -1 if selected else limit))
         stories = []
         for row in rows:
+            section, topic = channel_topic(row["title"], row["text"], row["section"], category, tags, mixed)
+            if selected and section not in selected:
+                continue
             data = dict(row)
             generated = bool(data.pop("ai"))
             if generated:
@@ -202,20 +253,23 @@ class Catalog:
             tries = data.pop("attempts") or 0
             eligible = data.pop("eligible")
             data.update(summary=summary, ai_generated=generated, generated_at=data["generated_at"] or "",
-                        channel_slug=slug, source_type=kind, section=(data["section"] if mixed else category),
+                        channel_slug=slug, source_type=kind, section=section, topic=topic,
                         status=("summarized" if generated else "retry" if tries else
                                 "pending" if eligible and self.ai_enabled and kind in self.summary_sources else "source"))
             stories.append(data)
+            if len(stories) >= limit:
+                break
         return stories
 
-    def _channels(self, db, uid, slug=None, following=False, limit=3):
+    def _channels(self, db, uid, slug=None, following=False, limit=3, selected=()):
         sql = """SELECT c.*,s.kind AS source_type,s.publisher AS source_publisher,s.mixed,s.checked_at,s.failures,
                (SELECT COUNT(*) FROM news_subscriptions f WHERE f.slug=c.slug) AS subscribers,
                EXISTS(SELECT 1 FROM news_subscriptions f WHERE f.slug=c.slug AND f.user_id=?) AS subscribed,
+               EXISTS(SELECT 1 FROM news_alert_settings a WHERE a.slug=c.slug AND a.user_id=?) AS notifications_enabled,
                (SELECT COUNT(*) FROM news_votes r WHERE r.slug=c.slug) AS recommendations,
                EXISTS(SELECT 1 FROM news_votes r WHERE r.slug=c.slug AND r.user_id=?) AS recommended
                FROM news_channels c JOIN news_sources s ON s.id=c.source_id """
-        args = [uid, uid]
+        args = [uid, uid, uid]
         if slug is not None:
             sql += " WHERE c.slug=?"
             args.append(slug)
@@ -230,11 +284,15 @@ class Catalog:
             public["refresh_status"] = ("retrying" if failures else "current" if row["checked_at"] else
                                         "pending" if row["source_type"] == "rss" else "manual")
             public.update(owned=public.pop("owner_id") == uid and uid is not None,
+                          tags=self._tags(db, row["slug"], row["category"]),
+                          notifications_enabled=bool(public["notifications_enabled"]),
                           subscribed=bool(public["subscribed"]), recommended=bool(public["recommended"]),
                           publisher=public["curator"] if row["owner_id"] else public["source_publisher"],
                           checked_at=public["checked_at"] or "")
-            public["headlines"] = self._stories(db, public.pop("source_id"), row["slug"], row["category"],
-                                                is_mixed, max(24, limit) if is_mixed else limit, row["source_type"])
+            source = public.pop("source_id")
+            public["headlines"] = self._stories(db, source, row["slug"], row["category"], public["tags"],
+                                                is_mixed, max(24, limit) if is_mixed else limit,
+                                                row["source_type"], selected)
             channels.append(public)
         return channels
 
@@ -245,15 +303,15 @@ class Catalog:
         """Preserve the original directory contract while reading current public editions."""
         rows = {c["slug"]: c for c in await self.channels()}
         def edition(entry, mixed=False):
-            channel = rows[entry["slug"]]
+            channel = rows[self.editorial_slugs.get(entry["slug"], entry["slug"])]
             headlines = []
             original = {h["url"]: h for h in entry["headlines"]}
             for story in channel["headlines"][:24 if mixed else 3]:
-                head = {k: story[k] for k in ("title", "url", "summary", "published")}
+                head = {k: story[k] for k in ("title", "url", "summary", "published", "section", "topic")}
                 if mixed:
                     head.update(section=story["section"], routed_by=original.get(story["url"], {}).get("routed_by", "local"))
                 headlines.append(head)
-            result = {**entry, "headlines": headlines}
+            result = {**entry, "slug": channel["slug"], "headlines": headlines, "tags": channel["tags"]}
             if channel["checked_at"]:
                 result["checked_at"] = channel["checked_at"]
             return result
@@ -280,7 +338,8 @@ class Catalog:
 
     async def following(self, uid):
         def read(db):
-            channels = self._channels(db, uid, following=True, limit=50)
+            selected = self._categories(db, uid)
+            channels = self._channels(db, uid, following=True, limit=50, selected=selected)
             groups = {}
             canonical = {}
             for channel in channels:
@@ -294,8 +353,49 @@ class Catalog:
                     ref = {"channel_slug": channel["slug"], "name": channel["name"], "url": item["url"], "item_id": item["id"]}
                     if ref not in group["sources"]:
                         group["sources"].append(ref)
-            return {"channels": channels, "items": sorted(groups.values(),
+            return {"channels": channels, "categories": selected, "items": sorted(groups.values(),
                     key=lambda i: (i["published"], i["id"]), reverse=True)[:200]}
+        return await self.run_db(read)
+
+    @staticmethod
+    def _categories(db, uid):
+        return [r[0] for r in db.execute("SELECT category FROM news_feed_categories WHERE user_id=? ORDER BY category",
+                                        (uid,))]
+
+    async def feed_preferences(self, uid):
+        return {"categories": await self.run_db(self._categories, uid)}
+
+    async def set_preferences(self, uid, value):
+        selected = categories(value)
+        def update(db):
+            db.execute("DELETE FROM news_feed_categories WHERE user_id=?", (uid,))
+            db.executemany("INSERT INTO news_feed_categories(user_id,category) VALUES(?,?)",
+                           [(uid, sector) for sector in selected])
+            if selected:
+                db.execute("""DELETE FROM news_alerts WHERE user_id=? AND section NOT IN
+                    (SELECT category FROM news_feed_categories WHERE user_id=?)""", (uid, uid))
+                if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='personal_source_tags'").fetchone():
+                    db.create_function("item_section", 3, item_section, deterministic=True)
+                    db.execute("""DELETE FROM personal_notifications WHERE user_id=? AND item_id IN (
+                        SELECT i.id FROM personal_notifications n
+                        JOIN personal_items i ON n.item_id=i.id AND n.user_id=i.user_id
+                        LEFT JOIN personal_source_tags t ON t.source_id=i.source_id
+                        WHERE n.user_id=? AND item_section(i.title,i.text,t.tags) NOT IN
+                            (SELECT category FROM news_feed_categories WHERE user_id=?))""", (uid, uid, uid))
+            return {"categories": self._categories(db, uid)}
+        return await self.run_db(update, write=True)
+
+    async def notification_head(self, uid):
+        return await self.run_db(lambda db: {"user_id": uid, "head": db.execute(
+            "SELECT COALESCE(MAX(id),0) FROM news_alerts WHERE user_id=?", (uid,)).fetchone()[0]})
+
+    async def notifications(self, uid, since):
+        def read(db):
+            rows = [dict(r) for r in db.execute("""SELECT a.id,i.title,i.url,a.section,a.topic,
+                a.slug AS channel_slug,c.name AS channel_name FROM news_alerts a
+                JOIN news_channels c ON c.slug=a.slug JOIN news_items i ON i.id=a.item_id
+                WHERE a.user_id=? AND a.id>? ORDER BY a.id LIMIT 100""", (uid, since))]
+            return {"user_id": uid, "head": rows[-1]["id"] if rows else since, "notifications": rows}
         return await self.run_db(read)
 
     async def create(self, uid, username, body):
@@ -305,6 +405,7 @@ class Catalog:
         category = field(body, "category", 24).lower()
         if category not in SECTORS or kind not in ("rss", "community", "x", "telegram"):
             raise HTTPException(422, "Choose a supported category and source type")
+        tags = categories(body.get("tags", []))
         default_mode = "embed" if kind in ("x", "telegram") else kind
         mode = body.get("mode") or default_mode
         allowed_modes = ("embed", "api") if kind in ("x", "telegram") else (kind,)
@@ -326,6 +427,7 @@ class Catalog:
             db.execute("""INSERT INTO news_channels(slug,name,description,category,owner_id,curator,
                        source_id,source_url,mode,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)""",
                        (slug, name, description, category, uid, username, source, url, mode, now()))
+            self._add_tags(db, slug, category, tags)
             return self._channels(db, uid, slug)[0]
         return await self.run_db(insert, write=True)
 
@@ -337,6 +439,18 @@ class Catalog:
         return await self.run_db(count, write=True)
 
     async def toggle(self, slug, uid, key, enabled):
+        if key == "notifications":
+            def alert(db):
+                self._by_slug(db, slug)
+                if not db.execute("SELECT 1 FROM news_subscriptions WHERE user_id=? AND slug=?", (uid, slug)).fetchone():
+                    raise HTTPException(409, "Follow this channel to manage its notifications")
+                if enabled:
+                    db.execute("INSERT OR IGNORE INTO news_alert_settings(user_id,slug,enabled_at) VALUES(?,?,?)",
+                               (uid, slug, now()))
+                else:
+                    db.execute("DELETE FROM news_alert_settings WHERE user_id=? AND slug=?", (uid, slug))
+                return self._channels(db, uid, slug, limit=100)[0]
+            return await self.run_db(alert, write=True)
         table = {"subscription": "news_subscriptions", "recommendation": "news_votes"}[key]
         def change(db):
             self._by_slug(db, slug)
@@ -406,5 +520,6 @@ class Catalog:
     def _stories_one(db, iid, slug, category, kind):
         item = dict(db.execute("""SELECT id,url,title,body AS text,author,published,collected_at,story_key
                                FROM news_items WHERE id=?""", (iid,)).fetchone())
-        return {**item, "channel_slug": slug, "source_type": kind, "section": category, "summary": item["text"][:260],
+        section, topic = channel_topic(item["title"], item["text"], "", category, Catalog._tags(db, slug, category), False)
+        return {**item, "channel_slug": slug, "source_type": kind, "section": section, "topic": topic, "summary": item["text"][:260],
                 "ai_generated": False, "generated_at": "", "status": "source"}

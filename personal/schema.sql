@@ -1,4 +1,4 @@
--- Personal sources are deliberately separate from the legacy oil pipeline.
+-- Personal source content is scoped to its owner.
 -- This additive schema preserves existing data and its global deduplication key.
 CREATE TABLE IF NOT EXISTS personal_schema_versions (
     version INTEGER PRIMARY KEY,
@@ -92,3 +92,15 @@ CREATE TABLE IF NOT EXISTS personal_telegram_inbox (
 );
 CREATE INDEX IF NOT EXISTS personal_telegram_inbox_user ON personal_telegram_inbox(user_id, id);
 INSERT OR IGNORE INTO personal_schema_versions(version) VALUES (2);
+
+-- A missing row gives sources created before this migration General coverage.
+CREATE TABLE IF NOT EXISTS personal_source_tags (
+    source_id INTEGER PRIMARY KEY REFERENCES personal_sources(id) ON DELETE CASCADE,
+    tags TEXT NOT NULL
+);
+-- Also opened by the public catalog when installed on its own.
+CREATE TABLE IF NOT EXISTS news_feed_categories (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category TEXT NOT NULL, PRIMARY KEY(user_id,category)
+);
+INSERT OR IGNORE INTO personal_schema_versions(version) VALUES (3);

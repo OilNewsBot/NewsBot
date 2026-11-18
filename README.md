@@ -1,6 +1,6 @@
 # Newsstream
 
-Newsstream is a shared news and discussion service for people following Energy, Tech, Healthcare and Industrials. Open Home to browse the sectors or Discover to see the channel directory. Each channel has a shareable address, source information, recent updates and a discussion. Sign in to publish channels, follow them and recommend sources.
+Newsstream is a shared news and discussion service for people following Energy, Tech, Healthcare, Industrials, Consumer Discretionary, Materials, Utilities and Real Estate. Open Home to browse the sectors or Discover to see the channel directory. Each channel has a shareable address, source information, recent updates and a discussion. Sign in to publish channels, follow them and recommend sources.
 
 ## Run locally
 

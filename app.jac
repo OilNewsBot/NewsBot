@@ -213,7 +213,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     app = FastAPI(title="newsstream", lifespan=lifespan);
     install_mobile(app, repo);
     install_personal_routes(app, repo, personal);
-    install_catalog_routes(app, repo, catalog);
+    install_catalog_routes(app, repo, catalog, personal);
     install_publishing_routes(app, repo, personal, catalog);
     setattr(app.state, "catalog", catalog);
     setattr(app.state, "personal", personal);
@@ -364,7 +364,7 @@ def create_app(settings: Settings | None = None) -> FastAPI {
     @app.get("/directory-images/{sector}.jpg")
     async def sector_image(sector: str) -> Response {
         image = UI_SOURCE / "directory-images" / (sector + ".jpg");
-        if not sector.isalpha() or not image.is_file() {
+        if sector not in directory.sections() or not image.is_file() {
             raise HTTPException(status_code=404, detail="Unknown sector image");
         }
         return FileResponse(image, media_type="image/jpeg");

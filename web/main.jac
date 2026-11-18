@@ -697,9 +697,9 @@ def NewsPage -> JsxElement {
             <div className="titlebar news-header">
                 <div>
                     <div className="news-eyebrow">MARKET INTELLIGENCE</div>
-                    <h1>Crude Oil Monitor</h1>
+                    <h1>Market Monitor</h1>
                     <p className="dim">
-                        {"Breaking Oil-Market News & Real-Time Event Alerts"}
+                        {"Breaking market news and live event alerts"}
                     </p>
                 </div>
             </div>
@@ -759,7 +759,7 @@ def NewsPage -> JsxElement {
                         <div className="news-empty-icon">◇</div>
                         <h2>No market events yet</h2>
                         <p>
-                            {"New oil-market headlines and alerts will appear here as they're detected."}
+                            {"New market headlines and alerts will appear here as they're detected."}
                         </p>
                     </div>
                 }}

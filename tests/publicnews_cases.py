@@ -8,12 +8,14 @@ from unittest.mock import patch
 import httpx
 from fastapi import HTTPException
 
-from publicnews.catalog import Catalog, PROMPT_VERSION, channel_address
+from publicnews.catalog import Catalog, PROMPT_VERSION, channel_address, now
 from publicnews.providers import ChatCompletions, select_provider
+from publicnews.topics import SECTORS, section_topic
 from publicnews.worker import PublicWorker
 
 
 async def catalog_regressions():
+    await sector_regressions()
     with tempfile.TemporaryDirectory() as tmp:
         db_path = Path(tmp) / "news.db"
         with sqlite3.connect(db_path) as db:
@@ -152,6 +154,134 @@ async def catalog_regressions():
         link = next(s for s in result["headlines"] if s["url"].endswith("/789"))
         assert not link["ai_generated"] and link["status"] == "source"
         assert not (await opted_in.detail(tg["slug"]))["channel"]["headlines"][0]["ai_generated"]
+
+
+async def sector_regressions():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "sectors.db"
+        with sqlite3.connect(path) as db:
+            db.execute("CREATE TABLE users(id INTEGER PRIMARY KEY)")
+            db.executemany("INSERT INTO users VALUES(?)", [(1,), (2,)])
+        edition = {"curator": "Editors", "captured_at": "2025-01-01", "categories": [], "publishers": []}
+        catalog = Catalog(path, edition)
+        await catalog.start()
+        community = {"name": "Weekly", "description": "Reader reports", "category": "general",
+                     "source_type": "community"}
+        slug = (await catalog.create(1, "alice", community))["slug"]
+        await catalog.toggle(slug, 1, "subscription", True)
+        await catalog.post(slug, 1, "alice", {"title": "Copper mining", "text": "Readers discuss copper."})
+
+        # Model an installed version with historic items and subscriptions but no sector preferences.
+        with sqlite3.connect(path) as db:
+            for table in ("news_alerts", "news_alert_settings", "news_channel_tags", "news_feed_categories"):
+                db.execute(f"DROP TABLE {table}")
+        x = {"name": "Grid operator", "slug": "grid-x", "description": "Official profile", "publisher": "Grid",
+             "source_type": "x", "mode": "embed", "source_url": "https://x.com/grid", "tags": ["utilities"],
+             "headlines": []}
+        edition["categories"] = [{"slug": "utilities", "name": "Utilities", "channels": [x]}]
+        await catalog.start()
+        await catalog.start()
+        channel = (await catalog.detail(slug, 1))["channel"]
+        assert channel["tags"] == ["general"] and channel["subscribed"] and not channel["notifications_enabled"]
+        embed = (await catalog.detail("grid-x"))["channel"]
+        assert embed["mode"] == "embed" and embed["source_url"] == x["source_url"] and not embed["headlines"]
+        assert (await catalog.following(1))["items"][0]["topic"] == "Metals & mining"
+        assert set(SECTORS) == {"energy", "tech", "industrials", "healthcare", "consumer-discretionary",
+                               "materials", "utilities", "real-estate", "general"}
+        assert section_topic("Oil refinery reports quarterly sales", "") == ("energy", "Oil & gas")
+        assert section_topic("Election results arrive", "") == ("general", "")
+
+        tagged = await catalog.create(2, "sam", {**community, "name": "Industry", "category": "industrials",
+                                                  "tags": ["industrials", "materials", "materials"]})
+        assert tagged["tags"] == ["industrials", "materials"]
+        for invalid in (None, "tech", ["unknown"], [["tech"]]):
+            try:
+                await catalog.create(2, "sam", {**community, "tags": invalid})
+            except HTTPException as exc:
+                assert exc.status_code == 422
+            else:
+                raise AssertionError("Invalid sector tags accepted")
+
+        for uid in (1, 2):
+            await catalog.toggle(slug, uid, "subscription", True)
+            await catalog.toggle(slug, uid, "notifications", True)
+        assert (await catalog.notifications(1, 0))["notifications"] == []
+        assert (await catalog.set_preferences(1, ["tech", "utilities"]))["categories"] == ["tech", "utilities"]
+        assert (await catalog.feed_preferences(2))["categories"] == []
+        await catalog.post(slug, 1, "alice", {"title": "Mortgage rates decline", "text": "Housing report."})
+        await catalog.post(slug, 1, "alice", {"title": "Utility repairs power grid", "text": "Grid operators responded."})
+        feed = await catalog.following(1)
+        assert len(feed["channels"]) == 1 and [i["section"] for i in feed["items"]] == ["utilities"]
+        assert len((await catalog.following(2))["items"]) == 3
+        head = (await catalog.notification_head(1))["head"]
+        alerts = await catalog.notifications(1, 0)
+        assert alerts["user_id"] == 1 and len(alerts["notifications"]) == 1
+        assert alerts["notifications"][0]["section"] == "utilities" and alerts["head"] == head
+        assert not (await catalog.notifications(1, head))["notifications"]
+        assert len((await catalog.notifications(2, 0))["notifications"]) == 2
+        await catalog.toggle(slug, 1, "notifications", False)
+        await catalog.post(slug, 2, "sam", {"title": "Software update", "text": "Publisher announcement."})
+        assert len((await catalog.following(1))["items"]) == 2
+        await catalog.toggle(slug, 1, "notifications", True)
+        assert not (await catalog.notifications(1, 0))["notifications"]
+        await catalog.toggle(slug, 2, "subscription", False)
+        assert not (await catalog.notifications(2, 0))["notifications"]
+        try:
+            await catalog.toggle(slug, 2, "notifications", True)
+        except HTTPException as exc:
+            assert exc.status_code == 409
+        else:
+            raise AssertionError("Alerts were enabled for an unfollowed channel")
+        restarted = Catalog(path, edition)
+        await restarted.start()
+        assert (await restarted.detail(slug, 1))["channel"]["notifications_enabled"]
+        assert (await restarted.feed_preferences(1))["categories"] == ["tech", "utilities"]
+
+        rss = await catalog.create(1, "alice", {"name": "Public utility notices", "description": "Filings",
+                                   "source_type": "rss", "category": "utilities",
+                                   "source_url": "https://example.org/notices"})
+        await catalog.toggle(rss["slug"], 1, "subscription", True)
+        await catalog.toggle(rss["slug"], 1, "notifications", True)
+        items = [{"external_id": "first", "url": "https://example.org/stories/1", "title": "Power grid filing",
+                  "posted_at": now(), "text": "The utility published its filing."}]
+        async def fetch(url, validators):
+            return b"feed", {}, url
+        worker = PublicWorker(catalog, fetch, lambda data, base: ("Publisher", items), None, None, 0)
+        async def refresh():
+            await catalog.run_db(lambda db: db.execute("UPDATE news_sources SET next_poll=0").rowcount, write=True)
+            assert await worker.refresh_one()
+        await refresh()
+        assert not (await catalog.notifications(1, 0))["notifications"], "First RSS retrieval seeds a silent baseline"
+        items.append({**items[0], "external_id": "second", "url": "https://example.org/stories/2", "posted_at": now()})
+        items.append({**items[0], "external_id": "archive", "url": "https://example.org/archive", "posted_at": "2024-01-01"})
+        await refresh()
+        items[1]["text"] = "The filing was corrected."
+        await refresh()
+        events = (await catalog.notifications(1, 0))["notifications"]
+        assert [e["url"] for e in events] == ["https://example.org/stories/2"]
+
+        with sqlite3.connect(path) as db:
+            db.executescript("""
+                CREATE TABLE personal_source_tags(source_id INTEGER PRIMARY KEY, tags TEXT);
+                CREATE TABLE personal_items(id INTEGER PRIMARY KEY,user_id INTEGER,source_id INTEGER,title TEXT,text TEXT);
+                CREATE TABLE personal_notifications(user_id INTEGER,item_id INTEGER);
+                INSERT INTO personal_items VALUES(1,1,1,'Software release',''),(2,1,1,'Mining rights',''),
+                                                 (3,2,2,'Mining rights','');
+                INSERT INTO personal_notifications VALUES(1,1),(1,2),(2,3);
+            """)
+        await catalog.set_preferences(1, ["tech"])
+        await catalog.set_preferences(1, [])
+        with sqlite3.connect(path) as db:
+            assert db.execute("SELECT item_id FROM personal_notifications ORDER BY item_id").fetchall() == [(1,), (3,)]
+
+        # Introducing a default with an existing personal channel's slug preserves both identities.
+        edition["categories"][0]["channels"].append({**x, "name": "Weekly grid", "slug": slug,
+                                                     "source_url": "https://x.com/weeklygrid"})
+        await catalog.start()
+        assert (await catalog.detail(slug, 1))["channel"]["owned"]
+        public = (await catalog.editorial_view())["categories"][0]["channels"][-1]
+        assert public["slug"] != slug and not public["headlines"]
+        assert (await catalog.detail(public["slug"]))["channel"]["source_url"] == "https://x.com/weeklygrid"
 
 
 async def provider_regressions():

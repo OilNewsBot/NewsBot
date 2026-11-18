@@ -49,3 +49,20 @@
     .site-nav.open .site-nav-links { display: grid; margin-top: 12px; }
     .site-nav-collapse { display: none; }
 }
+
+.alerts-button { width:100%; border:0; background:transparent; cursor:pointer; text-align:left; }
+.alert-count { border-radius:10px; padding:1px 6px; background:#a7daa9; color:#102418; font-size:11px; }
+.alerts-popover { position:fixed; top:20%; left:222px; width:min(330px, calc(100vw - 26px)); max-height:65vh; overflow:auto; padding:16px; border-radius:8px; border:1px solid #415c4b; color:#e4eee5; background:#17241c; box-shadow:0 8px 26px #0005; }
+.compact .alerts-popover { left:78px; }
+.compact .alerts-button { position:relative; }
+.compact .alert-count { position:absolute; right:-3px; top:0; }
+.alerts-popover header { display:flex; align-items:center; justify-content:space-between; }
+.alerts-popover h2 { font: 500 24px/1.2 Georgia,serif; margin:0; }
+.alerts-popover p,.alerts-popover li,.alerts-popover label { font-size:13px; line-height:1.5; }
+.alerts-popover label { display:block; padding:12px 0; }
+.alerts-popover button { cursor:pointer; background:transparent; border:1px solid #4d6454; color:#d8e6da; border-radius:4px; padding:4px 8px; }
+.alerts-popover ul { list-style:none; margin:10px 0; padding:0; }
+.alerts-popover li { border-top:1px solid #35483a; padding:8px 0; }
+.alerts-popover a { color:#b7e6bf; }
+.alerts-popover small { display:block; color:#b0c2b5; }
+@media (max-width:800px) { .alerts-popover,.compact .alerts-popover { position:relative; width:100%; left:auto; top:auto; margin-top:3px; } }

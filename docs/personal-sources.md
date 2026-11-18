@@ -2,7 +2,7 @@
 
 Open **My Sources** (`/sources`) and sign in with a Newsstream account. Add an RSS
 connection or a TwitterAPI.io connection, then add feeds or X handles/profile
-URLs. Each account has its own connection list, sources, feed, filters and alerts.
+URLs. For a public X timeline, find its channel in Discover or publish one from a profile URL. Each account has its own connection list, sources, feed, filters and alerts.
 The page works in the website and the existing desktop webview.
 
 RSS supports public RSS 2.0, Atom and RDF feeds. X uses TwitterAPI.io REST polling
@@ -20,12 +20,13 @@ implemented in this release.
    or successful poll verifies that X can access the requested data.
 2. Add a feed URL or X account through that connection. Sources use stable
    provider identity, so display-name changes do not create another source.
-3. Choose optional include/exclude keywords. Include matches any listed keyword;
+3. Choose the categories your source covers. General News works for a mixed publisher. Following uses the article's sector where it can identify one. Select categories in Following to apply the same filter to updates and alerts across public subscriptions and enabled private sources.
+4. Choose optional include/exclude keywords. Include matches any listed keyword;
    exclude vetoes a match. Matching is case-insensitive text matching. These rules
    govern alerts; the feed retains collected posts for inspection.
-4. Mute alerts to continue collecting silently, pause to stop collecting, or
+5. Mute alerts to continue collecting silently, pause to stop collecting, or
    remove the source. Re-enabling collection seeds recent history silently.
-5. Enable browser notifications if desired. The source page must remain open
+6. Enable browser notifications if desired. The source page must remain open
    and the browser must allow notifications. In-page alerts work without OS
    notification permission. A fresh page session starts at the current alert
    head, so saved history does not flood the screen; temporary stream reconnects

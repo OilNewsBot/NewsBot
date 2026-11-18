@@ -9,6 +9,7 @@ import from .public_data {
     sector_name,
     source_name
 }
+import from .sector_tags { SectorTags }
 import from .public_story { ShareChannel, SourceEmbed, Story }
 
 def Thread(
@@ -319,6 +320,7 @@ def:pub ChannelPage(slug: str) -> JsxElement {
                     {source_name(channel.source_type) + " channel"}
                 </p>
                 <h1>{channel.name}</h1>
+                <SectorTags tags={channel.tags or [channel.category]}/>
                 <p className="directory-deck">{channel.description}</p>
                 <div className="channel-byline">
                     <span>{"By " + str(channel.publisher)}</span>
@@ -346,6 +348,20 @@ def:pub ChannelPage(slug: str) -> JsxElement {
                     >
                         {"Unfollow" if channel.subscribed else "Follow channel"}
                     </button>
+                    if channel.subscribed {
+                        <button
+                            type="button"
+                            disabled={busy}
+                            aria-pressed={bool(channel.notifications_enabled)}
+                            onClick={lambda { modify(
+                                "notifications", not channel.notifications_enabled
+                            ); }}
+                        >
+                            {"Alerts on"
+                                if channel.notifications_enabled
+                                else "Alerts off"}
+                        </button>
+                    }
                     <button
                         type="button"
                         disabled={busy}

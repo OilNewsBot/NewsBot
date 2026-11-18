@@ -4,6 +4,15 @@
 
 Home opens the sector directory. Discover lists public channels across sources. Choose a sort order to compare names, categories or click totals. Open a channel dropdown to see its activity and recent stories, or open the channel page for the full discussion. New and Trending use basic ordering for this demo. Following collects updates for the current account.
 
+### Personalize Following
+
+1. Sign in and follow channels from Discover or a channel page. Following collects their updates alongside items from your enabled private sources. The account that added a private source is the only one who can read it.
+2. Select one or more categories in Following. Selecting Tech and Utilities includes articles in either sector across your sources. Clear the selection to show all categories. Your selection is saved on the server and follows you across devices.
+3. Each followed public channel starts with alerts off. Turn alerts on for the channels you want to hear from. Muting a channel keeps it in Following. Private sources have independent collection, alert and keyword settings in My Sources. The same account category selection applies to eligible public and private alerts.
+4. Alerts start with newly received updates after the initial baseline. Official X timelines can be opened directly on a channel page. They provide display only, so new timeline posts do not trigger Newsstream alerts or summaries. An explicitly shared post with authorized content can appear in Following.
+
+Channels show their coverage tags. A mixed publisher such as The New York Times can produce an Energy story marked Oil & gas and a Tech story marked Semiconductors. The article determines which Following filter matches. Stories without a clear sector stay in General News. For a narrower subscription, follow the publisher's dedicated section feed where available. [Default source directory](default-sources.md)
+
 ## Publish and discuss
 
 Sign in and open My Sources. Choose the channel type, give it a name and description, and select its sector. A channel URL can be shared with a different browser or device. Followers see new public items. Each account can recommend a channel and participate in its discussions.
@@ -27,7 +36,7 @@ The default listener is `127.0.0.1:8000`. Set `NEWSSTREAM_HOST` and `NEWSSTREAM_
 
 ### Publisher refresh and AI
 
-The bundled edition contains dated stories from three dedicated publisher channels per sector plus a multi-topic feed. Public RSS refresh runs automatically. To skip refreshing just the bundled feeds, set `NEWSSTREAM_DEMO_RSS=0`. Disable public RSS networking with `NEWSSTREAM_PUBLIC_RSS=0` for offline verification. The last successful edition remains readable through upstream outages.
+The bundled edition contains dated stories from dedicated RSS feeds across all eight sectors and a multi-topic front page. Each sector also has public X profiles. Public RSS refresh runs automatically. To skip refreshing just the bundled feeds, set `NEWSSTREAM_DEMO_RSS=0`. Disable public RSS networking with `NEWSSTREAM_PUBLIC_RSS=0` for offline verification. The last successful edition remains readable through upstream outages.
 
 To enable RSS summaries, supply the server-side `ANTHROPIC_API_KEY`. Set `NEWSSTREAM_SUMMARY_MODEL` to override the small model slot. `NEWSSTREAM_SUMMARY_DAILY_LIMIT` caps daily request reservations, including a possible JSON retry. `NEWSSTREAM_SUMMARY_PROVIDER=disabled` turns off hosted summaries. The default eligible source is RSS. Set `NEWSSTREAM_SUMMARY_SOURCES=rss,x,community` to include explicitly published provider-supplied X text and original community posts. Embed views and Telegram inbox messages do not enter the model worker. See each story's source links for the original reporting.
 
@@ -55,6 +64,10 @@ The bundled edition in `db/directory_seed.json` includes publisher URLs, dates a
 | Category | Photograph |
 | --- | --- |
 | Energy | [NASA Kennedy Space Center, Solar Farm at KSC](https://images.nasa.gov/details/KSC-20210405-PH-NAS01_0001) |
-| Tech | [NASA/JPL-Caltech, InSight’s Second Microchip](https://images.nasa.gov/details/PIA22206) |
+| Tech | [NASA/JPL-Caltech, InSightâ€™s Second Microchip](https://images.nasa.gov/details/PIA22206) |
 | Healthcare | [NASA Johnson Space Center, Moon Microscope](https://images.nasa.gov/details/jsc2022e083574) |
 | Industrials | [NASA/Charles Beason, friction stir welding](https://images.nasa.gov/details/MSFC-1701231) |
+| Consumer Discretionary | [NASA, Durrat Al Bahrain residential and tourism development](https://images.nasa.gov/details/iss026e020126) |
+| Materials | [NASA/JPL, Morenci copper mine](https://images.nasa.gov/details/PIA10617) |
+| Utilities | [NASA, Three Gorges Dam](https://images.nasa.gov/details/iss019e007720) |
+| Real Estate | [NASA, Lisbon and its suburbs](https://images.nasa.gov/details/iss073e0078399) |

@@ -1,12 +1,15 @@
 """Publish a public channel or review individual private items before sharing."""
 
 import "./publishing.css";
+import from .public_data { SECTORS, sector_name }
+import from .sector_tags { SectorPicker, SectorTags }
 import from react { useEffect }
 
 def ChannelForm(sources: list[any], request: any, created: any) -> JsxElement {
     has name: str = "",
         description: str = "",
         category: str = "energy",
+        tags: list[any] = [],
         kind: str = "rss",
         mode: str = "embed",
         locator: str = "",
@@ -30,6 +33,12 @@ def ChannelForm(sources: list[any], request: any, created: any) -> JsxElement {
             "name": name.strip(),
             "description": description.strip(),
             "category": category,
+            "tags": [category]
+                + [
+                    tag
+                    for tag in tags
+                    if tag != category
+                ],
             "source_type": kind
         };
         if kind == "x" or kind == "telegram" {
@@ -61,16 +70,22 @@ def ChannelForm(sources: list[any], request: any, created: any) -> JsxElement {
             <label>
                 Category
                 <select
+                    aria-label="Category"
                     value={category}
                     onChange={lambda (e: any) { category = e.target.value; }}
                 >
-                    <option value="energy">Energy</option>
-                    <option value="tech">Tech</option>
-                    <option value="healthcare">Healthcare</option>
-                    <option value="industrials">Industrials</option>
+                    {for slug in SECTORS + ["general"] {
+                        <option key={slug} value={slug}>{sector_name(slug)}</option>
+                    }}
                 </select>
             </label>
         </div>
+        <SectorPicker
+            selected={tags}
+            primary={category}
+            label="Category tags"
+            onChange={lambda (values: any) { tags = values; }}
+        />
         <label>
             Description
             <textarea
@@ -85,6 +100,7 @@ def ChannelForm(sources: list[any], request: any, created: any) -> JsxElement {
             <label>
                 Source type
                 <select
+                    aria-label="Source type"
                     value={kind}
                     onChange={lambda (e: any) { select_kind(e.target.value); }}
                 >
@@ -418,6 +434,7 @@ def:pub PublishingPanel(
                 {for c in channels {
                     <li key={c.slug}>
                         <a href={"/channels/" + c.slug}>{c.name}</a>
+                        <SectorTags tags={c.tags or [c.category]}/>
                         <span>{str(c.source_type).upper()}</span>
                     </li>
                 }}

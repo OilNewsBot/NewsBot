@@ -1,11 +1,24 @@
 """Shared data access and display helpers for the public channel catalog."""
 
-glob:pub SECTORS: list[str] = ["energy", "tech", "healthcare", "industrials"];
+glob:pub SECTORS: list[str] = [
+         "energy",
+         "tech",
+         "healthcare",
+         "industrials",
+         "consumer-discretionary",
+         "materials",
+         "utilities",
+         "real-estate"
+     ];
 glob:pub SECTION_NAMES: dict[str, str] = {
          "energy": "Energy",
          "tech": "Tech",
          "healthcare": "Healthcare",
          "industrials": "Industrials",
+         "consumer-discretionary": "Consumer Discretionary",
+         "materials": "Materials",
+         "utilities": "Utilities",
+         "real-estate": "Real Estate",
          "general": "General News"
      };
 
@@ -77,7 +90,7 @@ async def:pub request_json(path: str, method: str = "GET", body: any = None) -> 
 def:pub by_sector(channels: list[any], slug: str) -> list[any] {
     selected: list[any] = [];
     for ch in channels {
-        if ch.category == slug
+        if slug in (ch.tags or [ch.category])
             or len(
                 [
                     h

@@ -1,7 +1,7 @@
 Newsstream product concept
 
-Newsstream brings news, discussion and market context together across Energy, Tech,
-Healthcare and Industrials. A reader can find channels, inspect the evidence for
+Newsstream brings news, discussion and market context together across Energy, Tech, Healthcare, Industrials, Consumer Discretionary,
+Materials, Utilities and Real Estate. A reader can find channels, inspect the evidence for
 a story and follow the people and publishers whose updates they value.
 
 Public RSS, X profiles, Telegram channels and community posts share the same
