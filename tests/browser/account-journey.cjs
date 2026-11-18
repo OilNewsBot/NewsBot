@@ -84,7 +84,7 @@ async function exercise() {
         const publish = page.getByRole("button", {name: "Publish post"});
         assert.equal(await publish.isDisabled(), true);
         const source = "https://example.org/announcement";
-        await page.getByLabel("Source link", {exact: false}).fill(source);
+        await page.getByRole("textbox", {name: /^Source link/}).fill(source);
         await publish.click();
         const headline = page.getByRole("link", {name: "Publisher announcement", exact: true});
         await headline.waitFor();

@@ -298,12 +298,23 @@ async def sector_regressions():
 
         # Introducing a default with an existing personal channel's slug preserves both identities.
         edition["categories"][0]["channels"].append({**x, "name": "Weekly grid", "slug": slug,
-                                                     "source_url": "https://x.com/weeklygrid"})
+                                                     "source_url": "https://x.com/weeklygrid",
+                                                     "platform_account_id": "713", "headlines": []})
         await catalog.start()
         assert (await catalog.detail(slug, 1))["channel"]["owned"]
         public = (await catalog.editorial_view())["categories"][0]["channels"][-1]
         assert public["slug"] != slug and not public["headlines"]
         assert (await catalog.detail(public["slug"]))["channel"]["source_url"] == "https://x.com/weeklygrid"
+
+        # A single prolific source can fill more than fifty positions in Following.
+        daily = (await catalog.create(1, "alice", {**community, "name": "Daily filings"}))["slug"]
+        await catalog.toggle(daily, 2, "subscription", True)
+        ids = set()
+        for number in range(53):
+            item = await catalog.post(daily, 1, "alice", {"title": f"Filing {number}",
+                                      "url": f"https://example.org/filings/{number}"})
+            ids.add(item["id"])
+        assert ids <= {item["id"] for item in (await catalog.following(2))["items"]}
 
 
 async def provider_regressions():
