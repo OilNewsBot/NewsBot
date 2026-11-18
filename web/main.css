@@ -2,11 +2,11 @@
    One change: #banner no longer has `display: none` (see the note at #banner). */
 :root {
   color-scheme: dark;
-  --bg: #172129;
-  --nav-bg: #151e25;
-  --panel: #202e38;
-  --panel2: #2a3944;
-  --border: #35444f;
+  --bg: #232323;
+  --nav-bg: #1e1e1e;
+  --panel: #2c2c2c;
+  --panel2: #363636;
+  --border: #454545;
 
   --text: #e7ecf1;
   --dim: #aab7c1;
@@ -14,7 +14,7 @@
   --accent-fill: #cbd7e1;
   --accent-hover: #e1e8ee;
   --accent-ink: #17252f;
-  --accent-surface: #2c3e4b;
+  --accent-surface: #383838;
   --accent-border: #667e90;
   --round-card: 12px;
   --round-control: 8px;
