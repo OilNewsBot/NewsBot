@@ -97,6 +97,7 @@ obj Pipeline {
     }
 
     async def run {
+        await self.repo.recover_partial_results(self.settings.market.threshold);
         while True {
             self.work_ready.clear();
             row = await self.repo._one(
@@ -158,27 +159,72 @@ obj Pipeline {
         self.stats.platform.append(
             (time.time(), (post.received_at - post.posted_at).total_seconds())
         );
-        events_task = asyncio.create_task(fetch_open_events(self.repo, self.settings));
+        stored = await self.repo._one(
+            "SELECT * FROM decisions WHERE post_id=? AND is_final=1 AND materiality_score IS NOT NULL ORDER BY id DESC LIMIT 1",
+            (post_id, )
+        );
         classifications: list[Classification] = [];
+        if stored is not None {
+            classifications.append(
+                Classification(
+                    stored["stage"],
+                    stored["model"],
+                    stored["materiality_score"],
+                    json.loads(stored["sub_scores"] or "{}"),
+                    stored["category"] or "OTHER",
+                    stored["one_line"] or "",
+                    json.loads(stored["entities"] or "{}"),
+                    stored["reasoning"] or "",
+                    stored["error"]
+                )
+            );
+            linked = await self.repo._one(
+                """SELECT ep.role, e.id, e.title FROM event_posts ep
+                   JOIN events e ON e.id=ep.event_id WHERE ep.post_id=?""",
+                (post_id, )
+            );
+            if linked is not None {
+                # Legacy event/link writes committed before notification insertion.
+                kind = "NEW_EVENT" if linked["role"] == "origin" else "UPDATE";
+                delta = classifications[0].one_line if kind == "UPDATE" else "";
+                return await self._commit_outcome(
+                    post,
+                    post_id,
+                    classifications,
+                    DedupResult(kind, linked["id"], delta),
+                    "",
+                    {},
+                    reuse_final=True,
+                    linked_title=linked["title"]
+                );
+            }
+        }
+        events_task = asyncio.create_task(fetch_open_events(self.repo, self.settings));
         result = DedupResult("suppressed", None);
         summary = "";
         entities: dict[str, list[str]] = {};
         try {
-            try {
-                classifications = await classify(
-                    self.llm, self.settings, post, post_id
-                );
-            } except LLMUnavailable {
-                result = DedupResult(
-                    "UNFILTERED"
-                        if self.llm.fail_open and post.tier in ("official", "tracker")
-                        else "held-llm-down",
-                    None
-                );
+            if stored is None {
+                try {
+                    classifications = await classify(
+                        self.llm, self.settings, post, post_id
+                    );
+                } except LLMUnavailable {
+                    result = DedupResult(
+                        "UNFILTERED"
+                            if self.llm.fail_open
+                                and post.tier in ("official", "tracker")
+                            else "held-llm-down",
+                        None
+                    );
+                }
             }
             if classifications
-                and classifications[-1].materiality_score
-                    >= self.settings.market.threshold {
+                and (
+                    stored is not None
+                    or classifications[-1].materiality_score
+                        >= self.settings.market.threshold
+                ) {
                 final = classifications[-1];
                 candidates = filter_candidates(await events_task, final);
                 try {
@@ -205,7 +251,13 @@ obj Pipeline {
             await asyncio.gather(events_task, return_exceptions=True);
         }
         outcome = await self._commit_outcome(
-            post, post_id, classifications, result, summary, entities
+            post,
+            post_id,
+            classifications,
+            result,
+            summary,
+            entities,
+            reuse_final=stored is not None
         );
         elapsed = time.monotonic() - t0;
         if outcome in ("NEW_EVENT", "UPDATE") {
@@ -229,7 +281,10 @@ obj Pipeline {
         classifications: list[Classification],
         result: DedupResult,
         summary: str,
-        entities: dict[str, list[str]]
+        entities: dict[str, list[str]],
+        *,
+        reuse_final: bool = False,
+        linked_title: str | None = None
     ) -> str {
         final = classifications[-1] if classifications else None;
         event_id = result.event_id;
@@ -243,31 +298,39 @@ obj Pipeline {
             if not claimed.rowcount {
                 return "seen";
             }
-            # A pre-upgrade interruption may have persisted a nonfinal triage row.
-            await writer._run(
-                "DELETE FROM decisions WHERE post_id=? AND is_final=0", (post_id, )
-            );
-            for (i, c) in enumerate(classifications) {
-                await writer.insert_decision(
-                    post_id,
-                    c.stage,
-                    c.model,
-                    materiality_score=c.materiality_score,
-                    sub_scores=c.sub_scores,
-                    category=c.category,
-                    one_line=c.one_line,
-                    entities=c.entities,
-                    reasoning=c.reasoning,
-                    error=c.error,
-                    is_final=i == len(classifications) - 1
+            if not reuse_final {
+                # A pre-upgrade interruption may have persisted a nonfinal triage row.
+                await writer._run(
+                    "DELETE FROM decisions WHERE post_id=? AND is_final=0", (post_id, )
                 );
+                for (i, c) in enumerate(classifications) {
+                    await writer.insert_decision(
+                        post_id,
+                        c.stage,
+                        c.model,
+                        materiality_score=c.materiality_score,
+                        sub_scores=c.sub_scores,
+                        category=c.category,
+                        one_line=c.one_line,
+                        entities=c.entities,
+                        reasoning=c.reasoning,
+                        error=c.error,
+                        is_final=i == len(classifications) - 1
+                    );
+                }
+                if final is None {
+                    await writer.insert_decision(
+                        post_id,
+                        "unfiltered",
+                        "",
+                        error="llm_unavailable",
+                        is_final=True
+                    );
+                }
             }
-            if final is None {
-                await writer.insert_decision(
-                    post_id, "unfiltered", "", error="llm_unavailable", is_final=True
-                );
-            }
-            if result.decision == "NEW_EVENT" {
+            if linked_title is not None {
+                title = linked_title;
+            } elif result.decision == "NEW_EVENT" {
                 assert final is not None;
                 title = final.one_line or post.text[:120];
                 event_id = await writer.create_event(
@@ -306,6 +369,7 @@ obj Pipeline {
             self.bus.publish(card);
         }
         if result.decision == "NEW_EVENT"
+            and not reuse_final
             and result.reasoning != "dedup_llm_unavailable" {
             assert final is not None and event_id is not None;
             self._spawn_trade(post, post_id, final, event_id, nid);

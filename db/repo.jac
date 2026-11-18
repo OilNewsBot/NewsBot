@@ -256,9 +256,32 @@ obj Repo {
         return await self._one("SELECT * FROM events WHERE id = ?", (event_id, ));
     }
 
+    """Queue unfinished legacy outputs exactly once, using the configured cutoff."""
+    async def recover_partial_results(threshold: int) {
+        async with self.result_transaction() as writer {
+            marker = await writer._run(
+                "INSERT OR IGNORE INTO pipeline_migrations(version) VALUES(2)"
+            );
+            if marker.rowcount {
+                await writer._run(
+                    """INSERT OR IGNORE INTO pipeline_pending(post_id)
+                       SELECT d.post_id FROM decisions d
+                       LEFT JOIN event_posts ep ON ep.post_id=d.post_id
+                       LEFT JOIN notifications n ON n.post_id=d.post_id
+                       WHERE d.is_final=1 AND d.materiality_score IS NOT NULL
+                         AND n.id IS NULL
+                         AND ((ep.event_id IS NULL AND d.materiality_score>=?)
+                              OR ep.role IN ('origin','update'))""",
+                    (threshold, )
+                );
+            }
+        }
+    }
+
     async def open_events_since(cutoff: datetime) -> list[Row] {
         return await self._all(
             """SELECT * FROM events WHERE status = 'open' AND last_updated_at >= ?
+                 AND EXISTS (SELECT 1 FROM event_posts ep WHERE ep.event_id=events.id)
                ORDER BY last_updated_at DESC""",
             (iso(cutoff), )
         );
