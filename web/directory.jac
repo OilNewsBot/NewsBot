@@ -261,10 +261,10 @@ def Discover(channels: list[any], onClicks: any, watch: any) -> JsxElement {
             win: any = window;
             doc: any = document;
             save_view = lambda {
-                expanded = [
-                    str(row.dataset.channel)
-                    for row in doc.querySelectorAll(".channel-disclosure[open]")
-                ];
+                expanded: list[str] = [];
+                for row in doc.querySelectorAll(".channel-disclosure[open]") {
+                    expanded.append(str(row.dataset.channel));
+                }
                 state: any = win.history.state or {};
                 win.history.replaceState(
                     {

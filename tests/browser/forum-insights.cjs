@@ -57,7 +57,7 @@ async function check() {
 
         await page.getByRole("button", {name: "All channels", exact: true}).click();
         const search = page.getByRole("searchbox", {name: "Search channels"});
-        const sort = page.getByLabel("Sort by", {exact: true});
+        const sort = page.getByRole("combobox", {name: "Sort by", exact: true});
         const firstCard = page.locator('.channel-disclosure[data-channel="desk"]');
         await search.fill("FIRST");
         await sort.selectOption("category");
